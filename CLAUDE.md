@@ -41,6 +41,7 @@ Wszystko, co trafia do przeglądarki, musi działać na Safari 12. W razie wątp
 - **Hosting:** Netlify (domyślnie) lub Cloudflare Pages, auto-deploy po każdym pushu na `main`. Jeśli certyfikat nie działa na iPadzie, zmieniamy hosting.
 - **Adres produkcyjny:** https://kuchnia-ninjago.netlify.app
 - **Pułapka Netlify:** nowy projekt bywa domyślnie **prywatny** (Project configuration → General → Visitor access). Wtedy iPad dostaje stronę logowania Netlify, której Safari 12 nie renderuje — widać tylko białą stronę. Przy białej stronie najpierw sprawdź, czy widoczność to Public.
+- **Pułapka Netlify:** na darmowym planie Netlify blokuje buildy („unrecognized Git contributor”), jeśli autor commitów to inne konto niż właściciel repo. Tutaj wszystko jest na **Jano-sqpDev** (właściciel repo, konto podpięte w Netlify i autor commitów) — nie zmieniaj `git config` user.name/user.email.
 - **Commit i push robisz Ty.** Po każdej zakończonej pracy i przejściu builda: commit z opisem (pierwsza linia = krótkie podsumowanie, pusta linia, potem punkty), potem `git push`. Jeśli push się nie uda (np. brak uprawnień), nie kombinuj — napisz, co zwrócił git, a ja wypchnę przez GitHub Desktop.
 - **Generator:** Eleventy (11ty) albo prosty własny skrypt Node — wynik to czysty statyczny HTML + jeden mały plik JS + CSS.
 - **Wyszukiwanie po stronie klienta:** build generuje `search.json`, iPad pobiera go raz i filtruje lokalnie. Kolekcja nie przekroczy ~1000 przepisów.
@@ -50,7 +51,7 @@ Wszystko, co trafia do przeglądarki, musi działać na Safari 12. W razie wątp
 
 ```
 J:\APP_DEV\kuchnia-ninjago\      ← kontener, poza repo: mockupy, robocze logi dev-*.txt
-└── app\                       ← repo git (GitHub: januszSQP/kuchnia-ninjago), tu npm i CC
+└── app\                       ← repo git (GitHub: Jano-sqpDev/kuchnia-ninjago), tu npm i CC
     ├── CLAUDE.md              ← ten plik, wersjonowany razem z kodem
     ├── README.md
     ├── docs\                  ← mockupy HTML, notatki projektowe
