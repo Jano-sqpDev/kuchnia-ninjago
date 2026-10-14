@@ -40,6 +40,7 @@ Wszystko, co trafia do przeglądarki, musi działać na Safari 12. W razie wątp
 - **Repo:** GitHub, przepisy jako pliki w repo. **Bez bazy danych.**
 - **Hosting:** Netlify (domyślnie) lub Cloudflare Pages, auto-deploy po każdym pushu na `main`. Jeśli certyfikat nie działa na iPadzie, zmieniamy hosting.
 - **Adres produkcyjny:** https://kuchnia-ninjago.netlify.app
+- **Pułapka Netlify:** nowy projekt bywa domyślnie **prywatny** (Project configuration → General → Visitor access). Wtedy iPad dostaje stronę logowania Netlify, której Safari 12 nie renderuje — widać tylko białą stronę. Przy białej stronie najpierw sprawdź, czy widoczność to Public.
 - **Commit i push robisz Ty.** Po każdej zakończonej pracy i przejściu builda: commit z opisem (pierwsza linia = krótkie podsumowanie, pusta linia, potem punkty), potem `git push`. Jeśli push się nie uda (np. brak uprawnień), nie kombinuj — napisz, co zwrócił git, a ja wypchnę przez GitHub Desktop.
 - **Generator:** Eleventy (11ty) albo prosty własny skrypt Node — wynik to czysty statyczny HTML + jeden mały plik JS + CSS.
 - **Wyszukiwanie po stronie klienta:** build generuje `search.json`, iPad pobiera go raz i filtruje lokalnie. Kolekcja nie przekroczy ~1000 przepisów.
