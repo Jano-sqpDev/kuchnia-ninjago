@@ -1,0 +1,15 @@
+{
+  "name": "kuchnia-ninjago",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kuchenny wyświetlacz przepisów na iPadzie (Safari 12)",
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "ikony": "node tools/ikony.mjs",
+    "test": "node --test tests/"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
