@@ -39,6 +39,8 @@ Wszystko, co trafia do przeglądarki, musi działać na Safari 12. W razie wątp
 
 - **Repo:** GitHub, przepisy jako pliki w repo. **Bez bazy danych.**
 - **Hosting:** Netlify (domyślnie) lub Cloudflare Pages, auto-deploy po każdym pushu na `main`. Jeśli certyfikat nie działa na iPadzie, zmieniamy hosting.
+- **Adres produkcyjny:** https://kuchnia-ninjago.netlify.app
+- **Commit i push robisz Ty.** Po każdej zakończonej pracy i przejściu builda: commit z opisem (pierwsza linia = krótkie podsumowanie, pusta linia, potem punkty), potem `git push`. Jeśli push się nie uda (np. brak uprawnień), nie kombinuj — napisz, co zwrócił git, a ja wypchnę przez GitHub Desktop.
 - **Generator:** Eleventy (11ty) albo prosty własny skrypt Node — wynik to czysty statyczny HTML + jeden mały plik JS + CSS.
 - **Wyszukiwanie po stronie klienta:** build generuje `search.json`, iPad pobiera go raz i filtruje lokalnie. Kolekcja nie przekroczy ~1000 przepisów.
 - Projekt jest całkowicie oddzielny od mojej aplikacji gym (Supabase/Vercel) — nie używaj tamtych usług.
@@ -174,7 +176,31 @@ Wklejam Ci przepis (często od Claude'a lub ChatGPT) z poleceniem „dodaj do pr
 1. Przerabiasz go na format powyżej (wyciągasz ustawienia Ninja do panelu, ustawienia TM6 do kroków, dodajesz sensowne tagi i `temp_wewn_c` tam, gdzie pasuje).
 2. Jeśli czegoś brakuje lub jest niejednoznaczne (np. brak temperatury), pytasz — nie zgadujesz ustawień urządzeń.
 3. Uruchamiasz build z walidacją, commit, push.
-4. Odpowiadasz krótko: dodane + slug.
+4. Odpowiadasz zgodnie z „Format raportu" (w „Co zrobiłem": dodane + slug).
+
+---
+
+## Format raportu
+
+Każdą odpowiedź po zakończonej pracy formatuj tak:
+
+```
+## Co zrobiłem
+Krótkie punkty, jedna zmiana = jeden punkt. Bez długich opisów technicznych, chyba że o nie zapytam.
+
+## Co musisz zrobić
+Numerowana lista moich kroków (klikanie w Netlify, ręczny push, jeśli Twój się nie udał, itp.).
+
+## Do sprawdzenia na iPadzie
+Numerowana lista testów z oczekiwanym wynikiem przy każdym.
+
+Commit: <hash> — <pierwsza linia commita> — push: udany / nieudany (+ co zwrócił git)
+```
+
+Zasady:
+- Wszystko, co mam skopiować (adresy, komendy, tekst do wklejenia), zawsze w bloku kodu.
+- Sekcje, które nie mają treści, pomijaj.
+- Na końcu jedno zdanie: co jest następnym krokiem.
 
 ---
 

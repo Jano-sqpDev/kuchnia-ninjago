@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<script>
+// Ten skrypt musi byc pierwszy: lapie bledy wszystkiego, co jest nizej.
+window.__bledy = 0;
+window.onerror = function (msg, plik, linia, kolumna) {
+  window.__bledy++;
+  var tekst = 'B\u0141\u0104D JS: ' + msg + ' | plik: ' + (plik || '?') + ' | linia: ' + linia + ':' + (kolumna || '?');
+  function pokaz() {
+    var el = document.createElement('div');
+    el.setAttribute('style', 'display:block !important; visibility:visible !important; background:#b00020 !important; color:#fff !important; font:bold 32px/1.3 Helvetica, Arial, sans-serif !important; padding:24px !important; margin:0 0 16px !important; word-break:break-all;');
+    el.textContent = tekst;
+    var cel = document.body || document.documentElement;
+    cel.insertBefore(el, cel.firstChild);
+  }
+  if (document.body) { pokaz(); } else { document.addEventListener('DOMContentLoaded', pokaz); }
+  return false;
+};
+window.addEventListener('load', function () {
+  if (window.__bledy === 0) {
+    var el = document.createElement('div');
+    el.setAttribute('style', 'background:#1e7a34; color:#fff; font:bold 32px/1.3 Helvetica, Arial, sans-serif; padding:24px; margin:0 0 16px;');
+    el.textContent = 'T3: onerror aktywny, strona za\u0142adowana, brak b\u0142\u0119d\u00f3w JS';
+    document.body.insertBefore(el, document.body.firstChild);
+  }
+});
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Przepisy">
+<meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167.png">
+<title>T3 — pełna strona + onerror</title>
+<style>
+  :root {
+    --tlo: #fff8f0;
+    --tekst: #1a1a1a;
+    --akcent: #c44a1e;
+    --ok: #1e7a34;
+    --zle: #b00020;
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    padding: 40px 32px;
+    background: var(--tlo);
+    color: var(--tekst);
+    font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 22px;
+    line-height: 1.4;
+  }
+  h1 { font-size: 48px; margin: 0 0 8px; color: var(--akcent); }
+  p.lead { margin: 0 0 32px; font-size: 26px; }
+  table { border-collapse: collapse; width: 100%; max-width: 900px; }
+  td { padding: 12px 8px; border-bottom: 1px solid #e0d4c8; vertical-align: top; }
+  td:first-child { width: 40%; font-weight: 600; }
+  .ok { color: var(--ok); font-weight: 700; }
+  .zle { color: var(--zle); font-weight: 700; }
+  .ua { font-size: 16px; word-break: break-all; color: #555; }
+</style>
+</head>
+<body>
+<h1>T3: PEŁNA STRONA + window.onerror</h1>
+<p><a href="/">← Strona główna</a> · <a href="/t1.html">T1</a> · <a href="/t2.html">T2</a></p>
+<p class="lead">Etap 1 — test iPada. Jeśli to widzisz, HTTPS działa.</p>
+<table>
+  <tr><td>Połączenie</td><td id="https">—</td></tr>
+  <tr><td>Tryb pełnoekranowy</td><td id="standalone">—</td></tr>
+  <tr><td>localStorage</td><td id="storage">—</td></tr>
+  <tr><td>Licznik otwarć</td><td id="licznik">—</td></tr>
+  <tr><td>Rozmiar okna</td><td id="rozmiar">—</td></tr>
+  <tr><td>Przeglądarka</td><td id="ua" class="ua">—</td></tr>
+</table>
+<script>
+(function () {
+  function ustaw(id, tekst, ok) {
+    var el = document.getElementById(id);
+    el.textContent = tekst;
+    if (ok === true) el.className = 'ok';
+    if (ok === false) el.className = 'zle';
+  }
+
+  var https = location.protocol === 'https:';
+  ustaw('https', https ? 'HTTPS ✔' : location.protocol + ' ✘', https);
+
+  var standalone = window.navigator.standalone === true;
+  ustaw('standalone', standalone
+    ? 'TAK ✔ (otwarte z ekranu początkowego)'
+    : 'nie (zwykła karta Safari)', standalone ? true : undefined);
+
+  var licznik = null;
+  try {
+    licznik = parseInt(localStorage.getItem('test-licznik') || '0', 10) + 1;
+    localStorage.setItem('test-licznik', String(licznik));
+    ustaw('storage', 'działa ✔', true);
+    ustaw('licznik', String(licznik));
+  } catch (e) {
+    ustaw('storage', 'niedostępny ✘', false);
+    ustaw('licznik', '—');
+  }
+
+  function rozmiar() {
+    ustaw('rozmiar', window.innerWidth + ' × ' + window.innerHeight + ' pt');
+  }
+  rozmiar();
+  window.addEventListener('resize', rozmiar);
+
+  document.getElementById('ua').textContent = navigator.userAgent;
+})();
+</script>
+</body>
+</html>
