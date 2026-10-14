@@ -1,0 +1,17 @@
+# zależności
+/node_modules
+
+# wynik buildu (statyczna strona)
+/_site
+/dist
+
+# pliki środowiskowe
+.env*
+
+# hosting
+.netlify
+.wrangler
+
+# system
+.DS_Store
+Thumbs.db
