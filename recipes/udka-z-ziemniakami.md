@@ -1,4 +1,5 @@
 ---
+# plik: recipes/udka-z-ziemniakami.md
 schema_version: 1
 title: "Udka z ziemniakami"
 description: "Udka i ziemniaki w dwóch szufladach, kończą razem."
@@ -37,17 +38,24 @@ ninja:
     function: "Roast"
     temp_c: 200
     minutes: 28
+    turn:
+      action: flip
+      after_min: 14
+      required: true
   zone2:
     label: "Ziemniaki"
     function: "Air Fry"
     temp_c: 200
     minutes: 22
+    turn:
+      action: shake
+      after_min: 11
+      required: true
 
 steps:
   - text: "Osusz udka, natrzyj częścią marynaty i odstaw na kilka minut."
   - text: "Ziemniaki przekrój na pół i wymieszaj z resztą marynaty."
   - text: "Udka włóż do strefy 1, ziemniaki do strefy 2. Ustaw obie strefy według panelu Ninja, włącz SYNC, następnie START."
-  - text: "W połowie pieczenia potrząśnij szufladą z ziemniakami, a udka obróć."
   - text: "Sprawdź udka termometrem w najgrubszym miejscu, przy kości."
     internal_temp_c: 75
 ---
