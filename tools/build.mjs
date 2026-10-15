@@ -28,6 +28,8 @@ rmSync(out, { recursive: true, force: true });
 mkdirSync(join(out, 'data'), { recursive: true });
 cpSync(join(root, 'public'), out, { recursive: true, filter });
 cpSync(join(root, 'src'), out, { recursive: true, filter });
+// Zaakceptowany projekt UI do podglądu na iPadzie: /mockup.html
+cpSync(join(root, 'docs', 'mockup-ui-v1.html'), join(out, 'mockup.html'));
 
 recipes.sort((a, b) => a.data.title.localeCompare(b.data.title, 'pl'));
 recipes.forEach((r) => {

@@ -24,6 +24,8 @@ test('build przykładów: search.json, trzy data/*.json i strona z Etapu 1', () 
   assert.ok(existsSync(join(out, 'index.html')));
   assert.ok(existsSync(join(out, 'apple-touch-icon-152.png')));
   assert.ok(!existsSync(join(out, 'netlify.toml')));
+  assert.equal(readFileSync(join(out, 'mockup.html'), 'utf8'),
+    readFileSync(join(root, 'docs', 'mockup-ui-v1.html'), 'utf8'));
 
   const indeks = JSON.parse(readFileSync(join(out, 'search.json'), 'utf8'));
   assert.equal(indeks.length, 3);

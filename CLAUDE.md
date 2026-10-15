@@ -295,8 +295,15 @@ Zasady:
 Mam plan Pro z limitami — **jeden etap na sesję**. Po każdym etapie zatrzymaj się, powiedz mi, co mam sprawdzić na iPadzie, i czekaj.
 
 1. ✅ **Hello world + test iPada** (zamknięty: HTTPS, pełny ekran, obrót i pamięć działają na iPadzie). Minimalna strona, deploy. Repo git i zdalne repo na GitHubie zwykle zakłada już skrypt startowy — sprawdź `git remote -v` i zakładaj tylko to, czego brakuje. Ja sprawdzam na iPadzie: czy HTTPS działa, czy „Dodaj do ekranu początkowego" otwiera pełny ekran.
-2. **Format + walidacja + 3 przykładowe przepisy:** jeden z Ninja (sync), jeden z TM6 (kroki z ustawieniami, jeden z `temperature: Varoma`), jeden deser bez urządzeń.
+2. ✅ **Format + walidacja + 3 przykładowe przepisy:** jeden z Ninja (sync), jeden z TM6 (kroki z ustawieniami, jeden z `temperature: Varoma`), jeden deser bez urządzeń.
 3. **Widok kuchenny:** lista + strona przepisu z panelami, zapamiętywanie stanu, przełącznik jasny/ciemny.
+   - **UI według `docs/mockup-ui-v1.html`** (zaakceptowany projekt; podgląd na żywo: `/mockup.html`):
+     - lista z miniaturami zdjęć,
+     - duże zdjęcie przy przepisie,
+     - przycisk „📷 Zdjęcie” w pasku otwiera zdjęcie na pełny ekran,
+     - panel Ninja **zawsze ciemny** (także w jasnym motywie) — jak wyświetlacz frytkownicy,
+     - bieżący krok wyróżniony świecącym pierścieniem.
+   - **Zdjęcia:** źródło JPEG/PNG w `recipes/img/`; build sam robi dwie wersje JPEG — miniaturę ~300 px i dużą ~1200 px (dłuższy bok).
 4. **Wyszukiwarka i filtry.**
 5. (Później, na moje życzenie) tryb gotowania krok po kroku, minutniki przy krokach, skalowanie porcji.
 

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Kuchnia — mockup UI v1</title>
+<style>
+/* Mockup UI v1 — zgodny z Safari 12: bez flex gap, aspect-ratio, clamp/min/max, :is/:where/:has, inset.
+   Zasada wizualna jak w Yano Gym: PŁYTA (tło) + WGŁĘBIENIA (karty) + ŚWIECĄCY PIERŚCIEŃ (stan).
+   Panel Ninja zostaje ciemny w obu motywach — wygląda jak wyświetlacz frytkownicy. */
+
+:root {
+  --plate: #141A20; --plate2: #0E1318; --well: #07090D; --well-edge: #1E262E;
+  --ink: #EAEEF2; --ink2: #9DABB8; --muted: #6E7C89;
+  --live: #FF8A3D; --live-core: #FFD4AE;
+  --ready: #2F7CC2; --ready-core: #9FD0FF;
+  --done: #34C759; --hot: #FF5C39;
+  --tm6: #3FB28E; --tm6-core: #B9F0DD;
+  --chip: #1A222A;
+}
+.light {
+  --plate: #F3EEE6; --plate2: #E9E2D7; --well: #FFFFFF; --well-edge: #D8CFC2;
+  --ink: #1D232A; --ink2: #4A5560; --muted: #7A848D;
+  --live: #E0651B; --live-core: #E0651B;
+  --ready: #1F6FB8; --ready-core: #1F6FB8;
+  --done: #23963F; --hot: #D9431F;
+  --tm6: #1E8A69; --tm6-core: #1E8A69;
+  --chip: #E6DED2;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; background: #2A2F35; font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; }
+
+/* ── pasek sterowania mockupem (nie jest częścią aplikacji) ── */
+#tools { padding: 10px 16px; color: #C9D1D9; font-size: 14px; }
+#tools span { margin-right: 6px; opacity: .7; }
+#tools button { font-size: 14px; padding: 6px 10px; margin: 0 4px 6px 0; border: 1px solid #555; background: #3A4048; color: #EEE; border-radius: 6px; }
+#tools button.on { background: #FF8A3D; color: #111; border-color: #FF8A3D; }
+#tools .grp { display: inline-block; margin-right: 18px; }
+
+#stage { position: relative; }
+#device { position: absolute; left: 0; top: 0; overflow: hidden; border-radius: 18px; box-shadow: 0 10px 40px rgba(0,0,0,.6);
+  -webkit-transform-origin: 0 0; transform-origin: 0 0; }
+
+/* ── aplikacja ── */
+#app { width: 100%; height: 100%; background: var(--plate); color: var(--ink); font-size: 20px; line-height: 1.35;
+  display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; }
+
+.bar { -webkit-flex: 0 0 auto; flex: 0 0 auto; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center;
+  padding: 12px 20px; background: var(--plate2); border-bottom: 1px solid var(--well-edge); min-height: 72px; }
+.bar h1 { font-size: 28px; margin: 0; font-weight: 700; -webkit-flex: 1 1 auto; flex: 1 1 auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.btn { min-width: 52px; height: 52px; border-radius: 26px; border: 1px solid var(--well-edge); background: var(--well); color: var(--ink);
+  font-size: 22px; padding: 0 16px; margin-left: 10px; white-space: nowrap; display: -webkit-inline-flex; display: inline-flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
+.btn.back { white-space: nowrap; margin-left: 0; margin-right: 14px; font-size: 20px; font-weight: 600; }
+
+.scroll { -webkit-flex: 1 1 auto; flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+/* lista */
+.search { display: -webkit-flex; display: flex; padding: 16px 20px 6px; }
+.search .box { -webkit-flex: 1 1 auto; flex: 1 1 auto; height: 56px; border-radius: 14px; background: var(--well); border: 1px solid var(--well-edge);
+  color: var(--muted); font-size: 20px; padding: 14px 18px; }
+.chips { padding: 8px 20px 4px; white-space: nowrap; overflow: hidden; }
+.chip { display: inline-block; padding: 10px 18px; margin: 0 8px 8px 0; border-radius: 22px; background: var(--chip); color: var(--ink2); font-size: 18px; border: 1px solid var(--well-edge); }
+.resume { margin: 10px 20px 4px; padding: 16px 20px; border-radius: 16px; background: var(--well); border: 2px solid var(--live);
+  box-shadow: 0 0 0 1px var(--live-core) inset, 0 0 18px rgba(255,138,61,.25); display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+.resume .t { -webkit-flex: 1 1 auto; flex: 1 1 auto; }
+.resume .k { color: var(--live); font-size: 16px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+.resume .n { font-size: 22px; font-weight: 600; }
+.grid { padding: 10px 12px 24px; }
+.grid:after { content: ""; display: table; clear: both; }
+.card { float: left; margin: 8px; padding: 18px; border-radius: 16px; background: var(--well); border: 1px solid var(--well-edge); height: 172px; overflow: hidden; position: relative; }
+.card h3 { margin: 0 0 10px; font-size: 22px; line-height: 1.25; }
+.card .meta { color: var(--ink2); font-size: 17px; }
+.card .devs { margin-top: 14px; }
+.dev { display: inline-block; font-size: 14px; font-weight: 800; letter-spacing: .06em; padding: 4px 9px; border-radius: 6px; margin-right: 6px; }
+.dev.ninja { color: #111; background: #FF8A3D; }
+.dev.tm6 { color: #fff; background: var(--tm6); }
+.card.fake { opacity: .55; }
+.card .thumb { position: absolute; left: 16px; top: 16px; width: 112px; height: 112px; border-radius: 12px; }
+.card .txt { margin-left: 126px; }
+.card h3 { font-size: 20px; }
+.ph { position: relative; overflow: hidden; text-align: center; color: rgba(255,255,255,.9); }
+.ph .em { position: absolute; left: 0; right: 0; top: 50%; margin-top: -.6em; line-height: 1.2em; }
+.ph .cap { position: absolute; left: 0; right: 0; bottom: 8px; font-size: 13px; opacity: .75; }
+.ph.none { background: var(--chip); color: var(--muted); border: 1px dashed var(--well-edge); }
+.hero { display: -webkit-flex; display: flex; -webkit-align-items: flex-start; align-items: flex-start; padding: 0 20px 0 0; }
+.hero .info { -webkit-flex: 1 1 auto; flex: 1 1 auto; }
+.hero .pic-wrap { -webkit-flex: 0 0 300px; flex: 0 0 300px; margin-top: 14px; }
+.portrait .hero .pic-wrap { -webkit-flex: 0 0 260px; flex: 0 0 260px; }
+.hero .pic { width: 100%; height: 190px; border-radius: 16px; }
+.portrait .hero .pic { height: 170px; }
+.pic .zoom { position: absolute; right: 10px; bottom: 10px; background: rgba(0,0,0,.6); color: #fff; font-size: 16px; font-weight: 700; padding: 8px 12px; border-radius: 10px; }
+#viewer { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: #000; z-index: 10;
+  display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; }
+#viewer .vbar { -webkit-flex: 0 0 auto; flex: 0 0 auto; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 12px 20px; color: #EAEEF2; }
+#viewer .vbar h1 { font-size: 24px; margin: 0; -webkit-flex: 1 1 auto; flex: 1 1 auto; }
+#viewer .close { height: 56px; border-radius: 28px; border: 0; background: #FF8A3D; color: #111; font-size: 22px; font-weight: 800; padding: 0 22px; }
+#viewer .big { -webkit-flex: 1 1 auto; flex: 1 1 auto; margin: 0 20px 20px; border-radius: 18px; }
+#viewer .hint { color: #8D99A5; text-align: center; font-size: 15px; padding-bottom: 14px; }
+
+/* przepis */
+.head { padding: 16px 20px 6px; color: var(--ink2); font-size: 18px; }
+.head b { color: var(--ink); }
+.head .sep { margin: 0 10px; color: var(--muted); }
+.tags { padding: 4px 20px 0; }
+.tag { display: inline-block; font-size: 15px; color: var(--muted); margin-right: 10px; }
+
+.npanel { margin: 12px 20px 6px; padding: 14px; border-radius: 18px; background: #050709; border: 1px solid #222A31; color: #EAEEF2;
+  display: -webkit-flex; display: flex; -webkit-align-items: stretch; align-items: stretch; }
+.zone { -webkit-flex: 1 1 0; flex: 1 1 0; background: #0B0F14; border-radius: 12px; padding: 12px 16px; border: 1px solid #1B232B; }
+.zone .zh { font-size: 15px; color: #8D99A5; letter-spacing: .08em; text-transform: uppercase; }
+.zone .zh b { color: #FF8A3D; font-size: 18px; margin-right: 6px; }
+.zone .lbl { font-size: 22px; font-weight: 700; margin: 2px 0 6px; color: #EAEEF2; }
+.zone .fn { font-size: 18px; font-weight: 800; color: #FFD4AE; letter-spacing: .06em; text-transform: uppercase; }
+.zone .vals { margin-top: 4px; white-space: nowrap; }
+.zone .big { font-size: 54px; font-weight: 300; color: #FF8A3D; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.zone .unit { font-size: 22px; color: #FFB27E; margin-right: 22px; }
+.mode { -webkit-flex: 0 0 96px; flex: 0 0 96px; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
+.mode .pill { font-size: 16px; font-weight: 800; letter-spacing: .1em; color: #111; background: #9FD0FF; padding: 8px 12px; border-radius: 8px; }
+.mode .hint { font-size: 12px; color: #8D99A5; text-align: center; margin-top: 8px; line-height: 1.2; }
+.npanel.single .zone { -webkit-flex: 0 0 50%; flex: 0 0 50%; }
+
+.cols { display: -webkit-flex; display: flex; padding: 6px 10px 20px; -webkit-align-items: flex-start; align-items: flex-start; }
+.col { padding: 0 10px; }
+.portrait .cols { display: block; }
+.portrait .col { width: 100% !important; }
+h2 { font-size: 16px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 18px 0 10px; font-weight: 700; }
+
+.ing { background: var(--well); border: 1px solid var(--well-edge); border-radius: 16px; padding: 6px 18px; }
+.ing .g { font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: var(--live); font-weight: 700; margin: 12px 0 2px; }
+.ing .row { display: -webkit-flex; display: flex; padding: 9px 0; border-bottom: 1px solid var(--well-edge); }
+.ing .row:last-child { border-bottom: 0; }
+.ing .q { -webkit-flex: 0 0 150px; flex: 0 0 150px; font-weight: 700; color: var(--ink); text-align: right; padding-right: 14px; font-variant-numeric: tabular-nums; }
+.ing .q.none { color: var(--muted); font-weight: 400; }
+.ing .nm { -webkit-flex: 1 1 auto; flex: 1 1 auto; }
+.ing .note { color: var(--muted); font-size: 17px; }
+
+.step { display: -webkit-flex; display: flex; background: var(--well); border: 1px solid var(--well-edge); border-radius: 16px; padding: 16px 18px; margin-bottom: 12px; }
+.step .num { -webkit-flex: 0 0 44px; flex: 0 0 44px; height: 44px; border-radius: 22px; border: 2px solid var(--well-edge); color: var(--ink2);
+  font-size: 20px; font-weight: 700; text-align: center; line-height: 40px; margin-right: 16px; }
+.step .body { -webkit-flex: 1 1 auto; flex: 1 1 auto; font-size: 22px; line-height: 1.4; }
+.step.cur { border: 2px solid var(--live); padding: 15px 17px; box-shadow: 0 0 0 1px var(--live-core) inset, 0 0 22px rgba(255,138,61,.28); }
+.step.cur .num { border-color: var(--live); color: var(--live); }
+.step.past { opacity: .5; }
+.step.past .num { border-color: var(--done); color: var(--done); }
+
+.tm6row { margin-top: 12px; }
+.tm { display: inline-block; margin: 0 8px 6px 0; padding: 7px 12px; border-radius: 10px; background: var(--chip); border: 1px solid var(--tm6);
+  color: var(--tm6-core); font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tm.k { background: var(--tm6); color: #fff; border-color: var(--tm6); font-size: 14px; letter-spacing: .08em; }
+.light .tm.k { color: #fff; }
+.temp-in { display: inline-block; margin-top: 12px; padding: 7px 12px; border-radius: 10px; border: 1px solid var(--hot); color: var(--hot); font-size: 19px; font-weight: 700; }
+
+.empty { text-align: center; color: var(--muted); padding: 120px 40px; font-size: 22px; }
+.err { margin: 40px 20px; padding: 24px; border-radius: 16px; border: 2px solid var(--hot); background: var(--well); }
+.err b { color: var(--hot); }
+</style>
+</head>
+<body>
+
+<div id="tools">
+  <div class="grp"><span>Ekran:</span>
+    <button data-s="list" class="on">Lista</button><button data-s="udka">Przepis Ninja</button><button data-s="varoma">Przepis TM6</button><button data-s="deser">Deser</button><button data-s="empty">Pusta lista</button><button data-s="error">Błąd</button>
+  </div>
+  <div class="grp"><span>Orientacja:</span><button data-o="land" class="on">Poziom 1024×768</button><button data-o="port">Pion 768×1024</button></div>
+  <div class="grp"><span>Motyw:</span><button data-t="dark" class="on">Ciemny</button><button data-t="light">Jasny</button></div>
+</div>
+<div id="stage"><div id="device"><div id="app"></div></div></div>
+
+<script>
+// ES5 — świadomie bez let/const/arrow/template literals, żeby mockup działał też na iPadzie.
+var R = {
+  udka: { title: "Udka z ziemniakami", servings: 4, prep: 15, cook: 28, tags: ["ninja","kurczak","obiad"],
+    ninja: { mode: "sync", z1: { label: "Udka", fn: "Roast", t: 200, m: 28 }, z2: { label: "Ziemniaki", fn: "Air Fry", t: 200, m: 22 } },
+    ing: [ { n: "udka z kurczaka", a: "8", u: "szt" }, { n: "małe ziemniaki", a: "600", u: "g" },
+           { g: "Marynata", n: "oliwa", a: "2", u: "łyżki" }, { g: "Marynata", n: "papryka wędzona", a: "1", u: "łyżeczka" },
+           { g: "Marynata", n: "czosnek granulowany", a: "1", u: "łyżeczka" }, { g: "Marynata", n: "sól" } ],
+    steps: [ { x: "Osusz udka, natrzyj marynatą i odstaw na 10 minut." },
+             { x: "Ziemniaki przekrój na pół, wymieszaj z resztą marynaty." },
+             { x: "Udka do strefy 1, ziemniaki do strefy 2. Ustaw według panelu Ninja, włącz SYNC, START." },
+             { x: "W połowie potrząśnij szufladą z ziemniakami, udka obróć." },
+             { x: "Sprawdź udka termometrem w najgrubszym miejscu.", tin: 75 } ] },
+  varoma: { title: "Warzywa na parze z sosem jogurtowym", servings: 2, prep: 10, cook: 23, tags: ["tm6","warzywa","na-parze"],
+    ing: [ { n: "brokuł", a: "300", u: "g" }, { n: "marchew", a: "200", u: "g" }, { n: "woda", a: "500", u: "ml" },
+           { g: "Sos", n: "jogurt naturalny", a: "120", u: "g" }, { g: "Sos", n: "sok z cytryny", a: "10", u: "ml" }, { g: "Sos", n: "sól, pieprz" } ],
+    steps: [ { x: "Podziel brokuł na różyczki, marchew pokrój w plasterki. Ułóż w Varomie, nie zasłaniając otworów." },
+             { x: "Wlej wodę do naczynia miksującego i podgrzej.", tm: { d: "5:00", t: "100°C", s: "1" } },
+             { x: "Załóż Varomę z pokrywą i gotuj warzywa na parze.", tm: { d: "18:00", t: "Varoma", s: "1", mode: "Gotowanie na parze" } },
+             { x: "Sprawdź miękkość warzyw, ostrożnie otwierając pokrywę." },
+             { x: "Wymieszaj jogurt, sok z cytryny, sól i pieprz. Podaj z warzywami." } ] },
+  deser: { title: "Deser twarogowy z owocami", servings: 2, prep: 5, cook: 0, tags: ["deser","bez-pieczenia"],
+    ing: [ { n: "twaróg półtłusty", a: "200", u: "g" }, { n: "skyr naturalny", a: "150", u: "g" }, { n: "maliny lub borówki", a: "150", u: "g" }, { n: "cynamon", note: "opcjonalnie" } ],
+    steps: [ { x: "Przełóż twaróg i skyr do miski." }, { x: "Rozgnieć widelcem i wymieszaj na kremową masę." },
+             { x: "Podziel na dwie porcje." }, { x: "Dodaj owoce, posyp cynamonem. Podawaj od razu." } ] }
+};
+var LIST = [
+  { id: "udka", devs: ["ninja"] }, { id: "varoma", devs: ["tm6"] }, { id: "deser", devs: [] },
+  { title: "Ziemniaczki i brokuły", prep: 10, cook: 22, devs: ["ninja"], fake: 1, ph: "f1" },
+  { title: "Risotto grzybowe", prep: 10, cook: 25, devs: ["tm6"], fake: 1 },
+  { title: "Łosoś z kaszą i sosem koperkowym", prep: 15, cook: 20, devs: ["ninja","tm6"], fake: 1, ph: "f3" }
+];
+
+var PH = { udka: ["#7a3f14","#d8923f","🍗"], varoma: ["#245a30","#8fc46a","🥦"], deser: ["#6e2342","#e8a3b8","🍓"],
+  f1: ["#6b4c1f","#c9a35a","🥔"], f3: ["#6e2f1f","#e48b6a","🐟"] };
+function photo(key, cls, size, cap) {
+  var c = PH[key];
+  if (!c) return '<div class="ph none ' + cls + '"><div class="em" style="font-size:' + Math.round(size * .5) + 'px">🍽</div>' + (cap ? '<div class="cap">brak zdjęcia</div>' : '') + '</div>';
+  return '<div class="ph ' + cls + '" style="background:#333;background:linear-gradient(135deg,' + c[0] + ',' + c[1] + ')"><div class="em" style="font-size:' + size + 'px">' + c[2] + '</div>' +
+    (cap ? '<div class="cap">' + cap + '</div>' : '') + '</div>';
+}
+var S = { photo: false, screen: "list", orient: "land", theme: "dark", cur: { udka: 3, varoma: 2, deser: 0 } };
+
+function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+function devBadges(d) { var h = ""; for (var i = 0; i < d.length; i++) h += '<span class="dev ' + d[i] + '">' + (d[i] === "ninja" ? "NINJA" : "TM6") + '</span>'; return h; }
+function themeBtn() { return '<button class="btn" data-act="theme">' + (S.theme === "dark" ? "☀︎" : "☾") + '</button>'; }
+
+function listView() {
+  var cols = S.orient === "land" ? 3 : 2, w = "calc(" + (100 / cols) + "% - 16px)";
+  var h = '<div class="bar"><h1>Przepisy</h1>' + themeBtn() + '</div><div class="scroll">';
+  h += '<div class="search"><div class="box">Szukaj: nazwa, składnik, tag…  (Etap 4)</div></div>';
+  h += '<div class="chips"><span class="chip">Ninja</span><span class="chip">TM6</span><span class="chip">Air Fry</span><span class="chip">Roast</span><span class="chip">Bake</span><span class="chip">Dehydrate</span></div>';
+  h += '<div class="resume" data-open="varoma"><div class="t"><div class="k">Wróć do gotowania</div><div class="n">Warzywa na parze — krok 3 z 5</div></div><span class="btn">Otwórz ›</span></div>';
+  h += '<div class="grid">';
+  for (var i = 0; i < LIST.length; i++) {
+    var it = LIST[i], r = it.id ? R[it.id] : it;
+    var t = (it.id ? r.prep + r.cook : it.prep + it.cook);
+    h += '<div class="card' + (it.fake ? ' fake' : '') + '" style="width:' + w + '"' + (it.id ? ' data-open="' + it.id + '"' : '') + '>';
+    h += photo(it.id || it.ph, 'thumb', 54, '');
+    h += '<div class="txt"><h3>' + esc(r.title) + '</h3><div class="meta">' + (t ? t + ' min' : 'bez gotowania') + (it.id ? ' · ' + r.servings + ' porcje' : ' · atrapa') + '</div>';
+    h += '<div class="devs">' + devBadges(it.devs) + '</div></div></div>';
+  }
+  return h + '</div></div>';
+}
+
+function ninjaPanel(n) {
+  function zone(no, z) {
+    return '<div class="zone"><div class="zh"><b>' + no + '</b>Strefa ' + no + '</div><div class="lbl">' + esc(z.label) + '</div>' +
+      '<div class="fn">' + esc(z.fn) + '</div><div class="vals"><span class="big">' + z.t + '</span><span class="unit">°C</span>' +
+      '<span class="big">' + z.m + '</span><span class="unit">min</span></div></div>';
+  }
+  var hint = { sync: "kończą<br>razem", match: "te same<br>ustawienia", independent: "osobno" }[n.mode] || "";
+  if (n.mode === "single") return '<div class="npanel single">' + zone(1, n.z1) + '</div>';
+  return '<div class="npanel">' + zone(1, n.z1) + '<div class="mode"><span class="pill">' + n.mode.toUpperCase() + '</span><div class="hint">' + hint + '</div></div>' + zone(2, n.z2) + '</div>';
+}
+
+function recipeView(id) {
+  var r = R[id], cur = S.cur[id], land = S.orient === "land";
+  var h = '<div class="bar"><button class="btn back" data-act="back">‹ Przepisy</button><h1>' + esc(r.title) + '</h1><button class="btn" data-act="photo">📷 Zdjęcie</button>' + themeBtn() + '</div><div class="scroll">';
+  h += '<div class="hero"><div class="info"><div class="head"><b>' + r.servings + '</b> porcje<span class="sep">·</span>przygotowanie <b>' + r.prep + ' min</b><span class="sep">·</span>' +
+       (r.cook ? 'gotowanie <b>' + r.cook + ' min</b>' : 'bez gotowania') + '</div>';
+  h += '<div class="tags">';
+  for (var i = 0; i < r.tags.length; i++) h += '<span class="tag">#' + esc(r.tags[i]) + '</span>';
+  h += '</div></div><div class="pic-wrap" data-act="photo">' + photo(id, 'pic', 96, '').replace('</div></div>', '</div><div class="zoom">⤢ Powiększ</div></div>') + '</div></div>';
+  if (r.ninja) h += ninjaPanel(r.ninja);
+
+  var ing = '<h2>Składniki</h2><div class="ing">', g = null;
+  for (i = 0; i < r.ing.length; i++) {
+    var x = r.ing[i];
+    if ((x.g || null) !== g) { g = x.g || null; if (g) ing += '<div class="g">' + esc(g) + '</div>'; }
+    ing += '<div class="row"><div class="q' + (x.a ? '' : ' none') + '">' + (x.a ? esc(x.a) + ' ' + esc(x.u) : '—') + '</div><div class="nm">' + esc(x.n) +
+           (x.note ? ' <span class="note">(' + esc(x.note) + ')</span>' : '') + '</div></div>';
+  }
+  ing += '</div>';
+
+  var st = '<h2>Kroki</h2>';
+  for (i = 0; i < r.steps.length; i++) {
+    var s = r.steps[i], cls = i === cur ? ' cur' : (i < cur ? ' past' : '');
+    st += '<div class="step' + cls + '" data-step="' + i + '"><div class="num">' + (i < cur ? '✓' : (i + 1)) + '</div><div class="body">' + esc(s.x);
+    if (s.tm) {
+      st += '<div class="tm6row"><span class="tm k">TM6</span><span class="tm">⏱ ' + s.tm.d + '</span>' + (s.tm.t ? '<span class="tm">🌡 ' + s.tm.t + '</span>' : '') +
+            (s.tm.s ? '<span class="tm">⟳ ' + s.tm.s + '</span>' : '') + (s.tm.r ? '<span class="tm">↺ wsteczne</span>' : '') +
+            (s.tm.mode ? '<span class="tm">' + esc(s.tm.mode) + '</span>' : '') + '</div>';
+    }
+    if (s.tin) st += '<div class="temp-in">🌡 ' + s.tin + '°C w środku</div>';
+    st += '</div></div>';
+  }
+  h += '<div class="cols"><div class="col" style="width:' + (land ? '40%' : '100%') + '">' + ing + '</div><div class="col" style="width:' + (land ? '60%' : '100%') + '">' + st + '</div></div>';
+  return h + '</div>';
+}
+
+function render() {
+  var app = document.getElementById("app"), h;
+  if (S.screen === "list") h = listView();
+  else if (S.screen === "empty") h = '<div class="bar"><h1>Przepisy</h1>' + themeBtn() + '</div><div class="scroll"><div class="empty">Nie ma jeszcze przepisów.<br><br>Dodaj pierwszy przez Claude Code: „dodaj do przepisów”.</div></div>';
+  else if (S.screen === "error") h = '<div class="bar"><h1>Przepisy</h1>' + themeBtn() + '</div><div class="scroll"><div class="err"><b>Nie udało się wczytać przepisów.</b><br><br>Sprawdź Wi-Fi i dotknij, żeby spróbować ponownie.</div></div>';
+  else h = recipeView(S.screen);
+  if (S.photo && R[S.screen]) {
+    h += '<div id="viewer" data-act="close"><div class="vbar"><h1>' + esc(R[S.screen].title) + '</h1><button class="close" data-act="close">✕ Zamknij</button></div>' +
+      photo(S.screen, 'big', 220, 'zdjęcie potrawy — tu będzie prawdziwe zdjęcie') + '<div class="hint">Dotknij w dowolnym miejscu, żeby wrócić do przepisu</div></div>';
+  }
+  app.innerHTML = h;
+  app.className = S.orient === "port" ? "portrait" : "";
+  document.getElementById("device").className = S.theme === "light" ? "light" : "";
+  fit();
+}
+
+function fit() {
+  var d = document.getElementById("device"), w = S.orient === "land" ? 1024 : 768, hh = S.orient === "land" ? 768 : 1024;
+  var top = document.getElementById("tools").offsetHeight;
+  var sc = Math.min(1, (window.innerWidth - 32) / w, (window.innerHeight - top - 16) / hh);
+  d.style.width = w + "px"; d.style.height = hh + "px"; d.style.left = "16px";
+  d.style.webkitTransform = "scale(" + sc + ")"; d.style.transform = "scale(" + sc + ")";
+  document.getElementById("stage").style.height = Math.ceil(hh * sc + 16) + "px";
+}
+
+function mark(attr, val) {
+  var b = document.querySelectorAll("#tools button[" + attr + "]");
+  for (var i = 0; i < b.length; i++) b[i].className = b[i].getAttribute(attr) === val ? "on" : "";
+}
+
+document.addEventListener("click", function (e) {
+  var t = e.target;
+  while (t && t !== document) {
+    if (t.getAttribute) {
+      if (t.getAttribute("data-s")) { S.photo = false; S.screen = t.getAttribute("data-s"); mark("data-s", S.screen); render(); return; }
+      if (t.getAttribute("data-o")) { S.orient = t.getAttribute("data-o"); mark("data-o", S.orient); render(); return; }
+      if (t.getAttribute("data-t")) { S.theme = t.getAttribute("data-t"); mark("data-t", S.theme); render(); return; }
+      if (t.getAttribute("data-act") === "theme") { S.theme = S.theme === "dark" ? "light" : "dark"; mark("data-t", S.theme); render(); return; }
+      if (t.getAttribute("data-act") === "photo") { S.photo = true; render(); return; }
+      if (t.getAttribute("data-act") === "close") { S.photo = false; render(); return; }
+      if (t.getAttribute("data-act") === "back") { S.screen = "list"; mark("data-s", "list"); render(); return; }
+      if (t.getAttribute("data-open")) { S.screen = t.getAttribute("data-open"); mark("data-s", S.screen); render(); return; }
+      if (t.getAttribute("data-step")) { S.cur[S.screen] = +t.getAttribute("data-step"); render(); return; }
+    }
+    t = t.parentNode;
+  }
+});
+window.addEventListener("resize", fit);
+render();
+</script>
+</body>
+</html>
