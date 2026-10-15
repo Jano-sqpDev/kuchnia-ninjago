@@ -158,6 +158,10 @@ Build ma **failować** z czytelnym komunikatem, gdy:
   4. Kroki, numerowane. Przy kroku z `tm6` — mały panel: czas · temp · obroty · ↺ (wsteczne). Przy `temp_wewn_c` — znaczek „🌡 75°C w środku".
 - Każdy przepis ma własny URL (`/p/<slug>/`). Dotknięcie kroku zaznacza go jako bieżący (`#krok-3` w URL + `localStorage`).
 - **Odporność na przeładowania:** po przeładowaniu Safari lub ponownym otwarciu z ekranu początkowego strona wraca do ostatniego przepisu i kroku (zapamiętane w `localStorage`).
+- **Zapamiętywanie stanu — decyzja z testów Etapu 1 (T4):** localStorage, ciasteczko i IndexedDB zachowały się na iPadzie identycznie, a zapisane dane przetrwały zamknięcie aplikacji. Po otwarciu z ikony iOS 12 czasem pokazuje stronę bez ponownego ładowania (kod startowy się nie wykonuje). Dlatego używamy **localStorage** i obsługujemy **oba warianty**:
+  1. stan zapisywany **od razu** przy każdym dotknięciu kroku / zmianie przepisu (nie dopiero przy zamykaniu),
+  2. stan odtwarzany przy załadowaniu strony,
+  3. obsługa powrotu strony bez przeładowania: `pageshow` (także z `event.persisted`) i `visibilitychange` — przy powrocie odczytaj stan z localStorage i odśwież widok.
 - Tryb „aplikacji": `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, `apple-touch-icon` 152×152 i 167×167, poprawny `viewport`. Po „Dodaj do ekranu początkowego" ma się otwierać bez paska Safari.
 - Nawigacja wstecz musi być w interfejsie (w trybie pełnoekranowym nie ma przycisku Wstecz przeglądarki).
 
@@ -210,7 +214,7 @@ Zasady:
 
 Mam plan Pro z limitami — **jeden etap na sesję**. Po każdym etapie zatrzymaj się, powiedz mi, co mam sprawdzić na iPadzie, i czekaj.
 
-1. **Hello world + test iPada.** Minimalna strona, deploy. Repo git i zdalne repo na GitHubie zwykle zakłada już skrypt startowy — sprawdź `git remote -v` i zakładaj tylko to, czego brakuje. Ja sprawdzam na iPadzie: czy HTTPS działa, czy „Dodaj do ekranu początkowego" otwiera pełny ekran.
+1. ✅ **Hello world + test iPada** (zamknięty: HTTPS, pełny ekran, obrót i pamięć działają na iPadzie). Minimalna strona, deploy. Repo git i zdalne repo na GitHubie zwykle zakłada już skrypt startowy — sprawdź `git remote -v` i zakładaj tylko to, czego brakuje. Ja sprawdzam na iPadzie: czy HTTPS działa, czy „Dodaj do ekranu początkowego" otwiera pełny ekran.
 2. **Format + walidacja + 3 przykładowe przepisy:** jeden z Ninja (sync), jeden z TM6 (kroki z ustawieniami, jeden z `temp: "Varoma"`), jeden deser bez urządzeń.
 3. **Widok kuchenny:** lista + strona przepisu z panelami, zapamiętywanie stanu, przełącznik jasny/ciemny.
 4. **Wyszukiwarka i filtry.**
