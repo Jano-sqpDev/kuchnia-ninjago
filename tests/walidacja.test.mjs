@@ -57,11 +57,11 @@ function oczekujBledu(data, sciezka) {
 
 // --- przykłady z repo ---
 
-test('trzy przykładowe przepisy z recipes/ przechodzą walidację', () => {
+test('przykładowe przepisy z recipes/ przechodzą walidację', () => {
   const { recipes, errors } = loadRecipes(join(root, 'recipes'));
   assert.deepEqual(errors, []);
   assert.deepEqual(recipes.map((r) => r.slug).sort(),
-    ['deser-twarogowy', 'warzywa-varoma', 'ziemniaczki-brokuly-sync']);
+    ['deser-twarogowy', 'udka-z-ziemniakami', 'warzywa-varoma', 'ziemniaczki-brokuly-sync']);
 });
 
 test('dane bazowe testów są poprawne', () => {
@@ -314,7 +314,8 @@ function katalog(pliki) {
   return dir;
 }
 
-const DESER = readFileSync(join(root, 'recipes', 'deser-twarogowy.md'), 'utf8');
+// Bez linii image — testy dopisują własne zdjęcie.
+const DESER = readFileSync(join(root, 'recipes', 'deser-twarogowy.md'), 'utf8').replace(/^image: .*\n/m, '');
 const zeZdjeciem = (sciezka) => DESER.replace('schema_version: 1', 'schema_version: 1\nimage: ' + sciezka);
 
 test('slug: niedozwolone znaki w nazwie pliku', () => {

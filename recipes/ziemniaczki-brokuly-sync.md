@@ -7,6 +7,7 @@ prep_minutes: 10
 cook_minutes: 22
 tags: [ninja, warzywa, dodatek]
 source: "ChatGPT"
+image: img/ziemniaczki-brokuly-sync.jpg
 
 ingredients:
   - name: "małe ziemniaki"

@@ -1,0 +1,54 @@
+---
+schema_version: 1
+title: "Udka z ziemniakami"
+description: "Udka i ziemniaki w dwóch szufladach, kończą razem."
+servings: 4
+prep_minutes: 15
+cook_minutes: 28
+tags: [ninja, kurczak, obiad]
+source: "mockup UI v1"
+
+ingredients:
+  - name: "udka z kurczaka"
+    amount: 8
+    unit: szt
+  - name: "małe ziemniaki"
+    amount: 600
+    unit: g
+  - name: "oliwa"
+    amount: 2
+    unit: łyżki
+    group: "Marynata"
+  - name: "papryka wędzona"
+    amount: 1
+    unit: łyżeczka
+    group: "Marynata"
+  - name: "czosnek granulowany"
+    amount: 1
+    unit: łyżeczka
+    group: "Marynata"
+  - name: "sól"
+    group: "Marynata"
+
+ninja:
+  mode: sync
+  zone1:
+    label: "Udka"
+    function: "Roast"
+    temp_c: 200
+    minutes: 28
+  zone2:
+    label: "Ziemniaki"
+    function: "Air Fry"
+    temp_c: 200
+    minutes: 22
+
+steps:
+  - text: "Osusz udka, natrzyj częścią marynaty i odstaw na kilka minut."
+  - text: "Ziemniaki przekrój na pół i wymieszaj z resztą marynaty."
+  - text: "Udka włóż do strefy 1, ziemniaki do strefy 2. Ustaw obie strefy według panelu Ninja, włącz SYNC, następnie START."
+  - text: "W połowie pieczenia potrząśnij szufladą z ziemniakami, a udka obróć."
+  - text: "Sprawdź udka termometrem w najgrubszym miejscu, przy kości."
+    internal_temp_c: 75
+---
+Przepis testowy z mockupu UI — bez zdjęcia, żeby było widać kafelek zastępczy.

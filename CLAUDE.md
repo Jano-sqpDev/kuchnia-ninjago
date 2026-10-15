@@ -220,9 +220,11 @@ Komunikat: `plik.md → ścieżka.pola: przyczyna`, np. `warzywa-varoma.md → s
 
 ### Wynik buildu
 
-- `_site/search.json` — lekki indeks: `id` (slug), `title`, `tags`, `ingredients` (nazwy), `ninja_functions`, `text` (znormalizowany tekst do wyszukiwania, z aliasami tagów).
-- `_site/data/<slug>.json` — pełne dane przepisu (`id` + pola z YAML + `notes`), pobierane dopiero po wybraniu przepisu.
-- `_site/img/…` — zdjęcia przepisów (tylko te, do których odwołuje się `image`).
+- `_site/search.json` — lekki indeks (lista + wyszukiwanie): `id` (slug), `title`, `tags`, `ingredients` (nazwy), `ninja_functions`, `servings`, `prep_minutes`, `cook_minutes`, `thumb` (miniatura, tylko gdy jest zdjęcie), `text` (znormalizowany tekst do wyszukiwania, z aliasami tagów).
+- `_site/data/<slug>.json` — pełne dane przepisu (`id` + pola z YAML + `notes`), pobierane dopiero po wybraniu przepisu. `image` to tu adres dużej wersji zdjęcia, `thumb` — miniatury.
+- `_site/img/<nazwa>-300-<skrót>.jpg` i `-1200-` — miniatura i duża wersja zdjęcia (JPEG, dłuższy bok 300 / 1200 px, małych nie powiększa; `tools/zdjecia.mjs`). Skrót treści w nazwie: po podmianie zdjęcia Safari nie pokaże starego. Źródła z `recipes/img/` nie trafiają na stronę.
+- `_site/p/<slug>/index.html` i `_site/404.html` — ta sama powłoka aplikacji co `index.html`; widok wybiera `app.js` po adresie.
+- `_site/app.js` — `src/app.js` po `esbuild --target=safari12` (błąd → build przerwany); `_site/app.css` bez zmian.
 
 Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`.
 
@@ -284,7 +286,14 @@ Wklejam Ci przepis (często od Claude'a lub ChatGPT) z poleceniem „dodaj do pr
 
 ## Format raportu
 
-Każdą odpowiedź po zakończonej pracy formatuj tak:
+Każdą odpowiedź, po której czekasz na mnie, zaczynaj jednym z nagłówków:
+- `## ✅ SKOŃCZYŁEM` — praca zakończona, raport poniżej,
+- `## ⏸ CZEKAM NA CIEBIE` — potrzebujesz mojej decyzji, zgody albo informacji (napisz od razu, czego dokładnie),
+- `## ❌ PRZERWANE` — błąd albo coś, czego nie da się dokończyć.
+
+Krótkie odpowiedzi w trakcie pracy — bez nagłówka.
+
+Każdą odpowiedź po zakończonej pracy formatuj tak (pod nagłówkiem `## ✅ SKOŃCZYŁEM`):
 
 ```
 ## Co zrobiłem
@@ -323,6 +332,9 @@ Mam plan Pro z limitami — **jeden etap na sesję**. Po każdym etapie zatrzyma
    - **Zdjęcia:** źródło JPEG/PNG w `recipes/img/`; build sam robi dwie wersje JPEG — miniaturę ~300 px i dużą ~1200 px (dłuższy bok).
    - **Zasady Etapu 3 (dodatkowo):**
      - Panel Ninja **przypięty pod paskiem** — przewija się tylko treść pod nim.
+     - **Panel TM6** przypięty pod paskiem (pod panelem Ninja, jeśli przepis ma oba): trzy równe tarcze — czas, temperatura (lub „Varoma”, lub wyszarzone „bez grzania”), obroty (z „↺ wsteczne”, jeśli `reverse`); tryb TM6 (`mode`) w nagłówku panelu.
+       - Pokazuje ustawienia **bieżącego** kroku i aktualizuje się przy zmianie kroku (bez przerysowania ekranu). Gdy bieżący krok nie ma TM6 — przygaszony z napisem „Następny krok TM6: N”; gdy dalszych nie ma — ostatni krok TM6.
+       - Chipy TM6 w ramce kroku zostają.
      - Zmiana bieżącego kroku **nie przerysowuje ekranu** ani nie resetuje przewinięcia — aktualizuj tylko elementy kroków.
      - **Pułapka iOS 12 (dotyk):** dotknięcie elementu bez `cursor: pointer` nie wysyła zdarzenia `click` do nasłuchu na `document` (event delegation). Wszystko, co reaguje na dotyk (karty, kroki, zdjęcie, przyciski), ma `cursor: pointer` albo jest `<button>` / `<a>`.
      - **Przeliczanie porcji:** przyciski − / + przy liczbie porcji (zakres 1–12). Ilości przeliczane z zaokrąglaniem: `szt` i łyżki do połówek, `g`/`ml` do okrągłych wartości; składniki bez ilości bez zmian. Link „przepis: N” wraca do oryginalnej liczby porcji. Wybrana liczba porcji zapamiętywana razem z krokiem. Ustawienia Ninja i TM6 się **nie zmieniają**; przy zmienionej liczbie porcji pod panelem Ninja pojawia się uwaga.

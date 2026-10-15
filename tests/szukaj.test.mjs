@@ -53,7 +53,7 @@ test('puste zapytanie pasuje do wszystkiego', () => {
 });
 
 test('wpis search.json ma wymagane pola', () => {
-  assert.deepEqual(Object.keys(LOSOS).sort(), ['id', 'ingredients', 'ninja_functions', 'tags', 'text', 'title']);
+  assert.deepEqual(Object.keys(LOSOS).sort(), ['cook_minutes', 'id', 'ingredients', 'ninja_functions', 'prep_minutes', 'servings', 'tags', 'text', 'title']);
   assert.deepEqual(LOSOS.ninja_functions, ['Air Fry']);
   assert.equal(LOSOS.text, buildSearchText(LOSOS));
 });

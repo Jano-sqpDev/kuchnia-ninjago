@@ -140,6 +140,22 @@ body.real #device { border-radius: 0; box-shadow: none; }
 .serv .orig { display: block; font-size: 14px; color: var(--live); text-decoration: underline; }
 .head .times { display: block; margin-top: 10px; }
 .scaled { margin: 8px 20px 0; padding: 8px 14px; border-radius: 10px; background: rgba(255,138,61,.12); color: var(--live); font-size: 16px; }
+.tpanel { margin: 10px 20px 0; padding: 12px 16px 14px; border-radius: 18px; background: #050709; border: 1px solid #1E3A31; color: #EAEEF2; }
+.tpanel.dim { opacity: .5; }
+.tpanel .th { font-size: 17px; color: #8D99A5; margin-bottom: 10px; }
+.tpanel .th b { color: #EAEEF2; }
+.tpanel .tk { display: inline-block; background: #3FB28E; color: #fff; font-weight: 800; font-size: 14px; letter-spacing: .08em; padding: 3px 8px; border-radius: 6px; margin-right: 10px; }
+.tpanel .tmode { float: right; color: #B9F0DD; font-weight: 700; }
+.dials { text-align: center; white-space: nowrap; }
+.dial { display: inline-block; width: 31%; vertical-align: top; }
+.dial .ring { width: 124px; height: 124px; margin: 0 auto; border-radius: 62px; border: 4px solid #3FB28E; box-shadow: 0 0 0 1px #B9F0DD inset, 0 0 16px rgba(63,178,142,.35);
+  display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
+.dial .v { font-size: 33px; font-weight: 300; color: #B9F0DD; line-height: 1; font-variant-numeric: tabular-nums; }
+.dial .v.sm { font-size: 26px; font-weight: 600; }
+.dial .u { font-size: 13px; color: #7FCFB2; margin-top: 4px; }
+.dial .dl { font-size: 14px; color: #8D99A5; text-transform: uppercase; letter-spacing: .08em; margin-top: 6px; }
+.dial.off .ring { border-color: #2A3A35; box-shadow: none; }
+.dial.off .v { color: #5E6B77; }
 .npanel.single .zone { -webkit-flex: 0 0 50%; flex: 0 0 50%; }
 
 .cols { display: -webkit-flex; display: flex; padding: 6px 10px 20px; -webkit-align-items: flex-start; align-items: flex-start; }
@@ -279,12 +295,32 @@ function ninjaPanel(n) {
   return '<div class="npanel">' + zone(1, n.z1) + '<div class="mode"><span class="pill">' + n.mode.toUpperCase() + '</span><div class="hint">' + hint + '</div></div>' + zone(2, n.z2) + '</div>';
 }
 
+function hasTm(r) { for (var i = 0; i < r.steps.length; i++) if (r.steps[i].tm) return true; return false; }
+// Panel TM6: ustawienia BIEŻĄCEGO kroku; gdy bieżący krok nie jest krokiem TM6 — przygaszony następny krok TM6.
+function tmPanel(r, cur) {
+  var k = -1, i, next = false;
+  if (r.steps[cur] && r.steps[cur].tm) k = cur;
+  else { for (i = cur + 1; i < r.steps.length; i++) if (r.steps[i].tm) { k = i; next = true; break; }
+         if (k < 0) for (i = cur - 1; i >= 0; i--) if (r.steps[i].tm) { k = i; break; } }
+  var t = r.steps[k].tm, n = r.steps.length;
+  var head = next ? 'Następny krok TM6: <b>' + (k + 1) + '</b>' : (k === cur ? 'Krok <b>' + (k + 1) + '</b> z ' + n : 'Ostatni krok TM6: <b>' + (k + 1) + '</b>');
+  function dial(v, u, lbl, off) {
+    return '<div class="dial' + (off ? ' off' : '') + '"><div class="ring"><div class="v">' + v + '</div>' + (u ? '<div class="u">' + u + '</div>' : '') + '</div><div class="dl">' + lbl + '</div></div>';
+  }
+  var temp = t.t ? (t.t === "Varoma" ? dial("Varoma", "", "Temperatura", false).replace('class="v"', 'class="v sm"') : dial(t.t.replace("°C", ""), "°C", "Temperatura", false)) : dial("—", "bez grzania", "Temperatura", true);
+  var speed = t.s ? dial(t.s, t.r ? "↺ wsteczne" : "", "Obroty", false) : dial("—", "", "Obroty", true);
+  return '<div class="tpanel' + (k === cur ? '' : ' dim') + '"><div class="th"><span class="tk">TM6</span>' + head + (t.mode ? '<span class="tmode">' + esc(t.mode) + '</span>' : '') + '</div>' +
+    '<div class="dials">' + dial(t.d, "min:s", "Czas", false) + temp + speed + '</div></div>';
+}
+
 function recipeView(id) {
   var r = R[id], cur = S.cur[id], land = S.orient === "land";
   var sv = S.serv[id] || r.servings, f = sv / r.servings;
   var h = '<div class="bar"><button class="btn back" data-act="back">‹ Przepisy</button><h1>' + esc(r.title) + '</h1><button class="btn" data-act="photo">📷 Zdjęcie</button>' + themeBtn() + '</div>' +
-    (r.ninja ? '<div class="pin">' + ninjaPanel(r.ninja) + (sv !== r.servings ? '<div class="scaled">Ustawienia Ninja są dla ' + r.servings + ' porcji. ' + (sv > r.servings ?
-      'Przy większej ilości sprawdź, czy jedzenie mieści się w szufladach.' : 'Przy mniejszej ilości sprawdzaj wcześniej — może być gotowe szybciej.') + '</div>' : '') + '</div>' : '') + '<div class="scroll">';
+    ((r.ninja || hasTm(r)) ? '<div class="pin">' +
+      (r.ninja ? ninjaPanel(r.ninja) + (sv !== r.servings ? '<div class="scaled">Ustawienia Ninja są dla ' + r.servings + ' porcji. ' + (sv > r.servings ?
+      'Przy większej ilości sprawdź, czy jedzenie mieści się w szufladach.' : 'Przy mniejszej ilości sprawdzaj wcześniej — może być gotowe szybciej.') + '</div>' : '') : '') +
+      (hasTm(r) ? '<div id="tmp">' + tmPanel(r, cur) + '</div>' : '') + '</div>' : '') + '<div class="scroll">';
   h += '<div class="hero"><div class="info"><div class="head"><span class="serv"><button class="sb" data-act="serv-">−</button><span class="sn' + (sv !== r.servings ? ' chg' : '') + '"><b>' + sv + '</b> ' + porcje(sv) +
     (sv !== r.servings ? '<span class="orig" data-act="serv0">przepis: ' + r.servings + '</span>' : '') + '</span><button class="sb" data-act="serv+">+</button></span><span class="times">przygotowanie <b>' + r.prep + ' min</b><span class="sep">·</span>' +
        (r.cook ? 'gotowanie <b>' + r.cook + ' min</b>' : 'bez gotowania') + '</span></div>';
@@ -325,6 +361,8 @@ function setStep(n) {
     els[i].className = "step" + (i === n ? " cur" : (i < n ? " past" : ""));
     els[i].firstChild.innerHTML = i < n ? "✓" : String(i + 1);
   }
+  var tp = document.getElementById("tmp");
+  if (tp) tp.innerHTML = tmPanel(R[S.screen], n);
 }
 
 function render() {

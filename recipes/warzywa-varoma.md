@@ -7,6 +7,7 @@ prep_minutes: 10
 cook_minutes: 23
 tags: [tm6, warzywa, na-parze]
 source: "ChatGPT"
+image: img/warzywa-varoma.jpg
 
 ingredients:
   - name: "brokuł"
