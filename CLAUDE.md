@@ -255,7 +255,7 @@ Błędem jest wszystko, co łamie reguły powyżej, m.in.: zły YAML, brak wymag
 
 Dwa poziomy (od v0.2.4):
 - **`npm run validate` i `npm test` — twardo:** każdy błąd w `recipes/` = kod wyjścia 1. `npm run deploy` wymaga zielonych testów, więc z mojej strony nic błędnego nie wychodzi.
-- **`npm run build` (Cloudflare Pages) — odpornie:** przepisy dodane z pominięciem testów (GitHub w przeglądarce, PR od Codexa) mogą mieć błędy. Build **pomija tylko błędny plik**, publikuje resztę i zapisuje listę błędów do `_site/errors.json`. Zdjęcie, którego nie da się użyć (zły format, HEIC nie do odczytania), nie ukrywa przepisu — przepis wychodzi bez zdjęcia, a błąd też trafia na listę. Aplikacja pokazuje na liście czerwoną plakietkę „N przepis(ów) z błędem”, po dotknięciu — listę: plik, pole po ludzku („krok 3 → TM6 → obroty”), przyczyna, i czy przepis jest ukryty, czy tylko bez zdjęcia. Kodem 1 kończą build tylko błędy aplikacji (brak znaczników w `src/*.html`, `src/app.js` niezgodny z Safari 12).
+- **`npm run build` (Cloudflare Pages) — odpornie:** przepisy dodane z pominięciem testów (GitHub w przeglądarce, commity ChatGPT/Codexa na `main`) mogą mieć błędy. Build **pomija tylko błędny plik**, publikuje resztę i zapisuje listę błędów do `_site/errors.json`. Zdjęcie, którego nie da się użyć (zły format, HEIC nie do odczytania), nie ukrywa przepisu — przepis wychodzi bez zdjęcia, a błąd też trafia na listę. Aplikacja pokazuje na liście czerwoną plakietkę „N przepis(ów) z błędem”, po dotknięciu — listę: plik, pole po ludzku („krok 3 → TM6 → obroty”), przyczyna, i czy przepis jest ukryty, czy tylko bez zdjęcia. Kodem 1 kończą build tylko błędy aplikacji (brak znaczników w `src/*.html`, `src/app.js` niezgodny z Safari 12).
 
 Komunikat: `plik.md → ścieżka.pola: przyczyna`, np. `warzywa-varoma.md → steps[2].tm6.speed: niepoprawna wartość 11 …` (indeksy list od 0, czyli `steps[2]` = krok 3). Błędy składni YAML mają numer linii w pliku i polskie wyjaśnienie najczęstszych przyczyn (oryginał biblioteki w nawiasie kwadratowym).
 
@@ -327,16 +327,17 @@ Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`, `np
 
 ## Przepisy i podział ról
 
-- **Przepisy (treść, ustawienia urządzeń) dodaje ChatGPT** — przez pull request według `AGENTS.md` (albo ja ręcznie przez GitHub, plik od ChatGPT według `docs/FORMAT-PRZEPISU.md`).
+- **Przepisy (treść, ustawienia urządzeń) dodaje ChatGPT** — commitem bezpośrednio na `main` według `AGENTS.md` (albo ja ręcznie przez GitHub, plik od ChatGPT według `docs/FORMAT-PRZEPISU.md`).
 - **Claude Code zajmuje się wyłącznie kodem aplikacji** (build, walidator, widok, testy, dokumentacja techniczna). **Nie tworzysz ani nie zmieniasz przepisów w `recipes/` i zdjęć w `recipes/img/`, chyba że wprost o to poproszę** — także gdy na liście jest czerwona plakietka z błędami: najwyżej mi o niej napisz.
 - `AGENTS.md` (katalog główny repo) jest **tylko dla zewnętrznych agentów** (ChatGPT/Codex) — Ciebie obowiązuje ten plik. `AGENTS.md` i `docs/FORMAT-PRZEPISU.md` aktualizujesz razem ze zmianami formatu, walidacji lub poleceń (test pilnuje, że przykład ze ściągi przechodzi walidator).
 
 ### Jak przepisy trafiają do repo (bez Ciebie)
 
-- **ChatGPT / Codex przez pull request:** agent pracuje według `AGENTS.md`: wyłącznie `recipes/` i `recipes/img/`, `npm run validate` + `npm test` (a jeśli nie może ich uruchomić — pisze to wprost w opisie PR), jeden przepis = jeden PR „Przepis: <tytuł>”. Ustawienia urządzeń: przy gotowym przepisie pyta, gdy ich brakuje; przy nowym przepisie proponuje je sam z dopiskiem w `description` „Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu.”.
+- **ChatGPT / Codex commitem bezpośrednio na `main` (bez pull requestów):** agent pracuje według `AGENTS.md`: wyłącznie `recipes/` (przepisy, `recipes/img/`, `recipes/tags.yml`), `npm run validate` + `npm test` (a jeśli nie może ich uruchomić — pisze to wprost w opisie commita), jeden przepis = jeden commit „Przepis: <tytuł>”. Pull request tylko na moją wyraźną prośbę. Ustawienia urządzeń: przy gotowym przepisie pyta, gdy ich brakuje; przy nowym przepisie proponuje je sam z dopiskiem w `description` „Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu.”.
 - **Ręcznie przez GitHub w przeglądarce (także z telefonu):** wklejam ChatGPT treść `docs/FORMAT-PRZEPISU.md` i przepis → dostaję gotowy plik (pierwsza linia YAML to komentarz `# plik: recipes/<slug>.md`) → „Add file → Create new file” w `recipes/`, commit na `main`. Zdjęcie: „Upload files” do `recipes/img/` jako `<slug>.jpg` (albo HEIC z iPhone'a).
 - Takie zmiany omijają `npm run deploy`, dlatego build jest odporny (patrz „Walidacja przy buildzie”): błędny przepis znika ze strony, a na iPadzie pojawia się czerwona plakietka z listą błędów.
-- Cloudflare Pages buduje też podglądy pull requestów — liczą się do limitu 500 buildów/mies.
+- **Dlaczego bez pull requestów:** zabezpieczeniem są (1) odporny build — błędny przepis nie psuje publikacji, tylko znika ze strony, (2) czerwona plakietka z listą błędów na iPadzie — od razu widać, co poprawić, (3) historia gita — każdą zmianę przepisu można cofnąć. Przegląd PR nic do tego nie dodaje, a spowalnia dodawanie przepisów (zwłaszcza z telefonu) i zużywa buildy podglądów.
+- Cloudflare Pages buduje też podglądy pull requestów (gdy jednak powstaną) — liczą się do limitu 500 buildów/mies.
 
 ### Gdy wprost poproszę Cię o przepis („dodaj do przepisów”, „popraw przepis X”)
 

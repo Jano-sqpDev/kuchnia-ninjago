@@ -8,7 +8,7 @@ Zamień przepis, który dostaniesz, na **jeden plik Markdown** w formacie poniż
 - **Gotowy przepis** (podany przez użytkownika: własny, z internetu, od kogoś) — przenieś ustawienia z przepisu. Jeśli ich **brakuje albo są niejednoznaczne — nie zgaduj**: zamiast pliku odpowiedz krótką listą pytań (to jedyny wyjątek od „samego pliku”).
 - **Nowy przepis** (użytkownik prosi o wymyślenie przepisu) — **sam zaproponuj realne ustawienia** dla Ninja DZ400UK / TM6 i dopisz na końcu `description`: „Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu.” Pytaj tylko, gdy czegoś nie da się sensownie dobrać.
 
-**Walidacja:** nie pisz, że plik przeszedł walidację (`npm run validate`, `npm test`), jeśli jej nie uruchomiłeś. Agent, który tworzy pull request i nie może uruchomić tych poleceń, pisze to wprost w opisie PR.
+**Walidacja:** nie pisz, że plik przeszedł walidację (`npm run validate`, `npm test`), jeśli jej nie uruchomiłeś. Agent, który zapisuje przepis w repozytorium (commit na `main`) i nie może uruchomić tych poleceń, pisze to wprost w opisie commita.
 
 ## 1. Budowa pliku
 

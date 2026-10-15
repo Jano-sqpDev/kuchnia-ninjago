@@ -6,11 +6,12 @@ To repozytorium to kuchenny wyświetlacz przepisów na starym iPadzie. Kod aplik
 
 - Dodawanie i poprawianie przepisów: pliki `recipes/<slug>.md`.
 - Dodawanie zdjęć przepisów: pliki `recipes/img/<slug>.jpg` (albo `.png`, `.heic`).
+- Lista tagów: `recipes/tags.yml`.
 - Format przepisu, wszystkie pola i reguły: **`docs/FORMAT-PRZEPISU.md`** — przeczytaj całość przed pracą i trzymaj się jej dokładnie.
 
 ## Czego nie wolno
 
-- **Nie zmieniaj niczego poza `recipes/` i `recipes/img/`**: kodu aplikacji (`src/`, `tools/`), testów (`tests/`), konfiguracji (`package.json`, `package-lock.json`, `.gitignore` itd.), dokumentacji (`CLAUDE.md`, `AGENTS.md`, `docs/`).
+- **Nie zmieniaj niczego poza `recipes/` (przepisy, `recipes/img/`, `recipes/tags.yml`)**: kodu aplikacji (`src/`, `tools/`), testów (`tests/`), konfiguracji (`package.json`, `package-lock.json`, `.gitignore` itd.), dokumentacji (`CLAUDE.md`, `AGENTS.md`, `docs/`).
 - Nie instaluj ani nie aktualizuj zależności.
 - Nie zmieniaj nazwy (slugu) istniejących przepisów — to ich trwały adres.
 
@@ -20,7 +21,7 @@ Ustawienia to: Ninja — tryb, funkcja, temperatura, czas każdej strefy oraz ob
 
 **Obracanie w Ninja — pole `ninja.zoneN.turn`** (szczegóły w `docs/FORMAT-PRZEPISU.md`, punkt 7): `action: flip` (obróć) albo `action: shake` (potrząśnij) — dokładnie te kody, nie polskie słowa, `after_min` (po ilu minutach od startu strefy, mniej niż `minutes` strefy), `required: false` gdy to tylko opcja. Aplikacja ma timer, który przypomina o obróceniu alarmem — dodawaj `turn`, gdy przepis każe obrócić lub potrząsnąć. Brak `turn` = obracanie niepotrzebne. Przy gotowym przepisie bierz moment obrócenia z przepisu (np. „w połowie” = połowa czasu strefy); przy nowym — zaproponuj go jak resztę ustawień.
 
-- **Gotowy przepis** (własny użytkownika, z internetu, od kogoś): przenieś ustawienia z przepisu. **Jeśli ich brakuje albo są niejasne — zapytaj, nie zgaduj** i nie twórz pull requestu, dopóki ich nie dostaniesz.
+- **Gotowy przepis** (własny użytkownika, z internetu, od kogoś): przenieś ustawienia z przepisu. **Jeśli ich brakuje albo są niejasne — zapytaj, nie zgaduj** i nie zapisuj przepisu, dopóki ich nie dostaniesz.
 - **Nowy przepis** (użytkownik prosi o wymyślenie przepisu): **sam zaproponuj realne ustawienia** dla Ninja DZ400UK / TM6 i dopisz na końcu `description` zdanie: **„Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu.”** Pytaj tylko wtedy, gdy czegoś nie da się sensownie dobrać.
 
 ## Zanim skończysz
@@ -34,10 +35,12 @@ npm test
 
 **Oba polecenia muszą przejść bez błędów.** Jeśli coś pada — popraw przepis (nie testy ani kod) i uruchom ponownie.
 
-**Jeśli nie możesz uruchomić tych poleceń** (brak terminala, brak Node.js, brak dostępu do sieci przy `npm install`) — napisz to wprost w opisie pull requestu, np. „Nie uruchomiłem `npm run validate` ani `npm test` — brak dostępu do terminala”. **Nigdy nie pisz, że walidacja przeszła, jeśli jej nie uruchomiłeś.** Komunikat walidatora ma postać `plik.md → ścieżka.pola: przyczyna`, np. `pierogi.md → steps[2].tm6.speed: niepoprawna wartość 11` (`steps[2]` = krok 3).
+**Jeśli nie możesz uruchomić tych poleceń** (brak terminala, brak Node.js, brak dostępu do sieci przy `npm install`) — napisz to wprost w opisie commita (i w odpowiedzi dla użytkownika), np. „Nie uruchomiłem `npm run validate` ani `npm test` — brak dostępu do terminala”. **Nigdy nie pisz, że walidacja przeszła, jeśli jej nie uruchomiłeś.** Komunikat walidatora ma postać `plik.md → ścieżka.pola: przyczyna`, np. `pierogi.md → steps[2].tm6.speed: niepoprawna wartość 11` (`steps[2]` = krok 3).
 
-## Pull request
+## Zapis zmian: commit bezpośrednio na `main`
 
-- **Jeden przepis = jeden pull request** (przepis razem z jego zdjęciem).
-- Tytuł: **`Przepis: <tytuł przepisu>`**, np. `Przepis: Pierogi ruskie`.
-- W opisie: skąd przepis (gotowy czy nowy), czy ustawienia urządzeń są z przepisu, czy proponowane, czy coś było niejasne oraz wynik `npm run validate` i `npm test` (albo informacja, że nie dało się ich uruchomić).
+- Zmiany w przepisach zapisuj **bezpośrednio na gałęzi `main`, bez pull requestów** — strona publikuje się sama po każdym commicie.
+- **Jeden przepis = jeden commit** (przepis razem z jego zdjęciem).
+- Pierwsza linia opisu commita: **`Przepis: <tytuł przepisu>`**, np. `Przepis: Pierogi ruskie`.
+- Dalej w opisie: skąd przepis (gotowy czy nowy), czy ustawienia urządzeń są z przepisu, czy proponowane, czy coś było niejasne oraz wynik `npm run validate` i `npm test` (albo informacja, że nie dało się ich uruchomić).
+- **Pull request tylko wtedy, gdy użytkownik wprost o to poprosi** (wtedy tytuł PR taki sam: `Przepis: <tytuł>`).
