@@ -8,8 +8,7 @@
 # pliki środowiskowe
 .env*
 
-# hosting
-.netlify
+# hosting (Cloudflare)
 .wrangler
 
 # system

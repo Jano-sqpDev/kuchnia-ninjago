@@ -26,7 +26,7 @@ test('build przykładów: search.json, data/*.json, strony /p/<slug>/, zdjęcia,
   assert.equal(w.status, 0, w.stderr);
 
   ['index.html', '404.html', 'app.js', 'app.css', 'apple-touch-icon-152.png'].forEach((p) => assert.ok(existsSync(join(out, p)), p));
-  assert.ok(!existsSync(join(out, 'netlify.toml')));
+  assert.ok(!existsSync(join(out, '.gitkeep')));
   assert.equal(readFileSync(join(out, 'mockup.html'), 'utf8'),
     readFileSync(join(root, 'docs', 'mockup-ui-v1.html'), 'utf8'));
 

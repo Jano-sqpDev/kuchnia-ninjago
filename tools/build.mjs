@@ -2,7 +2,7 @@
 // generuje _site/search.json, _site/data/<slug>.json, zdjęcia (_site/img/), strony /p/<slug>/
 // i _site/version.json z identyfikatorem buildu.
 // Kod kliencki (src/app.js) przechodzi przez esbuild z celem Safari 12.
-// Przy jakimkolwiek błędzie kończy się kodem 1 (Netlify nie opublikuje wersji).
+// Przy jakimkolwiek błędzie kończy się kodem 1 (Cloudflare Pages nie opublikuje wersji).
 import { cpSync, rmSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
@@ -17,8 +17,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = process.env.KUCHNIA_OUT_DIR || join(root, '_site');
 const recipesDir = process.env.KUCHNIA_RECIPES_DIR || join(root, 'recipes');
 
-// Pliki konfiguracyjne, które nigdy nie mogą trafić na publiczną stronę.
-const WYKLUCZONE = new Set(['netlify.toml', '.gitkeep']);
+// Pliki, które nigdy nie mogą trafić na publiczną stronę.
+const WYKLUCZONE = new Set(['.gitkeep']);
 const filter = (src) => !WYKLUCZONE.has(basename(src));
 
 const wersja = wersjaZPackageJson(join(root, 'package.json'));

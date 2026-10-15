@@ -38,11 +38,12 @@ Wszystko, co trafia do przeglądarki, musi działać na Safari 12. W razie wątp
 ## Architektura
 
 - **Repo:** GitHub, przepisy jako pliki w repo. **Bez bazy danych.**
-- **Hosting:** Netlify (domyślnie) lub Cloudflare Pages, auto-deploy po każdym pushu na `main`. Jeśli certyfikat nie działa na iPadzie, zmieniamy hosting.
-- **Adres produkcyjny:** https://kuchnia-ninjago.netlify.app
-- **Pułapka Netlify:** nowy projekt bywa domyślnie **prywatny** (Project configuration → General → Visitor access). Wtedy iPad dostaje stronę logowania Netlify, której Safari 12 nie renderuje — widać tylko białą stronę. Przy białej stronie najpierw sprawdź, czy widoczność to Public.
-- **Pułapka Netlify:** na darmowym planie Netlify blokuje buildy („unrecognized Git contributor”), jeśli autor commitów to inne konto niż właściciel repo. Tutaj wszystko jest na **Jano-sqpDev** (właściciel repo, konto podpięte w Netlify i autor commitów) — nie zmieniaj `git config` user.name/user.email.
-- **Commit i push robisz Ty.** Po każdej zakończonej pracy i przejściu builda: commit z opisem (pierwsza linia = krótkie podsumowanie, pusta linia, potem punkty), potem `git push`. Jeśli push się nie uda (np. brak uprawnień), nie kombinuj — napisz, co zwrócił git, a ja wypchnę przez GitHub Desktop.
+- **Hosting:** **Cloudflare Pages**, projekt podpięty do `Jano-sqpDev/kuchnia-ninjago`, branch `main`. Cloudflare buduje i publikuje po każdym pushu na `main` (build: `npm run build`, katalog wyjściowy: `_site`, zmienna `NODE_VERSION=22` — ustawione w panelu Cloudflare, nie w repo). Limit darmowego planu: 500 buildów/mies., bez kredytów.
+- **Adres produkcyjny:** https://kuchnia-ninjago.pages.dev
+- Hosting musi serwować stronę **publicznie, bez logowania** — Safari 12 nie renderuje stron logowania hostingów (widać tylko białą stronę). Przy białej stronie najpierw sprawdź dostęp do projektu.
+- **Commit i push robisz Ty, po każdej zakończonej pracy** (nie czekasz na moje słowo). Commit z opisem (pierwsza linia = krótkie podsumowanie, pusta linia, potem punkty).
+- **Push TYLKO przez `npm run wypchnij`** (`tools/wypchnij.mjs`): sprawdza, że wszystko jest zacommitowane, uruchamia wszystkie testy i build, i robi `git push` dopiero wtedy, gdy każdy krok zakończy się kodem 0. **Nigdy nie wywołuj `git push` bezpośrednio** i nie oceniaj testów po wypisanym tekście. Gdy testy albo build padają — nie pushuj, odpowiedź z nagłówkiem `## ❌ PRZERWANE` i opisem błędu.
+- Jeśli sam push się nie uda (np. brak uprawnień), nie kombinuj — napisz, co zwrócił git, a ja wypchnę przez GitHub Desktop.
 - **Generator:** Eleventy (11ty) albo prosty własny skrypt Node — wynik to czysty statyczny HTML + jeden mały plik JS + CSS.
 - **Wyszukiwanie po stronie klienta:** build generuje `search.json`, iPad pobiera go raz i filtruje lokalnie. Kolekcja nie przekroczy ~1000 przepisów.
 - Projekt jest całkowicie oddzielny od mojej aplikacji gym (Supabase/Vercel) — nie używaj tamtych usług.
@@ -214,7 +215,7 @@ Pełne przykłady: `recipes/ziemniaczki-brokuly-sync.md` (Ninja SYNC), `recipes/
 
 ### Walidacja przy buildzie
 
-`npm run build` (i `npm run validate`) **kończy się błędem** (kod wyjścia 1, Netlify nie publikuje), gdy cokolwiek łamie reguły powyżej, m.in.: zły YAML, brak wymaganego pola, zły typ, **nieznany klucz na dowolnym poziomie**, powtórzony slug, niezgodność tagów urządzeń z danymi, `match` z różnymi strefami, złe parametry TM6, zdjęcie nieistniejące / nie JPEG-PNG. Walidator niczego nie poprawia sam.
+`npm run build` (i `npm run validate`) **kończy się błędem** (kod wyjścia 1, Cloudflare Pages nie publikuje), gdy cokolwiek łamie reguły powyżej, m.in.: zły YAML, brak wymaganego pola, zły typ, **nieznany klucz na dowolnym poziomie**, powtórzony slug, niezgodność tagów urządzeń z danymi, `match` z różnymi strefami, złe parametry TM6, zdjęcie nieistniejące / nie JPEG-PNG. Walidator niczego nie poprawia sam.
 
 Komunikat: `plik.md → ścieżka.pola: przyczyna`, np. `warzywa-varoma.md → steps[2].tm6.speed: niepoprawna wartość 11 …` (indeksy list od 0, czyli `steps[2]` = krok 3).
 
@@ -226,7 +227,7 @@ Komunikat: `plik.md → ścieżka.pola: przyczyna`, np. `warzywa-varoma.md → s
 - `_site/p/<slug>/index.html` i `_site/404.html` — ta sama powłoka aplikacji co `index.html`; widok wybiera `app.js` po adresie.
 - `_site/app.js` — `src/app.js` po `esbuild --target=safari12` (błąd → build przerwany); `_site/app.css` bez zmian.
 - `_site/version.json` — `{ "build": "<id>", "version": "v…" }`. `<id>` to 8 znaków skrótu wszystkiego, co pobiera iPad (szablony stron, app.js, app.css, search.json, data/*.json); ten sam wynik → ten sam id.
-- `_site/_headers` (z `public/`) — `version.json` bez pamięci podręcznej, strony aplikacji zawsze sprawdzane na serwerze. Działa na Netlify i Cloudflare Pages.
+- `_site/_headers` (z `public/`) — `version.json` bez pamięci podręcznej, strony aplikacji zawsze sprawdzane na serwerze. Cloudflare Pages czyta go z katalogu publikacji.
 
 ### Świeże dane na iPadzie (identyfikator buildu)
 
@@ -236,7 +237,7 @@ iOS 12 w trybie z ekranu początkowego potrafi trzymać stare kopie stron i JSON
 - przy starcie, `pageshow` i `visibilitychange` aplikacja pobiera `/version.json?t=<czas>`; inny id niż w stronie → przeładowanie pod adresem `…?b=<nowy id>#krok-N` (nowy adres = brak starej kopii); przepis, krok i porcje wracają z localStorage, a `?b=` znika z adresu,
 - bez pętli: do danego id przeładowuje się najwyżej raz (`kuchnia-przeladowanie` w localStorage).
 
-Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`.
+Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`, `npm run wypchnij` (testy → build → push; jedyna droga publikacji).
 
 ---
 
@@ -310,7 +311,7 @@ Każdą odpowiedź po zakończonej pracy formatuj tak (pod nagłówkiem `## ✅ 
 Krótkie punkty, jedna zmiana = jeden punkt. Bez długich opisów technicznych, chyba że o nie zapytam.
 
 ## Co musisz zrobić
-Numerowana lista moich kroków (klikanie w Netlify, ręczny push, jeśli Twój się nie udał, itp.).
+Numerowana lista moich kroków (klikanie w Cloudflare, ręczny push, jeśli Twój się nie udał, itp.).
 
 ## Do sprawdzenia na iPadzie
 Numerowana lista testów z oczekiwanym wynikiem przy każdym.

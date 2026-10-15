@@ -1,7 +1,0 @@
-# Konfiguracja Netlify — build po każdym pushu na main
-[build]
-  command = "npm run build"
-  publish = "_site"
-
-[build.environment]
-  NODE_VERSION = "22"
