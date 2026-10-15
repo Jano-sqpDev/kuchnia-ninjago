@@ -246,7 +246,7 @@ body.real #device { border-radius: 0; box-shadow: none; }
 <body>
 <div id="tools">
   <div class="grp"><span>Ekran:</span><button data-s="list" class="on">Lista</button><button data-s="udka">Udka (Ninja SYNC + timer)</button><button data-s="burgery">Burgery (MATCH)</button><button data-s="warzywa">Warzywa (TM6)</button></div>
-  <div class="grp"><span>Timer:</span><button data-t="idle">Przed startem</button><button data-t="run" class="on">Odliczanie</button><button data-t="alarm">Alarm</button><button data-t="after">Po czynnościach</button></div>
+  <div class="grp"><span>Timer:</span><button data-t="idle" class="on">Przed startem</button><button data-t="run">Odliczanie</button><button data-t="alarm">Alarm</button><button data-t="after">Po czynnościach</button></div>
   <div class="grp"><span>Język:</span><button data-l="pl" class="on">PL</button><button data-l="en">EN</button></div>
   <div class="grp"><span>Orientacja:</span><button data-o="land" class="on">Poziom</button><button data-o="port">Pion</button></div>
 </div>
@@ -305,7 +305,11 @@ var EXTRA = { piers: { pl: "Pierś z kurczaka", en: "Chicken breast", ph: ["#6b4
               losos: { pl: "Łosoś z kaszą", en: "Salmon with buckwheat", ph: ["#6e2f1f","#e48b6a","🐟"], d: ["ninja","tm6"], min: 35 } };
 var TSTATES = ["idle","run","alarm","after"];
 
-var S = { screen: "list", timer: "run", lang: "pl", orient: "land", cur: { udka: 2, burgery: 1, warzywa: 2 }, serv: {}, photo: false };
+var S = { screen: "list", timer: "idle", lang: "pl", orient: "land", cur: { udka: 0, burgery: 0, warzywa: 0 }, serv: {}, photo: false };
+/* zapamiętywanie jak w aplikacji: przepis, krok, porcje, język (localStorage zawsze w try/catch) */
+var SKEY = "kitchen-mockup2";
+function save() { try { localStorage.setItem(SKEY, JSON.stringify({ screen: S.screen, cur: S.cur, serv: S.serv, lang: S.lang })); } catch (e) {} }
+(function load() { try { var o = JSON.parse(localStorage.getItem(SKEY) || "null"); if (o) { S.screen = o.screen || S.screen; S.cur = o.cur || S.cur; S.serv = o.serv || S.serv; S.lang = o.lang || S.lang; } } catch (e) {} })();
 var REAL = (("ontouchstart" in window) && location.search.indexOf("ramka") < 0) || location.search.indexOf("pelny") >= 0;
 if (REAL) document.body.className = "real";
 var GID = 0;
@@ -488,6 +492,7 @@ function render() {
   app.innerHTML = h;
   var sc = app.querySelector(".scroll"); if (sc) sc.scrollTop = keep;
   render.last = S.screen;
+  save();
   app.className = S.orient === "port" ? "portrait" : "landscape";
   document.documentElement.lang = S.lang;
   fit();
@@ -518,6 +523,7 @@ function mark(attr, val) {
 function setTimer(st) { S.timer = st; mark("data-t", st); render(); }
 function setStep(n) {
   S.cur[S.screen] = n;
+  save();
   var r = R[S.screen];
   document.querySelector("#app .stb").innerHTML = stepRows(r, n);
   document.getElementById("stepcnt").innerHTML = L().step + ' ' + (n + 1) + ' ' + L().of + ' ' + r.steps.length;
