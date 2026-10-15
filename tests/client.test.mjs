@@ -116,6 +116,118 @@ test('klucze localStorage: nowe angielskie, stare polskie tylko do migracji', ()
   assert.ok(js.includes('migrateStorage();'));
 });
 
+// ── timer Ninja ──
+const MIN = 60000;
+const T0 = 1700000000000;
+const zone = (minutes, turn, label) => Object.assign({ function: 'Air Fry', temp_c: 200, minutes }, label ? { label } : {}, turn ? { turn } : {});
+
+test('timer: plan SYNC z różnymi czasami — obrócenie krótszej strefy przesunięte o różnicę', () => {
+  const plan = plain(K.timerPlan({ mode: 'sync',
+    zone1: zone(28, { action: 'obróć', after_min: 14 }, 'Udka'),
+    zone2: zone(22, { action: 'potrząśnij', after_min: 11 }, 'Ziemniaki') }));
+  assert.equal(plan.total, 28 * MIN);
+  assert.deepEqual(plan.events, [
+    { id: 'turn1', kind: 'turn', at: 14 * MIN, zone: 'Strefa 1 (Udka)', action: 'obróć', required: true },
+    { id: 'turn2', kind: 'turn', at: (6 + 11) * MIN, zone: 'Strefa 2 (Ziemniaki)', action: 'potrząśnij', required: true },
+    { id: 'end', kind: 'end', at: 28 * MIN, zone: '', action: '', required: true },
+  ]);
+});
+
+test('timer: MATCH, INDEPENDENT i SINGLE — strefy od startu; required: false = bez alarmu', () => {
+  const match = plain(K.timerPlan({ mode: 'match', zone1: zone(10, { action: 'obróć', after_min: 6 }), zone2: zone(10, { action: 'obróć', after_min: 6 }) }));
+  assert.deepEqual(match.events.map((e) => [e.id, e.at]), [['turn1', 6 * MIN], ['turn2', 6 * MIN], ['end', 10 * MIN]]);
+  const indep = plain(K.timerPlan({ mode: 'independent', zone1: zone(30), zone2: zone(12, { action: 'potrząśnij', after_min: 6, required: false }) }));
+  assert.equal(indep.total, 30 * MIN);
+  assert.deepEqual(indep.events[0], { id: 'turn2', kind: 'turn', at: 6 * MIN, zone: 'Strefa 2', action: 'potrząśnij', required: false });
+  const single = plain(K.timerPlan({ mode: 'single', zone1: zone(19) }));
+  assert.deepEqual(single, { total: 19 * MIN, events: [{ id: 'end', kind: 'end', at: 19 * MIN, zone: '', action: '', required: true }] });
+});
+
+test('timer: stary przepis bez turn — tylko alarm końca', () => {
+  const plan = plain(K.timerPlan({ mode: 'sync', zone1: zone(22, null, 'Ziemniaki'), zone2: zone(10, null, 'Brokuły') }));
+  assert.deepEqual(plan.events.map((e) => e.kind), ['end']);
+  const t = K.timerStart(plan, T0);
+  assert.equal(K.timerDue(t, T0 + 21 * MIN), null);
+  assert.equal(plain(K.timerDue(t, T0 + 22 * MIN)).event.kind, 'end');
+});
+
+test('timer: czas z zegara, nie z tyknięć; pauza i wznowienie', () => {
+  const plan = K.timerPlan({ mode: 'single', zone1: zone(20) });
+  let t = K.timerStart(plan, T0);
+  assert.equal(K.timerStatus(null, T0), 'idle');
+  assert.equal(K.timerStatus(t, T0), 'running');
+  assert.equal(K.timerElapsed(t, T0 + 5 * MIN), 5 * MIN);
+  t = K.timerPause(t, T0 + 5 * MIN);
+  assert.equal(K.timerStatus(t, T0 + 9 * MIN), 'paused');
+  assert.equal(K.timerElapsed(t, T0 + 9 * MIN), 5 * MIN);         // w pauzie czas stoi
+  assert.equal(K.timerPause(t, T0 + 10 * MIN), t);                  // druga pauza nic nie zmienia
+  t = K.timerResume(t, T0 + 9 * MIN);                               // 4 min pauzy
+  assert.equal(t.pausedTotal, 4 * MIN);
+  assert.equal(K.timerElapsed(t, T0 + 12 * MIN), 8 * MIN);
+  assert.equal(K.timerStatus(t, T0 + 24 * MIN), 'done');            // 20 min pieczenia + 4 min pauzy
+  assert.equal(K.timerElapsed(t, T0 + 99 * MIN), 20 * MIN);         // nie więcej niż całość
+  assert.equal(K.clock(20 * MIN - K.timerElapsed(t, T0 + 12 * MIN)), '12:00');
+});
+
+test('timer: zegar MM:SS (sekundy w górę)', () => {
+  assert.equal(K.clock(28 * MIN), '28:00');
+  assert.equal(K.clock(61000), '01:01');
+  assert.equal(K.clock(1), '00:01');
+  assert.equal(K.clock(0), '00:00');
+  assert.equal(K.clock(-500), '00:00');
+  assert.equal(K.clock(75 * MIN), '75:00');
+});
+
+test('timer: powrót z tła — zaległe obrócenie pokazane od razu, potwierdzenie nie zatrzymuje timera', () => {
+  const plan = K.timerPlan({ mode: 'sync', zone1: zone(28, { action: 'obróć', after_min: 14 }, 'Udka'), zone2: zone(22, { action: 'potrząśnij', after_min: 11 }) });
+  let t = K.timerStart(plan, T0);
+  assert.equal(K.timerDue(t, T0 + 13 * MIN), null);
+  // aplikacja w tle od 13. do 18. minuty: oba obrócenia (14 i 17 min) minęły
+  let due = plain(K.timerDue(t, T0 + 18 * MIN));
+  assert.equal(due.event.id, 'turn1');
+  assert.deepEqual(due.skip, []);
+  t = K.timerAck(t, ['turn1']);
+  assert.equal(plain(K.timerDue(t, T0 + 18 * MIN)).event.id, 'turn2');
+  t = K.timerAck(t, ['turn2']);
+  assert.equal(K.timerDue(t, T0 + 18 * MIN), null);
+  assert.equal(K.timerStatus(t, T0 + 18 * MIN), 'running');
+  assert.equal(K.timerElapsed(t, T0 + 18 * MIN), 18 * MIN);
+  assert.deepEqual(plain(K.timerAck(t, ['turn1'])).acked, ['turn1', 'turn2']); // bez duplikatów
+});
+
+test('timer: po końcu zaległe obrócenia pominięte, zostaje GOTOWE; informacyjne bez alarmu', () => {
+  const plan = K.timerPlan({ mode: 'match', zone1: zone(10, { action: 'obróć', after_min: 5 }), zone2: zone(10, { action: 'obróć', after_min: 5, required: false }) });
+  let t = K.timerStart(plan, T0);
+  assert.deepEqual(plain(K.timerDue(t, T0 + 6 * MIN)).event.id, 'turn1');   // turn2 informacyjny — bez alarmu
+  const due = plain(K.timerDue(t, T0 + 30 * MIN));                         // wrócił po końcu
+  assert.equal(due.event.kind, 'end');
+  assert.deepEqual(due.skip, ['turn1']);
+  t = K.timerAck(t, due.skip.concat(due.event.id));
+  assert.equal(K.timerDue(t, T0 + 31 * MIN), null);
+  assert.equal(K.timerStatus(t, T0 + 31 * MIN), 'done');
+});
+
+test('timer: najbliższe obrócenie i czas do niego', () => {
+  const plan = K.timerPlan({ mode: 'sync', zone1: zone(28, { action: 'obróć', after_min: 14 }), zone2: zone(22, { action: 'potrząśnij', after_min: 11, required: false }) });
+  const t = K.timerStart(plan, T0);
+  const n = plain(K.timerNext(t, T0 + 10 * MIN));
+  assert.equal(n.event.id, 'turn1');
+  assert.equal(n.inMs, 4 * MIN);
+  assert.equal(plain(K.timerNext(t, T0 + 15 * MIN)).event.id, 'turn2');
+  assert.equal(K.timerNext(t, T0 + 18 * MIN), null);
+});
+
+test('timer w localStorage: przetrwa normalizeState, zepsuty zapis = brak timera, stare zapisy bez timera', () => {
+  const plan = plain(K.timerPlan({ mode: 'single', zone1: zone(19, { action: 'obróć', after_min: 9 }) }));
+  const timer = plain(K.timerPause(K.timerStart(plan, T0), T0 + 2 * MIN));
+  const s = plain(K.normalizeState({ openRecipe: 'piers', recipes: { piers: { step: 1, servings: null, title: 'Pierś', steps: 4, t: 1, timer } } }));
+  assert.deepEqual(s.recipes.piers.timer, timer);
+  const bad = plain(K.normalizeState({ recipes: { a: { step: 0, timer: { plan: { total: 'x' } } }, b: { step: 0 } } }));
+  assert.ok(!('timer' in bad.recipes.a) && !('timer' in bad.recipes.b));
+  assert.equal(K.normalizeTimer(Object.assign({}, timer, { pausedAt: undefined })), null);
+  assert.equal(K.normalizeTimer(null), null);
+});
+
 test('esc: znaki HTML', () => {
   assert.equal(K.esc('<a href="x">&</a>'), '&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;');
 });

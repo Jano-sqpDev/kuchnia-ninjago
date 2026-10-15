@@ -111,9 +111,103 @@
           steps: typeof p.steps === 'number' ? p.steps : 0,
           t: typeof p.t === 'number' ? p.t : 0,
         };
+        // Timer Ninja (od v0.3) — tylko gdy jest; starsze zapisy go nie mają i dalej działają.
+        var timer = normalizeTimer(p.timer);
+        if (timer) out.recipes[slug].timer = timer;
       });
     }
     return out;
+  }
+
+  // ───────── timer Ninja (czyste funkcje; czas zawsze z Date.now(), nie z liczby tyknięć) ─────────
+
+  var MINUTE = 60000;
+
+  function zoneName(no, z) { return 'Strefa ' + no + (z.label ? ' (' + z.label + ')' : ''); }
+
+  // Plan timera z panelu Ninja: czas całkowity (ms) i zdarzenia od startu (obrócenie, koniec).
+  // SYNC: krótsza strefa startuje później (obie kończą razem), więc jej obrócenie przesuwa się o różnicę czasów.
+  // MATCH, INDEPENDENT, SINGLE: strefy od startu. Odliczanie do końca najdłuższej strefy.
+  function timerPlan(n) {
+    var zones = [{ no: 1, z: n.zone1 }];
+    if (n.mode !== 'single' && n.zone2) zones.push({ no: 2, z: n.zone2 });
+    var total = 0;
+    zones.forEach(function (x) { total = Math.max(total, x.z.minutes); });
+    var events = [];
+    zones.forEach(function (x) {
+      if (!x.z.turn) return;
+      var offset = n.mode === 'sync' ? total - x.z.minutes : 0;
+      events.push({ id: 'turn' + x.no, kind: 'turn', at: (offset + x.z.turn.after_min) * MINUTE,
+        zone: zoneName(x.no, x.z), action: x.z.turn.action, required: x.z.turn.required !== false });
+    });
+    events.sort(function (a, b) { return a.at - b.at; });
+    events.push({ id: 'end', kind: 'end', at: total * MINUTE, zone: '', action: '', required: true });
+    return { total: total * MINUTE, events: events };
+  }
+
+  // Stan timera: { plan, startedAt, pausedAt (null = biegnie), pausedTotal, acked: [id zdarzeń] }; null = nie wystartował.
+  function timerStart(plan, now) {
+    return { plan: plan, startedAt: now, pausedAt: null, pausedTotal: 0, acked: [] };
+  }
+  function timerPause(t, now) {
+    return t && t.pausedAt === null ? Object.assign({}, t, { pausedAt: now }) : t;
+  }
+  function timerResume(t, now) {
+    return t && t.pausedAt !== null ? Object.assign({}, t, { pausedAt: null, pausedTotal: t.pausedTotal + Math.max(0, now - t.pausedAt) }) : t;
+  }
+  function timerAck(t, ids) {
+    return t ? Object.assign({}, t, { acked: t.acked.concat(ids.filter(function (id) { return t.acked.indexOf(id) === -1; })) }) : t;
+  }
+  // Ile minęło (ms) — od zapisanego startu, bez pauz; w zakresie 0..total.
+  function timerElapsed(t, now) {
+    var e = (t.pausedAt !== null ? t.pausedAt : now) - t.startedAt - t.pausedTotal;
+    return Math.max(0, Math.min(t.plan.total, e));
+  }
+  function timerStatus(t, now) {
+    if (!t) return 'idle';
+    if (timerElapsed(t, now) >= t.plan.total) return 'done';
+    return t.pausedAt !== null ? 'paused' : 'running';
+  }
+  // Alarm do pokazania teraz: najwcześniejsze minione, niepotwierdzone zdarzenie z alarmem (required).
+  // Po końcu pieczenia zaległe obrócenia nie mają sensu — trafiają do skip, a pokazujemy GOTOWE.
+  // Zwraca { event, skip } albo null.
+  function timerDue(t, now) {
+    if (!t) return null;
+    var elapsed = timerElapsed(t, now), ended = elapsed >= t.plan.total, due = null, skip = [];
+    t.plan.events.forEach(function (e) {
+      if (!e.required || t.acked.indexOf(e.id) !== -1 || e.at > elapsed) return;
+      if (ended && e.kind === 'turn') { skip.push(e.id); return; }
+      if (!due) due = e;
+    });
+    return due || skip.length ? { event: due, skip: skip } : null;
+  }
+  // Najbliższe nadchodzące obrócenie (także informacyjne): { event, inMs } albo null.
+  function timerNext(t, now) {
+    if (!t) return null;
+    var elapsed = timerElapsed(t, now), next = null;
+    t.plan.events.forEach(function (e) {
+      if (!next && e.kind === 'turn' && e.at > elapsed && t.acked.indexOf(e.id) === -1) next = e;
+    });
+    return next ? { event: next, inMs: next.at - elapsed } : null;
+  }
+  // 1 680 000 ms → „28:00"; sekundy zaokrąglane w górę (0:01 do samego końca).
+  function clock(ms) {
+    var s = Math.ceil(Math.max(0, ms) / 1000), m = Math.floor(s / 60), r = s % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (r < 10 ? '0' : '') + r;
+  }
+  // Timer z localStorage — każde pole sprawdzone; coś nie tak → brak timera.
+  function normalizeTimer(t) {
+    if (!t || typeof t !== 'object' || !t.plan || typeof t.plan !== 'object') return null;
+    var p = t.plan, num = function (v) { return typeof v === 'number' && isFinite(v); };
+    if (!num(p.total) || p.total <= 0 || !Array.isArray(p.events) || !num(t.startedAt) || !num(t.pausedTotal) || t.pausedTotal < 0) return null;
+    if (t.pausedAt !== null && !num(t.pausedAt)) return null;
+    var events = p.events.filter(function (e) {
+      return e && typeof e.id === 'string' && (e.kind === 'turn' || e.kind === 'end') && num(e.at) &&
+        typeof e.zone === 'string' && typeof e.action === 'string' && typeof e.required === 'boolean';
+    });
+    if (events.length !== p.events.length) return null;
+    var acked = Array.isArray(t.acked) ? t.acked.filter(function (id) { return typeof id === 'string'; }) : [];
+    return { plan: { total: p.total, events: events }, startedAt: t.startedAt, pausedAt: t.pausedAt, pausedTotal: t.pausedTotal, acked: acked };
   }
 
   // Zapis sprzed v0.2.3 ({ ekran, przepisy: { slug: { krok, porcje, tytul, krokow, t } } }) → nowy kształt.
@@ -132,6 +226,9 @@
   var api = {
     servingsWord: servingsWord, problemsLabel: problemsLabel, groupProblems: groupProblems, scaledAmount: scaledAmount, tm6Time: tm6Time, tm6Speed: tm6Speed,
     normalizeState: normalizeState, migrateLegacyState: migrateLegacyState, esc: esc,
+    timerPlan: timerPlan, timerStart: timerStart, timerPause: timerPause, timerResume: timerResume, timerAck: timerAck,
+    timerElapsed: timerElapsed, timerStatus: timerStatus, timerDue: timerDue, timerNext: timerNext, clock: clock,
+    normalizeTimer: normalizeTimer,
   };
   // Testy w Node uruchamiają ten plik bez przeglądarki — dostają tylko czyste funkcje.
   if (!global.document) { global.kitchenTest = api; return; }
@@ -358,7 +455,7 @@
     var tm6 = hasTm6(r);
     if (r.ninja || tm6) {
       h += '<div class="pin">';
-      if (r.ninja) h += ninjaPanel(r.ninja) + '<div id="servings-note">' + servingsNote() + '</div>';
+      if (r.ninja) h += ninjaPanel(r.ninja) + timerBarHtml() + '<div id="servings-note">' + servingsNote() + '</div>';
       if (tm6) h += '<div id="tm6-panel">' + tm6Panel(r, step) + '</div>';
       h += '</div>';
     }
@@ -382,6 +479,7 @@
     h += '</div>';
 
     render(h, 0);
+    updateTimerUI();
     // Po powrocie do przepisu (np. po przeładowaniu Safari) pokaż bieżący krok.
     if (step > 0) scrollToStep(step);
   }
@@ -393,20 +491,29 @@
   }
 
   function rememberRecipe() {
-    var r = V.r;
+    var r = V.r, old = state.recipes[r.id];
     state.openRecipe = r.id;
     state.recipes[r.id] = {
       step: V.step, servings: V.servings === r.servings ? null : V.servings,
       title: r.title, steps: r.steps.length, t: Date.now(),
     };
+    if (old && old.timer) state.recipes[r.id].timer = old.timer;
     saveState();
+  }
+
+  // Napis o obracaniu przy strefie: „OBRÓĆ PO 10 MIN" (z alarmem) albo „można obrócić po 10 min" (informacja).
+  function turnText(turn) {
+    var shake = turn.action === 'potrząśnij';
+    if (turn.required === false) return (shake ? 'można potrząsnąć' : 'można obrócić') + ' po ' + turn.after_min + ' min';
+    return (shake ? 'POTRZĄŚNIJ' : 'OBRÓĆ') + ' PO ' + turn.after_min + ' MIN';
   }
 
   function ninjaPanel(n) {
     function zone(no, z) {
       return '<div class="zone"><div class="zh"><b>' + no + '</b>Strefa ' + no + '</div>' + (z.label ? '<div class="lbl">' + esc(z.label) + '</div>' : '') +
         '<div class="fn">' + esc(z['function']) + '</div><div class="vals"><span class="big">' + z.temp_c + '</span><span class="unit">°C</span>' +
-        '<span class="big">' + z.minutes + '</span><span class="unit">min</span></div></div>';
+        '<span class="big">' + z.minutes + '</span><span class="unit">min</span></div>' +
+        (z.turn ? '<div class="turn ' + (z.turn.required === false ? 'info' : 'req') + '" id="turn' + no + '">' + esc(turnText(z.turn)) + '</div>' : '') + '</div>';
     }
     if (n.mode === 'single') return '<div class="npanel single">' + zone(1, n.zone1) + '</div>';
     var label = { sync: ['SYNC', 'kończą<br>razem'], match: ['MATCH', 'te same<br>ustawienia'], independent: ['OSOBNO', 'niezależne<br>strefy'] }[n.mode];
@@ -540,6 +647,199 @@
     if (p) p.parentNode.removeChild(p);
   }
 
+  // ═════ timer Ninja ═════
+  // Stan timera jest w state.recipes[slug].timer (zapisywany od razu, przetrwa przeładowanie i powrót z tła).
+  // Czas liczony z zapisanego startu i pauz, a tyknięcie co sekundę tylko odświeża ekran i sprawdza alarmy.
+
+  function getTimer(slug) {
+    var p = state.recipes[slug];
+    return p && p.timer ? p.timer : null;
+  }
+  function setTimer(slug, t) {
+    if (!state.recipes[slug]) return;
+    if (t) state.recipes[slug].timer = t;
+    else delete state.recipes[slug].timer;
+    saveState();
+  }
+  function hasActiveTimer() {
+    var now = Date.now();
+    return Object.keys(state.recipes).some(function (s) {
+      var st = timerStatus(getTimer(s), now);
+      return st === 'running' || st === 'paused' || (st === 'done' && timerDue(getTimer(s), now));
+    });
+  }
+
+  function timerBarHtml() {
+    return '<div class="ntimer" id="ninja-timer"><div class="tclock" id="timer-clock"></div>' +
+      '<div class="tinfo"><div class="tstate" id="timer-state"></div><div class="tnext" id="timer-next"></div>' +
+      '<div class="tnote">Alarm działa tylko przy włączonym ekranie i otwartej aplikacji.</div></div>' +
+      '<div class="tbtns" id="timer-btns"></div></div>';
+  }
+
+  var resetArmedUntil = 0;   // RESET wymaga drugiego dotknięcia w ciągu 3 s (przypadkowe dotknięcie w kuchni)
+
+  function timerButtons(status) {
+    var b = function (act, label, cls) { return '<button class="tbtn ' + cls + '" data-act="' + act + '">' + label + '</button>'; };
+    var reset = b('timer-reset', Date.now() < resetArmedUntil ? 'NA PEWNO?' : 'RESET', 'reset' + (Date.now() < resetArmedUntil ? ' armed' : ''));
+    if (status === 'idle') return b('timer-start', 'START', 'go');
+    if (status === 'running') return b('timer-pause', 'PAUZA', 'pause') + reset;
+    if (status === 'paused') return b('timer-resume', 'WZNÓW', 'go') + reset;
+    return reset;
+  }
+
+  var STATUS_LABELS = { idle: 'Timer pieczenia', running: 'Odliczanie', paused: 'Pauza', done: 'Gotowe' };
+
+  // Odświeża tylko elementy paska timera i napisy obracania przy strefach — bez przerysowania ekranu.
+  function updateTimerUI() {
+    if (V.screen !== 'recipe' || !V.r.ninja) return;
+    var clockEl = doc.getElementById('timer-clock');
+    if (!clockEl) return;
+    var now = Date.now(), t = getTimer(V.slug), status = timerStatus(t, now);
+    var plan = t ? t.plan : timerPlan(V.r.ninja);
+    clockEl.innerHTML = clock(plan.total - (t ? timerElapsed(t, now) : 0));
+    var bar = doc.getElementById('ninja-timer');
+    bar.className = 'ntimer ' + status;
+    doc.getElementById('timer-state').innerHTML = STATUS_LABELS[status];
+    var next = '';
+    if (status === 'idle') next = 'Dotknij START razem ze START na Ninja.';
+    else if (status === 'done') next = 'Pieczenie zakończone.';
+    else {
+      var n = timerNext(t, now);
+      if (n) next = (n.event.required ? (n.event.action === 'potrząśnij' ? 'Potrząśnij' : 'Obróć') : (n.event.action === 'potrząśnij' ? 'Można potrząsnąć' : 'Można obrócić')) +
+        ': ' + esc(n.event.zone) + ' za ' + clock(n.inMs);
+      if (status === 'paused') next = 'Timer zatrzymany. ' + next;
+    }
+    doc.getElementById('timer-next').innerHTML = next;
+    var btns = doc.getElementById('timer-btns'), key = status + (now < resetArmedUntil ? '!' : '');
+    if (btns.getAttribute('data-key') !== key) { btns.innerHTML = timerButtons(status); btns.setAttribute('data-key', key); }
+    // Napisy przy strefach: po momencie obrócenia (albo po potwierdzeniu) przygaszone z „✓".
+    [1, 2].forEach(function (no) {
+      var el = doc.getElementById('turn' + no), z = V.r.ninja['zone' + no];
+      if (!el || !z || !z.turn) return;
+      var e = null;
+      plan.events.forEach(function (x) { if (x.id === 'turn' + no) e = x; });
+      var past = t && e && (t.acked.indexOf(e.id) !== -1 || timerElapsed(t, now) >= e.at);
+      el.className = 'turn ' + (z.turn.required === false ? 'info' : 'req') + (past ? ' done' : '');
+      el.innerHTML = (past ? '✓ ' : '') + esc(turnText(z.turn));
+    });
+  }
+
+  function timerAction(act) {
+    if (V.screen !== 'recipe' || !V.r.ninja) return;
+    var slug = V.slug, t = getTimer(slug), now = Date.now();
+    if (act === 'timer-start') { unlockAudio(); setTimer(slug, timerStart(timerPlan(V.r.ninja), now)); }
+    else if (act === 'timer-pause') setTimer(slug, timerPause(t, now));
+    else if (act === 'timer-resume') { unlockAudio(); setTimer(slug, timerResume(t, now)); }
+    else if (act === 'timer-reset') {
+      if (now >= resetArmedUntil) {
+        resetArmedUntil = now + 3000;
+        global.setTimeout(updateTimerUI, 3100);
+      } else {
+        resetArmedUntil = 0;
+        setTimer(slug, null);
+        var a = doc.getElementById('alarm');
+        if (a && a.getAttribute('data-slug') === slug) closeAlarm();
+      }
+    }
+    updateTimerUI();
+  }
+
+  // ── dźwięk: Web Audio, odblokowany dotknięciem (iOS wymaga gestu); Safari 12 ma tylko webkitAudioContext ──
+  var audioCtx = null;
+  function unlockAudio() {
+    try {
+      if (!audioCtx) {
+        var Ctx = global.AudioContext || global.webkitAudioContext;
+        if (!Ctx) return;
+        audioCtx = new Ctx();
+        // Pusty dźwięk w trakcie gestu — po nim iOS pozwala grać także później (bez dotknięcia).
+        var src = audioCtx.createBufferSource();
+        src.buffer = audioCtx.createBuffer(1, 1, 22050);
+        src.connect(audioCtx.destination);
+        src.start(0);
+      }
+      if (audioCtx.state === 'suspended' && audioCtx.resume) audioCtx.resume();
+    } catch (e) { audioCtx = null; }
+  }
+  // Krótki sygnał: trzy piknięcia (obracanie) albo wyższe, dłuższe (koniec). Zwraca false, gdy dźwięk niedostępny.
+  function beep(kind) {
+    if (!audioCtx || (audioCtx.state && audioCtx.state !== 'running')) return false;
+    try {
+      var t0 = audioCtx.currentTime + 0.05, freq = kind === 'end' ? 1046 : 880;
+      for (var i = 0; i < 3; i++) {
+        var osc = audioCtx.createOscillator(), gain = audioCtx.createGain(), t = t0 + i * (kind === 'end' ? 0.45 : 0.3);
+        osc.type = 'square';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.linearRampToValueAtTime(0.35, t + 0.02);
+        gain.gain.linearRampToValueAtTime(0.0001, t + (kind === 'end' ? 0.35 : 0.2));
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(t);
+        osc.stop(t + 0.4);
+      }
+      return true;
+    } catch (e) { return false; }
+  }
+
+  // ── alarmy: nakładka na całym ekranie (poza #app, więc przerysowanie widoku jej nie usuwa) ──
+  var alarmBeepAt = 0, alarmShownAt = 0;
+  function showAlarm(slug, e) {
+    var p = state.recipes[slug], d = doc.createElement('div');
+    var turn = e.kind === 'turn', sound = beep(e.kind);
+    d.id = 'alarm';
+    d.className = turn ? 'turn' : 'end';
+    d.setAttribute('data-slug', slug);
+    d.setAttribute('data-event', e.id);
+    d.innerHTML = '<div class="abox"><div class="atitle">' + (turn ? (e.action === 'potrząśnij' ? 'POTRZĄŚNIJ' : 'OBRÓĆ') + ' TERAZ' : 'GOTOWE') + '</div>' +
+      (turn ? '<div class="azone">' + esc(e.zone) + '</div>' : '') +
+      '<div class="arecipe">' + esc(p && p.title ? p.title : '') + '</div>' +
+      '<div class="ahint">' + (turn ? 'Timer liczy dalej.' : 'Pieczenie zakończone — wyjmij jedzenie z Ninja.') + '</div>' +
+      '<button class="aok" data-act="alarm-ok">' + (turn ? 'Zrobione' : 'OK') + '</button>' +
+      (sound ? '' : '<div class="asound">Bez dźwięku — w Safari dźwięk włącza dotknięcie START albo WZNÓW.</div>') + '</div>';
+    doc.body.appendChild(d);
+    alarmShownAt = alarmBeepAt = Date.now();
+  }
+  function closeAlarm() {
+    var a = doc.getElementById('alarm');
+    if (a) a.parentNode.removeChild(a);
+  }
+  function ackAlarm() {
+    var a = doc.getElementById('alarm');
+    if (!a) return;
+    var slug = a.getAttribute('data-slug'), id = a.getAttribute('data-event');
+    setTimer(slug, timerAck(getTimer(slug), [id]));
+    closeAlarm();
+    tick(); // następny zaległy alarm od razu
+  }
+
+  // Co sekundę (i przy powrocie do aplikacji): odśwież timer, pokaż minione alarmy wszystkich timerów.
+  function tick() {
+    updateTimerUI();
+    var now = Date.now(), a = doc.getElementById('alarm');
+    if (a) {
+      // Powtarzaj sygnał co 5 s przez minutę, dopóki nikt nie potwierdzi.
+      if (now - alarmBeepAt >= 5000 && now - alarmShownAt < 60000) { alarmBeepAt = now; beep(a.className); }
+      return;
+    }
+    var slugs = Object.keys(state.recipes);
+    for (var i = 0; i < slugs.length; i++) {
+      var t = getTimer(slugs[i]), due = timerDue(t, now);
+      if (!due) continue;
+      if (due.skip.length) { t = timerAck(t, due.skip); setTimer(slugs[i], t); }
+      if (due.event) { showAlarm(slugs[i], due.event); updateTimerUI(); return; }
+    }
+  }
+  global.setInterval(tick, 1000);
+
+  // iOS najpewniej odblokowuje dźwięk w touchend — tu też (START/WZNÓW albo dowolne dotknięcie przy aktywnym timerze).
+  doc.addEventListener('touchend', function (e) {
+    var t = e.target;
+    while (t && t !== doc && !(t.getAttribute && t.getAttribute('data-act'))) t = t.parentNode;
+    var a = t && t.getAttribute ? t.getAttribute('data-act') : null;
+    if (a === 'timer-start' || a === 'timer-resume' || hasActiveTimer()) unlockAudio();
+  });
+
   // ── nawigacja ──
   function slugFromUrl() {
     var m = /^\/p\/([a-z0-9-]+)\/?$/.exec(global.location.pathname);
@@ -574,12 +874,16 @@
   }
 
   doc.addEventListener('click', function (e) {
+    // Po przeładowaniu dźwięk jest zablokowany do pierwszego dotknięcia — każde dotknięcie przy aktywnym timerze go odblokowuje.
+    if (hasActiveTimer()) unlockAudio();
     var t = e.target;
     while (t && t !== doc) {
       if (t.getAttribute) {
         var a = t.getAttribute('data-act');
         if (a) {
           if (t.disabled) return;
+          if (a.indexOf('timer-') === 0) { timerAction(a); return; }
+          if (a === 'alarm-ok') { ackAlarm(); return; }
           if (a === 'theme') setTheme(theme === 'dark' ? 'light' : 'dark');
           else if (a === 'back') goBack();
           else if (a === 'photo') showPhoto();
@@ -646,8 +950,8 @@
     }, function () { checkingBuild = false; });
   }
 
-  global.addEventListener('pageshow', function () { if (V.screen !== 'start') onReturn(); checkBuild(); });
-  doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') { onReturn(); checkBuild(); } });
+  global.addEventListener('pageshow', function () { if (V.screen !== 'start') onReturn(); tick(); checkBuild(); });
+  doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') { onReturn(); tick(); checkBuild(); } });
 
   // ── start ──
   // Adres /p/<slug>/ wygrywa; na „/" wracamy do ostatniego ekranu z pamięci (np. po otwarciu z ekranu początkowego).
@@ -655,5 +959,6 @@
   if (startSlug) openRecipe(startSlug, stepFromUrl());
   else if (state.openRecipe) { global.history.replaceState(null, '', recipeUrl(state.openRecipe, 0)); openRecipe(state.openRecipe, null); }
   else showList();
+  tick();
   checkBuild();
 })(this);

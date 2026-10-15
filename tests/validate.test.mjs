@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, readdirSync } from
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateRecipe, parseRecipeFile, loadRecipes, describePath, suggestSlug, splitError, imageKind, findImageBySlug, NINJA_FUNCTIONS, NINJA_MODES } from '../tools/validate.mjs';
+import { validateRecipe, parseRecipeFile, loadRecipes, describePath, suggestSlug, splitError, imageKind, findImageBySlug, NINJA_FUNCTIONS, NINJA_MODES, TURN_ACTIONS } from '../tools/validate.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -228,6 +228,42 @@ test('match wymaga identycznych ustawień stref (label może się różnić)', (
 
 // --- E: TM6 ---
 
+test('turn: poprawne warianty (obróć / potrząśnij, required domyślnie, false = informacja)', () => {
+  const r = ninjaSync(); // zone1: 20 min, zone2: 10 min
+  r.ninja.zone1.turn = { action: 'obróć', after_min: 10, required: true };
+  r.ninja.zone2.turn = { action: 'potrząśnij', after_min: 5 };
+  assert.deepEqual(validate(r), []);
+  r.ninja.zone2.turn = { action: 'potrząśnij', after_min: 9, required: false };
+  assert.deepEqual(validate(r), []);
+});
+
+test('turn: brak pola = bez obracania (stare przepisy bez zmian)', () => {
+  const r = ninjaSync();
+  assert.ok(!('turn' in r.ninja.zone1));
+  assert.deepEqual(validate(r), []);
+});
+
+test('turn: błędne wartości', () => {
+  const withTurn = (turn, zone = 'zone1') => { const r = ninjaSync(); r.ninja[zone].turn = turn; return r; };
+  expectError(withTurn('po 10 min'), 'ninja.zone1.turn');
+  expectError(withTurn({ after_min: 10 }), 'ninja.zone1.turn.action');
+  expectError(withTurn({ action: 'obroc', after_min: 10 }), 'ninja.zone1.turn.action');
+  expectError(withTurn({ action: 'Obróć', after_min: 10 }), 'ninja.zone1.turn.action');
+  expectError(withTurn({ action: 'obróć' }), 'ninja.zone1.turn.after_min');
+  expectError(withTurn({ action: 'obróć', after_min: 0 }), 'ninja.zone1.turn.after_min');
+  expectError(withTurn({ action: 'obróć', after_min: 7.5 }), 'ninja.zone1.turn.after_min');
+  expectError(withTurn({ action: 'obróć', after_min: 20 }), 'ninja.zone1.turn.after_min');      // = minutes strefy
+  expectError(withTurn({ action: 'obróć', after_min: 12 }, 'zone2'), 'ninja.zone2.turn.after_min'); // > 10 min strefy 2
+  expectError(withTurn({ action: 'obróć', after_min: 5, required: 'tak' }), 'ninja.zone1.turn.required');
+  expectError(withTurn({ action: 'obróć', after_min: 5, alarm: true }), 'ninja.zone1.turn.alarm');
+  const errs = validate(withTurn({ action: 'obróć', after_min: 25 }));
+  assert.match(errs.join('\n'), /turn\.after_min: musi być mniejsze niż czas strefy \(20 min\), jest 25/);
+});
+
+test('turn: ścieżka po polsku na liście błędów', () => {
+  assert.equal(describePath('ninja.zone2.turn.after_min'), 'Ninja → strefa 2 → obracanie → po ilu minutach');
+});
+
 test('tag tm6 bez kroków tm6 i kroki tm6 bez tagu', () => {
   let r = tm6(); r.steps.forEach((s) => delete s.tm6); expectError(r, 'tags');
   r = tm6(); r.tags = []; expectError(r, 'tags');
@@ -404,7 +440,8 @@ test('zdjęcie po nazwie: przepis dostaje ścieżkę; zły plik → błąd, ale 
 test('docs/FORMAT-PRZEPISU.md: pierwsze zdanie, przykład przechodzi walidację, listy zgodne z walidatorem', () => {
   const doc = readFileSync(join(root, 'docs', 'FORMAT-PRZEPISU.md'), 'utf8').replace(/\r\n/g, '\n');
   assert.ok(doc.startsWith('Odpowiadaj samym plikiem .md gotowym do wklejenia, bez komentarzy.'));
-  const example = /```yaml\n([\s\S]*?)```/.exec(doc)[1];
+  // Pełny przykład to blok yaml z komentarzem „# plik:" (inne bloki to fragmenty).
+  const example = doc.split('```yaml\n').slice(1).map((b) => b.split('```')[0]).find((b) => b.includes('# plik: recipes/'));
   const fileName = /^# plik: recipes\/([a-z0-9-]+\.md)$/m.exec(example)[1];
   const { recipes, errors } = loadRecipes(tempRecipesDir({ [fileName]: example }));
   assert.deepEqual(errors, []);
@@ -413,6 +450,8 @@ test('docs/FORMAT-PRZEPISU.md: pierwsze zdanie, przykład przechodzi walidację,
   assert.ok(r.data.ingredients.some((i) => i.group) && r.data.ingredients.some((i) => !('amount' in i)));
   NINJA_FUNCTIONS.forEach((f) => assert.ok(doc.includes('`' + f + '`'), 'brak funkcji Ninja w ściądze: ' + f));
   NINJA_MODES.forEach((m) => assert.ok(doc.includes('`' + m + '`'), 'brak trybu Ninja w ściądze: ' + m));
+  TURN_ACTIONS.forEach((a) => assert.ok(doc.includes('`' + a + '`'), 'brak czynności turn w ściądze: ' + a));
+  assert.ok(r.data.ninja.zone1.turn && r.data.ninja.zone2.turn.required === false, 'przykład pokazuje turn z alarmem i informacyjny');
 });
 
 test('pole image może wskazywać HEIC', () => {

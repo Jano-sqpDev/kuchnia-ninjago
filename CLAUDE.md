@@ -145,7 +145,34 @@ Dwie szuflady, **bez sondy temperatury**. Jeden panel na cały przepis, nie przy
   - `label` — opcjonalny tekst: co jest w szufladzie (np. „Ziemniaki”),
   - `function` — **dokładnie** jedna z: `Air Fry`, `Max Crisp`, `Roast`, `Bake`, `Reheat`, `Dehydrate`,
   - `temp_c` — liczba 40–240,
-  - `minutes` — liczba całkowita > 0.
+  - `minutes` — liczba całkowita > 0,
+  - `turn` — opcjonalne (od v0.3): przypomnienie o obróceniu / potrząśnięciu w tej strefie. **Brak pola = obracanie niepotrzebne** (wszystkie starsze przepisy działają bez zmian):
+    - `action` — **dokładnie** `obróć` albo `potrząśnij` (wymagane w obiekcie `turn`),
+    - `after_min` — liczba całkowita > 0 i **mniejsza niż `minutes` tej strefy** (wymagane) — liczone od startu tej strefy,
+    - `required` — `true` (domyślnie, gdy brak pola) = alarm w timerze; `false` = tylko informacja „można obrócić po X min”, bez alarmu.
+  - W `match` pole `turn` może się różnić między strefami (porównywane są tylko `function`, `temp_c`, `minutes`).
+
+```yaml
+ninja:
+  mode: sync
+  zone1:
+    label: "Udka"
+    function: "Roast"
+    temp_c: 200
+    minutes: 28
+    turn:
+      action: obróć
+      after_min: 14
+  zone2:
+    label: "Ziemniaki"
+    function: "Air Fry"
+    temp_c: 200
+    minutes: 22
+    turn:
+      action: potrząśnij
+      after_min: 11
+      required: false
+```
 
 ### Thermomix TM6 — `steps[].tm6`
 
@@ -271,7 +298,17 @@ Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`, `np
   1. stan zapisywany **od razu** przy każdym dotknięciu kroku / zmianie przepisu (nie dopiero przy zamykaniu),
   2. stan odtwarzany przy załadowaniu strony,
   3. obsługa powrotu strony bez przeładowania: `pageshow` (także z `event.persisted`) i `visibilitychange` — przy powrocie odczytaj stan z localStorage i odśwież widok.
-- **Klucze localStorage:** `kitchen-state` (otwarty przepis + krok i porcje dla ostatnich 30 przepisów), `kitchen-theme` (`light`/`dark`), `kitchen-reload` (ochrona przed pętlą przeładowań). Zapisy sprzed v0.2.3 (`kuchnia-stan`, `kuchnia-motyw`, `kuchnia-przeladowanie`) są przy pierwszym uruchomieniu przenoszone do nowych kluczy, a stare usuwane. Przy każdej przyszłej zmianie nazw kluczy lub kształtu zapisu — ta sama zasada: migracja, żeby iPad nie zgubił stanu.
+- **Timer pieczenia Ninja (v0.3)** — pasek pod panelem Ninja (część przypiętego panelu, zawsze ciemny):
+  - duże MM:SS do końca **najdłuższej** strefy; przyciski START / PAUZA / WZNÓW / RESET (RESET wymaga drugiego dotknięcia w ciągu 3 s); obok podpowiedź o najbliższym obróceniu („Obróć: Strefa 1 (Udka) za 04:12”),
+  - przy strefach z `turn`: „OBRÓĆ / POTRZĄŚNIJ PO X MIN” (pomarańczowy chip, `required`) albo dyskretne „można obrócić po X min”; widoczne przed i w trakcie odliczania, po czasie przygaszone z „✓”,
+  - **czas z zegara:** zapisany start + suma pauz (`Date.now()`), nie liczba wywołań `setInterval` — tyknięcie co 1 s tylko odświeża ekran i sprawdza alarmy,
+  - **SYNC:** krótsza strefa startuje w Ninja później (obie kończą razem), więc jej obrócenie = (różnica czasów stref + `after_min`) od startu timera; MATCH / INDEPENDENT / SINGLE — od startu,
+  - **alarmy:** obrócenie (tylko `required: true`) — nakładka na cały ekran „OBRÓĆ TERAZ — Strefa 1 (Udka)” + dźwięk, przycisk „Zrobione” (nie zatrzymuje timera); koniec — „GOTOWE” + dźwięk. Sygnał powtarzany co 5 s przez minutę, dopóki nikt nie potwierdzi. Nakładka jest poza `#app`, więc działa też na liście i przy innym przepisie,
+  - **zaległe alarmy:** po powrocie z tła / przeładowaniu / ponownym otwarciu alarm, którego moment minął, pokazuje się od razu; gdy minął już koniec — tylko „GOTOWE” (zaległe obrócenia są pomijane),
+  - **dźwięk:** Web Audio (`webkitAudioContext` w Safari 12), odblokowywany dotknięciem START / WZNÓW (oraz każdym dotknięciem przy aktywnym timerze — po przeładowaniu iOS znowu blokuje dźwięk do pierwszego dotknięcia). Brak dźwięku → sam komunikat z dopiskiem. **Bez obietnic przy zablokowanym ekranie i aplikacji w tle** — pasek timera to mówi,
+  - aplikacja nie wie, kiedy Ninja się zatrzymuje (np. przy wysunięciu szuflady) — przy dłuższej przerwie PAUZA / WZNÓW,
+  - `steps[].timer_seconds` — nadal nieużywane.
+- **Klucze localStorage:** `kitchen-state` (otwarty przepis + krok, porcje i timer Ninja dla ostatnich 30 przepisów; timer w `recipes[slug].timer` = `{ plan, startedAt, pausedAt, pausedTotal, acked }` — plan zdarzeń zapisany przy START, więc alarmy działają także po przeładowaniu na liście; rozszerzenie wsteczne zgodne: zapisy bez `timer` działają, zepsuty timer jest odrzucany), `kitchen-theme` (`light`/`dark`), `kitchen-reload` (ochrona przed pętlą przeładowań). Zapisy sprzed v0.2.3 (`kuchnia-stan`, `kuchnia-motyw`, `kuchnia-przeladowanie`) są przy pierwszym uruchomieniu przenoszone do nowych kluczy, a stare usuwane. Przy każdej przyszłej zmianie nazw kluczy lub kształtu zapisu — ta sama zasada: migracja, żeby iPad nie zgubił stanu.
 - Tryb „aplikacji": `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, `apple-touch-icon` 152×152 i 167×167, poprawny `viewport`. Po „Dodaj do ekranu początkowego" ma się otwierać bez paska Safari.
 - Nawigacja wstecz musi być w interfejsie (w trybie pełnoekranowym nie ma przycisku Wstecz przeglądarki).
 
@@ -378,6 +415,7 @@ Mam plan Pro z limitami — **jeden etap na sesję**. Po każdym etapie zatrzyma
      - **Pułapka iOS 12 (dotyk):** dotknięcie elementu bez `cursor: pointer` nie wysyła zdarzenia `click` do nasłuchu na `document` (event delegation). Wszystko, co reaguje na dotyk (karty, kroki, zdjęcie, przyciski), ma `cursor: pointer` albo jest `<button>` / `<a>`.
      - **Przeliczanie porcji:** przyciski − / + przy liczbie porcji (zakres 1–12). Ilości przeliczane z zaokrąglaniem: `szt` i łyżki do połówek, `g`/`ml` do okrągłych wartości; składniki bez ilości bez zmian. Link „przepis: N” wraca do oryginalnej liczby porcji. Wybrana liczba porcji zapamiętywana razem z krokiem. Ustawienia Ninja i TM6 się **nie zmieniają**; przy zmienionej liczbie porcji pod panelem Ninja pojawia się uwaga.
 4. **Wyszukiwarka i filtry.**
-5. (Później, na moje życzenie) tryb gotowania krok po kroku, minutniki przy krokach, skalowanie porcji.
+5. **Timer pieczenia Ninja z przypomnieniami o obracaniu (v0.3)** — pole `ninja.zoneN.turn`, timer pod panelem Ninja (opis w „Wygląd i działanie”). Do sprawdzenia na iPadzie.
+6. (Później, na moje życzenie) tryb gotowania krok po kroku, minutniki przy krokach TM6 (`timer_seconds`).
 
 Ręcznie robię tylko: założenie konta na hostingu i połączenie go z repo GitHub.

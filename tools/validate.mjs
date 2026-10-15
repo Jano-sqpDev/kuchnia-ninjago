@@ -19,8 +19,11 @@ const KEYS = {
   step: ['text', 'tm6', 'internal_temp_c', 'timer_seconds'],
   tm6: ['duration_seconds', 'temperature', 'speed', 'reverse', 'mode'],
   ninja: ['mode', 'zone1', 'zone2'],
-  zone: ['label', 'function', 'temp_c', 'minutes'],
+  zone: ['label', 'function', 'temp_c', 'minutes', 'turn'],
+  turn: ['action', 'after_min', 'required'],
 };
+// ninja.zoneN.turn.action — dokładnie tak (polskie słowa, bo to treść komunikatu na ekranie).
+export const TURN_ACTIONS = ['obróć', 'potrząśnij'];
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -227,6 +230,20 @@ export function validateRecipe(data, { file, recipesDir } = {}) {
     else if (!isNum(z.temp_c)) addError(s + '.temp_c', 'musi być liczbą, jest ' + describeValue(z.temp_c));
     else if (z.temp_c < 40 || z.temp_c > 240) addError(s + '.temp_c', 'poza zakresem 40–240 °C: ' + z.temp_c);
     checkInteger(z, 'minutes', s + '.minutes', 1, true);
+    if ('turn' in z) validateTurn(z.turn, s + '.turn', isInt(z.minutes) && z.minutes >= 1 ? z.minutes : null);
+  }
+
+  // Przypomnienie o obróceniu / potrząśnięciu w strefie (opcjonalne; brak = nie trzeba).
+  function validateTurn(t, s, zoneMinutes) {
+    if (!isObj(t)) { addError(s, 'musi być obiektem z polami action, after_min (i opcjonalnie required)'); return; }
+    checkUnknownKeys(t, KEYS.turn, s);
+    if (!('action' in t)) addError(s + '.action', 'brak wymaganego pola');
+    else if (!TURN_ACTIONS.includes(t.action)) addError(s + '.action', 'nieznana czynność ' + describeValue(t.action) + ' — dozwolone: ' + TURN_ACTIONS.join(', '));
+    checkInteger(t, 'after_min', s + '.after_min', 1, true);
+    if (isInt(t.after_min) && t.after_min >= 1 && zoneMinutes !== null && t.after_min >= zoneMinutes) {
+      addError(s + '.after_min', 'musi być mniejsze niż czas strefy (' + zoneMinutes + ' min), jest ' + t.after_min);
+    }
+    if ('required' in t && typeof t.required !== 'boolean') addError(s + '.required', 'musi być true albo false, jest ' + describeValue(t.required));
   }
 
   // --- TM6: tag ⇔ co najmniej jeden krok z tm6 ---
@@ -313,7 +330,7 @@ const FIELD_NAMES = {
   unit: 'jednostka', note: 'uwaga', group: 'grupa', text: 'treść', tm6: 'TM6', internal_temp_c: 'temperatura w środku',
   timer_seconds: 'minutnik', duration_seconds: 'czas', temperature: 'temperatura', speed: 'obroty', reverse: 'wsteczne',
   mode: 'tryb', zone1: 'strefa 1', zone2: 'strefa 2', label: 'opis szuflady', function: 'funkcja', temp_c: 'temperatura',
-  minutes: 'minuty',
+  minutes: 'minuty', turn: 'obracanie', action: 'czynność', after_min: 'po ilu minutach', required: 'alarm',
 };
 const LIST_ITEMS = { ingredients: 'składnik', steps: 'krok', tags: 'tag' };
 const SPECIAL_PATHS = {

@@ -129,6 +129,46 @@ button { font-family: inherit; }
 .mode { -webkit-flex: 0 0 96px; flex: 0 0 96px; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
 .mode .pill { font-size: 16px; font-weight: 800; letter-spacing: .1em; color: #111; background: #9FD0FF; padding: 8px 12px; border-radius: 8px; }
 .mode .hint { font-size: 12px; color: #8D99A5; text-align: center; margin-top: 8px; line-height: 1.2; }
+/* obracanie w strefie: z alarmem — pomarańczowy chip; informacja — dyskretny tekst; po czasie — przygaszone z ✓ */
+.zone .turn { display: table; margin-top: 8px; padding: 5px 10px; border-radius: 8px; font-size: 17px; font-weight: 800; letter-spacing: .05em; }
+.zone .turn.req { background: #FF8A3D; color: #111; }
+.zone .turn.info { padding-left: 0; color: #9DABB8; font-weight: 600; letter-spacing: 0; }
+.zone .turn.done { opacity: .45; }
+
+/* timer pieczenia — pod panelem Ninja, zawsze ciemny jak wyświetlacz frytkownicy */
+.ntimer { margin: 8px 20px 0; padding: 10px 14px; border-radius: 18px; background: #050709; border: 1px solid #222A31; color: #EAEEF2;
+  display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+.ntimer .tclock { -webkit-flex: 0 0 auto; flex: 0 0 auto; min-width: 150px; font-size: 52px; font-weight: 300; line-height: 1; color: #FF8A3D; font-variant-numeric: tabular-nums; }
+.ntimer.idle .tclock { color: #6E7C89; }
+.ntimer.paused .tclock { color: #9FD0FF; }
+.ntimer.done .tclock { color: #34C759; }
+.ntimer .tinfo { -webkit-flex: 1 1 auto; flex: 1 1 auto; min-width: 0; margin: 0 12px; }
+.ntimer .tstate { font-size: 14px; color: #8D99A5; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+.ntimer .tnext { font-size: 18px; color: #EAEEF2; margin-top: 2px; }
+.ntimer .tnote { font-size: 12px; color: #6E7C89; margin-top: 3px; }
+.ntimer .tbtns { -webkit-flex: 0 0 auto; flex: 0 0 auto; white-space: nowrap; }
+.tbtn { height: 56px; min-width: 112px; padding: 0 18px; margin-left: 10px; border-radius: 28px; border: 2px solid #3A444E; background: transparent;
+  color: #EAEEF2; font-size: 20px; font-weight: 800; letter-spacing: .06em; }
+.tbtn.go { background: #FF8A3D; border-color: #FF8A3D; color: #111; }
+.tbtn.pause { background: #9FD0FF; border-color: #9FD0FF; color: #111; }
+.tbtn.reset.armed { background: #D92D20; border-color: #D92D20; color: #FFFFFF; }
+
+/* alarm: obróć / gotowe — na cały ekran, nad wszystkim */
+#alarm { position: fixed; left: 0; top: 0; width: 100%; height: 100%; z-index: 300; background: rgba(0,0,0,.94); color: #FFFFFF;
+  display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; text-align: center; }
+#alarm .abox { padding: 24px; }
+#alarm .atitle { font-size: 76px; font-weight: 900; line-height: 1.05; letter-spacing: .02em; color: #FF8A3D;
+  -webkit-animation: pulse 1s ease-in-out infinite alternate; animation: pulse 1s ease-in-out infinite alternate; }
+#alarm.end .atitle { color: #34C759; }
+#alarm .azone { font-size: 40px; font-weight: 700; margin-top: 18px; }
+#alarm .arecipe { font-size: 22px; color: #9DABB8; margin-top: 10px; }
+#alarm .ahint { font-size: 20px; color: #C9D3DC; margin-top: 18px; }
+#alarm .aok { height: 96px; min-width: 300px; padding: 0 36px; margin-top: 36px; border: 0; border-radius: 48px; background: #FF8A3D; color: #111; font-size: 36px; font-weight: 900; }
+#alarm.end .aok { background: #34C759; }
+#alarm .asound { font-size: 15px; color: #8D99A5; margin-top: 18px; }
+@-webkit-keyframes pulse { from { opacity: 1; } to { opacity: .55; } }
+@keyframes pulse { from { opacity: 1; } to { opacity: .55; } }
+
 .scaled { margin: 8px 20px 0; padding: 8px 14px; border-radius: 10px; background: rgba(255,138,61,.12); color: var(--live); font-size: 16px; }
 
 /* Panel TM6 — mocny kontrast (czytelny z ~1 m, także przy jasnym motywie reszty strony). */

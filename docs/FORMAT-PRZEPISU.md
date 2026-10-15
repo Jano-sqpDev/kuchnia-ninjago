@@ -114,8 +114,32 @@ Strefa (`zone1` / `zone2`):
 | `function` | **dokładnie** jedna z: `Air Fry`, `Max Crisp`, `Roast`, `Bake`, `Reheat`, `Dehydrate` | wielkość liter i spacje jak tutaj |
 | `temp_c` | liczba 40–240 | °C |
 | `minutes` | liczba całkowita > 0 | |
+| `turn` | obiekt, opcjonalny | przypomnienie o obróceniu / potrząśnięciu — niżej |
 
 Przy liczbie porcji, która nie mieści się w jednej szufladzie, użyj `match` i napisz w kroku, ile czego włożyć do każdej szuflady.
+
+**Obracanie / potrząsanie — `turn`** (w strefie, opcjonalne). Aplikacja ma timer pieczenia i przypomina o obróceniu alarmem. **Brak pola `turn` = obracanie niepotrzebne.**
+
+| Pole | Typ | Uwagi |
+|---|---|---|
+| `action` | **dokładnie** `obróć` albo `potrząśnij` | wymagane; `obróć` — mięso, ryby, większe kawałki; `potrząśnij` — frytki, ziemniaki, warzywa w kawałkach |
+| `after_min` | liczba całkowita > 0, **mniejsza niż `minutes` tej strefy** | wymagane; po ilu minutach od startu tej strefy (zwykle mniej więcej w połowie) |
+| `required` | `true` / `false` | opcjonalne, domyślnie `true` = alarm; `false` = tylko informacja „można obrócić”, bez alarmu |
+
+- Dodawaj `turn` tylko wtedy, gdy przepis każe obrócić lub potrząsnąć (albo — przy nowym przepisie — gdy to naprawdę poprawia wynik). Gdy to opcjonalne, daj `required: false`.
+- W trybie `sync` licz `after_min` od startu **tej** strefy (krótsza strefa w Ninja startuje później — aplikacja sama to uwzględnia).
+- Nie powtarzaj czasu obrócenia w tekście kroku z liczbą minut — wystarczy „W połowie pieczenia obróć udka” (alarm poda moment).
+
+```yaml
+  zone1:
+    label: "Udka"
+    function: "Roast"
+    temp_c: 200
+    minutes: 28
+    turn:
+      action: obróć
+      after_min: 14
+```
 
 ## 8. Thermomix TM6 — `steps[].tm6`
 
@@ -191,11 +215,18 @@ ninja:
     function: "Roast"
     temp_c: 200
     minutes: 28
+    turn:
+      action: obróć
+      after_min: 14
   zone2:
     label: "Ziemniaki"
     function: "Air Fry"
     temp_c: 200
     minutes: 22
+    turn:
+      action: potrząśnij
+      after_min: 11
+      required: false
 
 steps:
   - text: "Osusz udka i natrzyj częścią marynaty. Ziemniaki przekrój na pół i wymieszaj z resztą marynaty."
