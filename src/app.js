@@ -120,8 +120,11 @@
   }
 
   // ───────── timer Ninja (czyste funkcje; czas zawsze z Date.now(), nie z liczby tyknięć) ─────────
+  // Timer pilnuje tylko czynności (obróć / potrząśnij) — końca pieczenia pilnuje sama Ninja (własny licznik i sygnał).
 
   var MINUTE = 60000;
+  var HOLD_MAX = 2 * MINUTE;   // tyle czekamy na „Zrobione" (szuflada wysunięta = Ninja stoi)
+  var HOLD_DEFAULT = 30000;    // brak „Zrobione" w 2 min → przyjmujemy 30 s postoju
 
   function zoneName(no, z) { return 'Strefa ' + no + (z.label ? ' · ' + z.label : ''); }
 
@@ -132,9 +135,14 @@
   };
   function actionText(code) { return ACTIONS[code] || ACTIONS.flip; }
 
-  // Plan timera z panelu Ninja: czas całkowity (ms) i zdarzenia od startu (obrócenie, koniec).
-  // SYNC: krótsza strefa startuje później (obie kończą razem), więc jej obrócenie przesuwa się o różnicę czasów.
-  // MATCH, INDEPENDENT, SINGLE: strefy od startu. Odliczanie do końca najdłuższej strefy.
+  // Czy panel Ninja ma choć jedną czynność (bez niej przepis nie ma timera).
+  function hasTurns(n) {
+    return !!(n && ((n.zone1 && n.zone1.turn) || (n.mode !== 'single' && n.zone2 && n.zone2.turn)));
+  }
+
+  // Plan timera z panelu Ninja: czynności od startu (ms) i total = czas najdłuższej strefy (granica licznika).
+  // SYNC: krótsza strefa startuje później (obie kończą razem), więc jej czynność przesuwa się o różnicę czasów.
+  // MATCH, INDEPENDENT, SINGLE: strefy od startu.
   function timerPlan(n) {
     var zones = [{ no: 1, z: n.zone1 }];
     if (n.mode !== 'single' && n.zone2) zones.push({ no: 2, z: n.zone2 });
@@ -148,49 +156,10 @@
         zone: zoneName(x.no, x.z), action: x.z.turn.action, required: x.z.turn.required !== false });
     });
     events.sort(function (a, b) { return a.at - b.at; });
-    events.push({ id: 'end', kind: 'end', at: total * MINUTE, zone: '', action: '', required: true });
     return { total: total * MINUTE, events: events };
   }
 
-  // Stan timera: { plan, startedAt, pausedAt (null = biegnie), pausedTotal, acked: [id zdarzeń] }; null = nie wystartował.
-  function timerStart(plan, now) {
-    return { plan: plan, startedAt: now, pausedAt: null, pausedTotal: 0, acked: [] };
-  }
-  function timerPause(t, now) {
-    return t && t.pausedAt === null ? Object.assign({}, t, { pausedAt: now }) : t;
-  }
-  function timerResume(t, now) {
-    return t && t.pausedAt !== null ? Object.assign({}, t, { pausedAt: null, pausedTotal: t.pausedTotal + Math.max(0, now - t.pausedAt) }) : t;
-  }
-  function timerAck(t, ids) {
-    return t ? Object.assign({}, t, { acked: t.acked.concat(ids.filter(function (id) { return t.acked.indexOf(id) === -1; })) }) : t;
-  }
-  // Ile minęło (ms) — od zapisanego startu, bez pauz; w zakresie 0..total.
-  function timerElapsed(t, now) {
-    var e = (t.pausedAt !== null ? t.pausedAt : now) - t.startedAt - t.pausedTotal;
-    return Math.max(0, Math.min(t.plan.total, e));
-  }
-  function timerStatus(t, now) {
-    if (!t) return 'idle';
-    if (timerElapsed(t, now) >= t.plan.total) return 'done';
-    return t.pausedAt !== null ? 'paused' : 'running';
-  }
-  // Alarm do pokazania teraz: najwcześniejsze minione, niepotwierdzone zdarzenia z alarmem (required) —
-  // wszystkie z tej samej chwili razem (jeden komunikat dla obu stref).
-  // Po końcu pieczenia zaległe obrócenia nie mają sensu — trafiają do skip, a pokazujemy GOTOWE.
-  // Zwraca { events: [...], skip: [id] } albo null.
-  function timerDue(t, now) {
-    if (!t) return null;
-    var elapsed = timerElapsed(t, now), ended = elapsed >= t.plan.total, due = [], skip = [];
-    t.plan.events.forEach(function (e) {
-      if (!e.required || t.acked.indexOf(e.id) !== -1 || e.at > elapsed) return;
-      if (ended && e.kind === 'turn') { skip.push(e.id); return; }
-      if (!due.length || e.at === due[0].at) due.push(e);
-    });
-    return due.length || skip.length ? { events: due, skip: skip } : null;
-  }
-  // Kolejka zdarzeń dla licznika: wszystkie obrócenia (z alarmem i informacyjne) i koniec,
-  // po czasie; zdarzenia z tej samej chwili w jednej grupie. [{ at, events: [...] }]
+  // Kolejka: czynności po czasie; czynności z tej samej chwili w jednej grupie. [{ at, events: [...] }]
   function timerQueue(plan) {
     var groups = [];
     plan.events.forEach(function (e) {
@@ -200,8 +169,60 @@
     });
     return groups;
   }
-  // Cel dużego licznika: najbliższa grupa, której moment jeszcze nie minął (minięcie albo „Zrobione"
-  // → następna). null = wszystko minęło (koniec).
+  function groupKey(g) { return g.events[0].id; }
+  function groupRequired(g) { return g.events.some(function (e) { return e.required; }); }
+
+  // Stan timera: { plan, startedAt, pausedAt (null = biegnie), pausedTotal, acked: [id], holds: { klucz grupy: ms } };
+  // null = nie wystartował. holds — postój Ninja przy czynności (od alarmu do „Zrobione").
+  function timerStart(plan, now) {
+    return { plan: plan, startedAt: now, pausedAt: null, pausedTotal: 0, acked: [], holds: {} };
+  }
+  function timerPause(t, now) {
+    return t && t.pausedAt === null ? Object.assign({}, t, { pausedAt: now }) : t;
+  }
+  function timerResume(t, now) {
+    return t && t.pausedAt !== null ? Object.assign({}, t, { pausedAt: null, pausedTotal: t.pausedTotal + Math.max(0, now - t.pausedAt) }) : t;
+  }
+  // Czas „surowy": od startu, bez ręcznych pauz.
+  function timerRaw(t, now) {
+    return Math.max(0, (t.pausedAt !== null ? t.pausedAt : now) - t.startedAt - t.pausedTotal);
+  }
+  // Kompensacja wysuniętej szuflady: grupa z alarmem (required) „zatrzymuje" odliczanie od swojego momentu
+  // do „Zrobione" — najdłużej 2 min; bez „Zrobione" w 2 min przyjmujemy 30 s. Czynności bez alarmu — bez postoju.
+  // Zwraca { elapsed (ms czasu Ninja), raw, holds: suma postojów }.
+  function timerClock(t, now) {
+    var raw = timerRaw(t, now), held = 0, groups = timerQueue(t.plan);
+    for (var i = 0; i < groups.length; i++) {
+      var g = groups[i];
+      if (!groupRequired(g)) continue;
+      var reach = g.at + held;               // czas surowy, w którym Ninja doszła do tej czynności
+      if (raw < reach) break;
+      var stored = t.holds[groupKey(g)];
+      held += typeof stored === 'number' ? stored : (raw - reach <= HOLD_MAX ? raw - reach : HOLD_DEFAULT);
+    }
+    return { elapsed: Math.max(0, Math.min(t.plan.total, raw - held)), raw: raw, held: held };
+  }
+  function timerElapsed(t, now) { return timerClock(t, now).elapsed; }
+
+  // „Zrobione" dla czynności (ids z jednej grupy): zapisuje postój tej grupy (czas od jej momentu, najwyżej 2 min,
+  // spóźnione → 30 s), żeby przeładowanie nie zmieniło wyniku.
+  function timerAck(t, ids, now) {
+    if (!t) return t;
+    var acked = t.acked.concat(ids.filter(function (id) { return t.acked.indexOf(id) === -1; }));
+    var holds = Object.assign({}, t.holds), raw = timerRaw(t, now), held = 0, groups = timerQueue(t.plan);
+    for (var i = 0; i < groups.length; i++) {
+      var g = groups[i];
+      if (!groupRequired(g)) continue;
+      var reach = g.at + held, key = groupKey(g);
+      if (raw < reach) break;
+      var inGroup = g.events.some(function (e) { return ids.indexOf(e.id) !== -1; });
+      if (typeof holds[key] !== 'number' && inGroup) holds[key] = raw - reach <= HOLD_MAX ? raw - reach : HOLD_DEFAULT;
+      held += typeof holds[key] === 'number' ? holds[key] : (raw - reach <= HOLD_MAX ? raw - reach : HOLD_DEFAULT);
+    }
+    return Object.assign({}, t, { acked: acked, holds: holds });
+  }
+
+  // Cel licznika: najbliższa grupa, której moment jeszcze nie nadszedł. null = po ostatniej czynności („—").
   function timerTarget(plan, elapsed, acked) {
     var groups = timerQueue(plan);
     for (var i = 0; i < groups.length; i++) {
@@ -210,19 +231,33 @@
     }
     return null;
   }
+  // idle (nie wystartował) | running | paused | done (po ostatniej czynności)
+  function timerStatus(t, now) {
+    if (!t) return 'idle';
+    if (!timerTarget(t.plan, timerElapsed(t, now), t.acked)) return 'done';
+    return t.pausedAt !== null ? 'paused' : 'running';
+  }
+  // Alarm do pokazania teraz: najwcześniejsze minione, niepotwierdzone czynności z alarmem (required) —
+  // wszystkie z tej samej chwili razem (jeden komunikat dla obu stref). Zwraca { events: [...] } albo null.
+  function timerDue(t, now) {
+    if (!t) return null;
+    var elapsed = timerElapsed(t, now), due = [];
+    t.plan.events.forEach(function (e) {
+      if (!e.required || t.acked.indexOf(e.id) !== -1 || e.at > elapsed) return;
+      if (!due.length || e.at === due[0].at) due.push(e);
+    });
+    return due.length ? { events: due } : null;
+  }
   // Napis nad licznikiem / w alarmie: when = 'za' | 'po' | 'teraz'.
-  // „OBRÓĆ ZA", „OBRÓĆ / POTRZĄŚNIJ ZA", „można obrócić za" (bez alarmu), „GOTOWE ZA".
+  // „OBRÓĆ ZA", „OBRÓĆ / POTRZĄŚNIJ ZA", „można obrócić za" (bez alarmu).
   function groupTitle(group, when) {
-    var e0 = group.events[0];
-    if (e0.kind === 'end') return 'GOTOWE ' + when.toUpperCase();
-    var required = group.events.some(function (e) { return e.required; }), codes = [];
+    var codes = [];
     group.events.forEach(function (e) { if (codes.indexOf(e.action) === -1) codes.push(e.action); });
-    if (required) return codes.map(function (c) { return actionText(c).up; }).join(' / ') + ' ' + when.toUpperCase();
+    if (groupRequired(group)) return codes.map(function (c) { return actionText(c).up; }).join(' / ') + ' ' + when.toUpperCase();
     return codes.map(function (c) { return actionText(c).soft; }).join(' / ') + ' ' + when;
   }
   // Strefy grupy: „Strefa 1 · Udka"; przy różnych czynnościach z dopiskiem („Strefa 2 · Frytki — potrząśnij").
   function groupZones(group) {
-    if (group.events[0].kind === 'end') return [];
     var mixed = group.events.some(function (e) { return e.action !== group.events[0].action; });
     return group.events.map(function (e) { return e.zone + (mixed ? ' — ' + actionText(e.action).lower : ''); });
   }
@@ -231,20 +266,24 @@
     var s = Math.ceil(Math.max(0, ms) / 1000), m = Math.floor(s / 60), r = s % 60;
     return (m < 10 ? '0' : '') + m + ':' + (r < 10 ? '0' : '') + r;
   }
-  // Timer z localStorage — każde pole sprawdzone; coś nie tak → brak timera.
+  // Timer z localStorage — każde pole sprawdzone; coś nie tak (także zapis z v0.3 / v0.3.1 ze zdarzeniem końca
+  // albo polskimi słowami w action) → brak timera.
   function normalizeTimer(t) {
     if (!t || typeof t !== 'object' || !t.plan || typeof t.plan !== 'object') return null;
     var p = t.plan, num = function (v) { return typeof v === 'number' && isFinite(v); };
-    if (!num(p.total) || p.total <= 0 || !Array.isArray(p.events) || !num(t.startedAt) || !num(t.pausedTotal) || t.pausedTotal < 0) return null;
+    if (!num(p.total) || p.total <= 0 || !Array.isArray(p.events) || !p.events.length || !num(t.startedAt) || !num(t.pausedTotal) || t.pausedTotal < 0) return null;
     if (t.pausedAt !== null && !num(t.pausedAt)) return null;
     var events = p.events.filter(function (e) {
-      return e && typeof e.id === 'string' && (e.kind === 'turn' || e.kind === 'end') && num(e.at) &&
-        typeof e.zone === 'string' && typeof e.required === 'boolean' &&
-        (e.kind === 'end' ? e.action === '' : !!ACTIONS[e.action]); // timery z v0.3 (polskie słowa) odrzucone
+      return e && typeof e.id === 'string' && e.kind === 'turn' && num(e.at) && typeof e.zone === 'string' &&
+        typeof e.required === 'boolean' && !!ACTIONS[e.action];
     });
     if (events.length !== p.events.length) return null;
     var acked = Array.isArray(t.acked) ? t.acked.filter(function (id) { return typeof id === 'string'; }) : [];
-    return { plan: { total: p.total, events: events }, startedAt: t.startedAt, pausedAt: t.pausedAt, pausedTotal: t.pausedTotal, acked: acked };
+    var holds = {};
+    if (t.holds && typeof t.holds === 'object') {
+      Object.keys(t.holds).forEach(function (k) { if (num(t.holds[k]) && t.holds[k] >= 0) holds[k] = t.holds[k]; });
+    }
+    return { plan: { total: p.total, events: events }, startedAt: t.startedAt, pausedAt: t.pausedAt, pausedTotal: t.pausedTotal, acked: acked, holds: holds };
   }
 
   // Zapis sprzed v0.2.3 ({ ekran, przepisy: { slug: { krok, porcje, tytul, krokow, t } } }) → nowy kształt.
@@ -263,9 +302,9 @@
   var api = {
     servingsWord: servingsWord, problemsLabel: problemsLabel, groupProblems: groupProblems, scaledAmount: scaledAmount, tm6Time: tm6Time, tm6Speed: tm6Speed,
     normalizeState: normalizeState, migrateLegacyState: migrateLegacyState, esc: esc,
-    timerPlan: timerPlan, timerStart: timerStart, timerPause: timerPause, timerResume: timerResume, timerAck: timerAck,
-    timerElapsed: timerElapsed, timerStatus: timerStatus, timerDue: timerDue, timerQueue: timerQueue, timerTarget: timerTarget,
-    groupTitle: groupTitle, groupZones: groupZones, clock: clock,
+    hasTurns: hasTurns, timerPlan: timerPlan, timerStart: timerStart, timerPause: timerPause, timerResume: timerResume,
+    timerAck: timerAck, timerClock: timerClock, timerElapsed: timerElapsed, timerStatus: timerStatus, timerDue: timerDue,
+    timerQueue: timerQueue, timerTarget: timerTarget, groupTitle: groupTitle, groupZones: groupZones, clock: clock,
     normalizeTimer: normalizeTimer,
   };
   // Testy w Node uruchamiają ten plik bez przeglądarki — dostają tylko czyste funkcje.
@@ -493,7 +532,7 @@
     var tm6 = hasTm6(r);
     if (r.ninja || tm6) {
       h += '<div class="pin">';
-      if (r.ninja) h += ninjaPanel(r.ninja) + timerBarHtml() + '<div id="servings-note">' + servingsNote() + '</div>';
+      if (r.ninja) h += ninjaPanel(r.ninja) + (hasTurns(r.ninja) ? timerBarHtml() : '') + '<div id="servings-note">' + servingsNote() + '</div>';
       if (tm6) h += '<div id="tm6-panel">' + tm6Panel(r, step) + '</div>';
       h += '</div>';
     }
@@ -711,7 +750,7 @@
   function timerBarHtml() {
     return '<div class="ntimer" id="ninja-timer"><div class="tmain">' +
       '<div class="ttitle"><span class="tact" id="timer-act"></span><span class="tzone" id="timer-zone"></span></div>' +
-      '<div class="tclock" id="timer-clock"></div><div class="tleft" id="timer-left"></div></div>' +
+      '<div class="tclock" id="timer-clock"></div></div>' +
       '<div class="tside"><div class="tstate" id="timer-state"></div><div class="tbtns" id="timer-btns"></div>' +
       '<div class="tnote">Alarm tylko przy włączonym ekranie i otwartej aplikacji.</div></div></div>';
   }
@@ -727,32 +766,29 @@
     return reset;
   }
 
-  var STATUS_LABELS = { idle: 'Dotknij START razem z Ninja', running: 'Odliczanie', paused: 'Pauza', done: 'Gotowe' };
+  var STATUS_LABELS = { idle: 'Dotknij START razem z Ninja', running: 'Odliczanie', paused: 'Pauza', done: '' };
 
   // Odświeża tylko elementy paska timera i napisy obracania przy strefach — bez przerysowania ekranu.
   // Duży licznik = czas do NAJBLIŻSZEJ czynności (obrócenie / potrząśnięcie / koniec); pod nim „do końca".
   function updateTimerUI() {
-    if (V.screen !== 'recipe' || !V.r.ninja) return;
+    if (V.screen !== 'recipe' || !hasTurns(V.r.ninja)) return;
     var clockEl = doc.getElementById('timer-clock');
     if (!clockEl) return;
     var now = Date.now(), t = getTimer(V.slug), status = timerStatus(t, now);
     var plan = t ? t.plan : timerPlan(V.r.ninja), elapsed = t ? timerElapsed(t, now) : 0;
     var target = timerTarget(plan, elapsed, t ? t.acked : []);
-    var hasTurns = plan.events.length > 1;
+    // Po ostatniej czynności: sama kreska, bez napisu (końca pilnuje Ninja).
     var title = '', zones = [], soft = false;
     if (target) {
       title = groupTitle(target, status === 'idle' ? 'po' : 'za');
       zones = groupZones(target);
       soft = !target.events.some(function (e) { return e.required; });
-    } else {
-      title = 'GOTOWE';
     }
-    clockEl.innerHTML = clock(target ? target.at - elapsed : 0);
+    clockEl.innerHTML = target ? clock(target.at - elapsed) : '—';
     doc.getElementById('timer-act').innerHTML = esc(title);
     doc.getElementById('timer-zone').innerHTML = zones.length ? esc(zones.join(' + ')) : '';
-    doc.getElementById('timer-left').innerHTML = hasTurns && status !== 'done' ? 'do końca ' + clock(plan.total - elapsed) : '';
     var bar = doc.getElementById('ninja-timer');
-    bar.className = 'ntimer ' + status + (soft ? ' soft' : '') + (target && target.events[0].kind === 'end' ? ' toend' : '');
+    bar.className = 'ntimer ' + status + (soft ? ' soft' : '');
     doc.getElementById('timer-state').innerHTML = STATUS_LABELS[status];
     var btns = doc.getElementById('timer-btns'), key = status + (now < resetArmedUntil ? '!' : '');
     if (btns.getAttribute('data-key') !== key) { btns.innerHTML = timerButtons(status); btns.setAttribute('data-key', key); }
@@ -769,7 +805,7 @@
   }
 
   function timerAction(act) {
-    if (V.screen !== 'recipe' || !V.r.ninja) return;
+    if (V.screen !== 'recipe' || !hasTurns(V.r.ninja)) return;
     var slug = V.slug, t = getTimer(slug), now = Date.now();
     if (act === 'timer-start') { unlockAudio(); setTimer(slug, timerStart(timerPlan(V.r.ninja), now)); }
     else if (act === 'timer-pause') setTimer(slug, timerPause(t, now));
@@ -805,18 +841,18 @@
       if (audioCtx.state === 'suspended' && audioCtx.resume) audioCtx.resume();
     } catch (e) { audioCtx = null; }
   }
-  // Krótki sygnał: trzy piknięcia (obracanie) albo wyższe, dłuższe (koniec). Zwraca false, gdy dźwięk niedostępny.
-  function beep(kind) {
+  // Krótki sygnał: trzy piknięcia. Zwraca false, gdy dźwięk niedostępny.
+  function beep() {
     if (!audioCtx || (audioCtx.state && audioCtx.state !== 'running')) return false;
     try {
-      var t0 = audioCtx.currentTime + 0.05, freq = kind === 'end' ? 1046 : 880;
+      var t0 = audioCtx.currentTime + 0.05, freq = 880;
       for (var i = 0; i < 3; i++) {
-        var osc = audioCtx.createOscillator(), gain = audioCtx.createGain(), t = t0 + i * (kind === 'end' ? 0.45 : 0.3);
+        var osc = audioCtx.createOscillator(), gain = audioCtx.createGain(), t = t0 + i * 0.3;
         osc.type = 'square';
         osc.frequency.value = freq;
         gain.gain.setValueAtTime(0.0001, t);
         gain.gain.linearRampToValueAtTime(0.35, t + 0.02);
-        gain.gain.linearRampToValueAtTime(0.0001, t + (kind === 'end' ? 0.35 : 0.2));
+        gain.gain.linearRampToValueAtTime(0.0001, t + 0.2);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         osc.start(t);
@@ -831,16 +867,16 @@
   // events — zdarzenia z tej samej chwili (np. obie strefy w MATCH): jeden komunikat.
   function showAlarm(slug, events) {
     var p = state.recipes[slug], d = doc.createElement('div'), group = { at: events[0].at, events: events };
-    var turn = events[0].kind === 'turn', sound = beep(events[0].kind);
+    var sound = beep();
     d.id = 'alarm';
-    d.className = turn ? 'turn' : 'end';
+    d.className = 'turn';
     d.setAttribute('data-slug', slug);
     d.setAttribute('data-events', events.map(function (e) { return e.id; }).join(','));
-    d.innerHTML = '<div class="abox"><div class="atitle">' + esc(turn ? groupTitle(group, 'teraz') : 'GOTOWE') + '</div>' +
+    d.innerHTML = '<div class="abox"><div class="atitle">' + esc(groupTitle(group, 'teraz')) + '</div>' +
       groupZones(group).map(function (z) { return '<div class="azone">' + esc(z) + '</div>'; }).join('') +
       '<div class="arecipe">' + esc(p && p.title ? p.title : '') + '</div>' +
-      '<div class="ahint">' + (turn ? 'Timer liczy dalej.' : 'Pieczenie zakończone — wyjmij jedzenie z Ninja.') + '</div>' +
-      '<button class="aok" data-act="alarm-ok">' + (turn ? 'Zrobione' : 'OK') + '</button>' +
+      '<div class="ahint">Timer czeka na „Zrobione” (szuflada wysunięta = Ninja stoi), najdłużej 2 min.</div>' +
+      '<button class="aok" data-act="alarm-ok">Zrobione</button>' +
       (sound ? '' : '<div class="asound">Bez dźwięku — w Safari dźwięk włącza dotknięcie START albo WZNÓW.</div>') + '</div>';
     doc.body.appendChild(d);
     alarmShownAt = alarmBeepAt = Date.now();
@@ -853,7 +889,7 @@
     var a = doc.getElementById('alarm');
     if (!a) return;
     var slug = a.getAttribute('data-slug'), ids = a.getAttribute('data-events').split(',');
-    setTimer(slug, timerAck(getTimer(slug), ids));
+    setTimer(slug, timerAck(getTimer(slug), ids, Date.now()));
     closeAlarm();
     tick(); // następny zaległy alarm od razu
   }
@@ -864,14 +900,13 @@
     var now = Date.now(), a = doc.getElementById('alarm');
     if (a) {
       // Powtarzaj sygnał co 5 s przez minutę, dopóki nikt nie potwierdzi.
-      if (now - alarmBeepAt >= 5000 && now - alarmShownAt < 60000) { alarmBeepAt = now; beep(a.className); }
+      if (now - alarmBeepAt >= 5000 && now - alarmShownAt < 60000) { alarmBeepAt = now; beep(); }
       return;
     }
     var slugs = Object.keys(state.recipes);
     for (var i = 0; i < slugs.length; i++) {
       var t = getTimer(slugs[i]), due = timerDue(t, now);
       if (!due) continue;
-      if (due.skip.length) { t = timerAck(t, due.skip); setTimer(slugs[i], t); }
       if (due.events.length) { showAlarm(slugs[i], due.events); updateTimerUI(); return; }
     }
   }
