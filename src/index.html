@@ -37,9 +37,21 @@
   .ok { color: var(--ok); font-weight: 700; }
   .zle { color: var(--zle); font-weight: 700; }
   .ua { font-size: 16px; word-break: break-all; color: #555; }
+  /* numer wersji: mały, szary, prawy górny róg, pod paskiem stanu iOS, nie przechwytuje dotyku */
+  .wersja {
+    position: fixed;
+    top: 22px;
+    right: 10px;
+    z-index: 100;
+    font-size: 12px;
+    line-height: 1;
+    color: #8a8a8a;
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
+<div class="wersja">{{WERSJA}}</div>
 <h1>Przepisy</h1>
 <p class="lead">Etap 1 — test iPada. Jeśli to widzisz, HTTPS działa.</p>
 <table>

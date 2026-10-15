@@ -266,6 +266,19 @@ Wklejam Ci przepis (często od Claude'a lub ChatGPT) z poleceniem „dodaj do pr
 
 ---
 
+## Wersjonowanie
+
+- **Jedno źródło prawdy:** pole `version` w `package.json` (semver `X.Y.Z`, np. `0.1.0`). Build wstrzykuje je w miejsce znacznika `{{WERSJA}}` do każdej strony aplikacji (`src/*.html`); strona bez znacznika przerywa build.
+- Na stronie numer jest wyświetlany krótko: `0.1.0` → **v0.1**, `0.1.2` → **v0.1.2** — mały, szary, w prawym górnym rogu, nie zasłania przycisków i nie przechwytuje dotyku. Służy do sprawdzenia na iPadzie, czy Safari nie trzyma starej wersji z pamięci.
+- **Kiedy podbijać:**
+  - nowa funkcja lub etap → środkowa cyfra: `0.1` → `0.2` (`0.1.x` → `0.2.0`),
+  - poprawki wizualne i drobne błędy, także zmiany jednoliniowe → łatka: `0.1` → `0.1.1` → `0.1.2`,
+  - zmiany **wyłącznie** w dokumentacji (`CLAUDE.md`, `docs/`, w tym mockup) → **bez** podbijania.
+- Wersję podbijasz w tym samym commicie co zmianę.
+- Start: **v0.1** = stan po Etapie 2.
+
+---
+
 ## Format raportu
 
 Każdą odpowiedź po zakończonej pracy formatuj tak:
@@ -280,6 +293,7 @@ Numerowana lista moich kroków (klikanie w Netlify, ręczny push, jeśli Twój s
 ## Do sprawdzenia na iPadzie
 Numerowana lista testów z oczekiwanym wynikiem przy każdym.
 
+Wersja: v<numer> (podbita / bez zmian — tylko dokumentacja)
 Commit: <hash> — <pierwsza linia commita> — push: udany / nieudany (+ co zwrócił git)
 ```
 
