@@ -1,12 +1,11 @@
 ---
+# plik: recipes/beef-burgers-ninja.md
 schema_version: 1
 title: "Beef Burgers (Ninja)"
-description: >-
-  Juicy lean beef burgers in a bun with cheddar, salad and sauce.
-  Ninja Foodi MAX Dual Zone DZ400UK, two patties per drawer.
+description: "Juicy lean beef burgers: 4 patties of 125 g each, approximately 1 cm thick before cooking. 11 min — test time, to be confirmed. Below 70°C after 10 min; approximately 86°C after 12 min."
 servings: 4
 prep_minutes: 10
-cook_minutes: 10
+cook_minutes: 11
 tags: [ninja, dinner, burgers, beef, english]
 source: "claude"
 
@@ -62,21 +61,18 @@ ninja:
     label: "Patties (2 pcs)"
     function: "Air Fry"
     temp_c: 190
-    minutes: 10
+    minutes: 11
   zone2:
     label: "Patties (2 pcs)"
     function: "Air Fry"
     temp_c: 190
-    minutes: 10
+    minutes: 11
 
 steps:
-  - text: "Put the mince in a bowl and add salt, pepper and garlic. Mix gently without overworking the meat."
-  - text: "Divide into equal portions. Shape flat patties slightly wider than the buns and press a small dimple in the centre of each."
-  - text: "Place two patties in each drawer on the crisper plates, with gaps. Set both zones as shown on the Ninja panel (no preheat), press MATCH, then START."
-    timer_seconds: 360
-  - text: "Open the drawers and flip the patties with silicone tongs. Close and continue cooking."
-    timer_seconds: 240
-  - text: "Check the thickest patty with a thermometer. If it hasn't reached the target temperature, cook a little longer and check again."
+  - text: "Place the minced beef in a bowl with salt, pepper and garlic. Mix gently without overworking the meat."
+  - text: "Divide the meat evenly. Shape flat patties about 1 cm thick, without making a dimple in the centre."
+  - text: "Place the patties on the additional PETHREE racks, two per drawer with space between them. Use the settings on the Ninja panel (no preheat), press MATCH, then START. Do not flip the patties."
+  - text: "Insert the thermometer horizontally from the side into the centre of the patty at the back of a drawer, as it tends to be 2–3°C cooler than the one near the handle. Ensure the internal temperature stays at the target for 30 seconds. If it does not, cook a little longer and check again."
     internal_temp_c: 75
   - text: "Put cheddar on the hot patties and leave briefly to melt."
   - text: "Slice the buns and spread with ketchup and mustard. Add lettuce, tomato, pickles and the cheesy patties. Close and serve."
