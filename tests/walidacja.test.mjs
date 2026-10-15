@@ -318,7 +318,7 @@ function katalog(pliki) {
 }
 
 // Bez linii image — testy dopisują własne zdjęcie.
-const DESER = readFileSync(join(root, 'recipes', 'deser-twarogowy.md'), 'utf8').replace(/^image: .*\n/m, '');
+const DESER = readFileSync(join(root, 'recipes', 'deser-twarogowy.md'), 'utf8').replace(/^image: .*\r?\n/m, '');
 const zeZdjeciem = (sciezka) => DESER.replace('schema_version: 1', 'schema_version: 1\nimage: ' + sciezka);
 
 test('slug: niedozwolone znaki w nazwie pliku', () => {

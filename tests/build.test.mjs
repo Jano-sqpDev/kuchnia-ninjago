@@ -87,7 +87,7 @@ test('błędny przepis: build kończy się kodem 1 i podaje plik, pole, przyczyn
   const dir = mkdtempSync(join(tmpdir(), 'kuchnia-zle-'));
   const zly = readFileSync(join(root, 'recipes', 'warzywa-varoma.md'), 'utf8')
     .replace('      speed: 1\n      reverse', '      speed: 11\n      reverse')
-    .replace(/^image: .*\n/m, '');
+    .replace(/^image: .*\r?\n/m, '');
   writeFileSync(join(dir, 'warzywa-varoma.md'), zly);
 
   const w = build({ KUCHNIA_RECIPES_DIR: dir, KUCHNIA_OUT_DIR: join(dir, 'out') });
