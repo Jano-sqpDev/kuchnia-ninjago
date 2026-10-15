@@ -19,4 +19,4 @@ Dwa języki (PL / EN, przełącznik w aplikacji): tłumaczenie przepisu w bloku 
 Przykłady wzorcowe i testy buildu: `tests/fixtures/recipes/` — testy nie zależą od zawartości `recipes/`.
 Zdjęcia: `recipes/img/<slug>.jpg` (JPEG/PNG/HEIC, znajdowane po nazwie) — build sam robi miniaturę 300 px i dużą wersję 1200 px.
 
-Kod na iPada: `src/app.js` + `src/app.css` (Safari 12 — zasady w `CLAUDE.md`). Podgląd zaakceptowanego projektu: `/mockup.html`.
+Kod na iPada: `src/app.js` + `src/app.css` (Safari 12 — zasady w `CLAUDE.md`). Podgląd zaakceptowanego projektu: `/mockup.html`, drugi projekt do obejrzenia: `/mockup2.html`.

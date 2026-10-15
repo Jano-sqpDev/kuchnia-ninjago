@@ -59,6 +59,8 @@ cpSync(join(root, 'src'), out, { recursive: true, filter });
 writeFileSync(join(out, 'app.js'), appJs);
 // Zaakceptowany projekt UI do podglądu na iPadzie: /mockup.html
 cpSync(join(root, 'docs', 'mockup-ui-v1.html'), join(out, 'mockup.html'));
+// Drugi projekt UI (do obejrzenia, jeszcze niezaakceptowany): /mockup2.html
+cpSync(join(root, 'docs', 'mockup-ui-v2.html'), join(out, 'mockup2.html'));
 
 // Dane przepisów (zdjęcia zapisują się od razu, JSON-y trzymamy do policzenia identyfikatora buildu).
 recipes.sort((a, b) => a.data.title.localeCompare(b.data.title, 'pl'));

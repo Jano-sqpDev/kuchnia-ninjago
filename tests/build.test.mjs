@@ -31,6 +31,8 @@ test('build przykładów: search.json, data/*.json, strony /p/<slug>/, zdjęcia,
   assert.ok(!existsSync(join(out, '.gitkeep')));
   assert.equal(readFileSync(join(out, 'mockup.html'), 'utf8'),
     readFileSync(join(root, 'docs', 'mockup-ui-v1.html'), 'utf8'));
+  assert.equal(readFileSync(join(out, 'mockup2.html'), 'utf8'),
+    readFileSync(join(root, 'docs', 'mockup-ui-v2.html'), 'utf8'));
 
   const index = JSON.parse(readFileSync(join(out, 'search.json'), 'utf8'));
   assert.equal(index.length, SLUGS.length);
