@@ -1,19 +1,42 @@
-// Build Etapu 1: kopiuje src/ i public/ do _site/.
-// W kolejnych etapach tu dojdzie generowanie stron przepisów, walidacja i esbuild.
-import { cpSync, rmSync, mkdirSync } from 'node:fs';
+// Build: kopiuje src/ i public/ do _site/, waliduje przepisy z recipes/
+// i generuje _site/search.json oraz _site/data/<slug>.json.
+// Przy jakimkolwiek błędzie walidacji kończy się kodem 1 (Netlify nie opublikuje wersji).
+import { cpSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
+import { loadRecipes } from './walidacja.mjs';
+import { recipeJson, searchEntry } from './wynik.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const out = join(root, '_site');
+// Zmienne środowiskowe tylko dla testów (katalog z przepisami testowymi, osobne wyjście).
+const out = process.env.KUCHNIA_OUT_DIR || join(root, '_site');
+const recipesDir = process.env.KUCHNIA_RECIPES_DIR || join(root, 'recipes');
 
 // Pliki konfiguracyjne, które nigdy nie mogą trafić na publiczną stronę.
 const WYKLUCZONE = new Set(['netlify.toml', '.gitkeep']);
 const filter = (src) => !WYKLUCZONE.has(basename(src));
 
+const { recipes, errors } = loadRecipes(recipesDir);
+if (errors.length) {
+  console.error('\nBłędy w przepisach (' + errors.length + '):\n');
+  errors.forEach((e) => console.error('  ✘ ' + e));
+  console.error('\nBuild przerwany — popraw przepisy i uruchom ponownie.\n');
+  process.exit(1);
+}
+
 rmSync(out, { recursive: true, force: true });
-mkdirSync(out, { recursive: true });
+mkdirSync(join(out, 'data'), { recursive: true });
 cpSync(join(root, 'public'), out, { recursive: true, filter });
 cpSync(join(root, 'src'), out, { recursive: true, filter });
 
-console.log('Build OK → _site/');
+recipes.sort((a, b) => a.data.title.localeCompare(b.data.title, 'pl'));
+recipes.forEach((r) => {
+  writeFileSync(join(out, 'data', r.slug + '.json'), JSON.stringify(recipeJson(r)));
+  if (r.data.image) {
+    mkdirSync(dirname(join(out, r.data.image)), { recursive: true });
+    cpSync(join(recipesDir, r.data.image), join(out, r.data.image));
+  }
+});
+writeFileSync(join(out, 'search.json'), JSON.stringify(recipes.map(searchEntry)));
+
+console.log('Build OK → _site/ (przepisy: ' + recipes.length + ')');

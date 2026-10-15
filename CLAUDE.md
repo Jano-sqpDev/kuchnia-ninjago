@@ -55,7 +55,7 @@ J:\APP_DEV\kuchnia-ninjago\      ← kontener, poza repo: mockupy, robocze logi 
     ├── CLAUDE.md              ← ten plik, wersjonowany razem z kodem
     ├── README.md
     ├── docs\                  ← mockupy HTML, notatki projektowe
-    ├── przepisy\              ← <slug>.md, jeden plik na przepis
+    ├── recipes\               ← <slug>.md, jeden plik na przepis; zdjęcia w recipes\img\
     ├── src\                   ← szablony, client JS, CSS
     ├── public\                ← ikony ekranu początkowego, statyczne pliki
     ├── tools\                 ← skrypty buildu i walidacji (*.mjs)
@@ -69,80 +69,160 @@ J:\APP_DEV\kuchnia-ninjago\      ← kontener, poza repo: mockupy, robocze logi 
 
 ---
 
-## Format przepisu
+## Format przepisu (schemat v1)
 
-Jeden przepis = jeden plik `przepisy/<slug>.md`. Wszystkie dane strukturalne w YAML front matter; treść Markdown pod spodem jest opcjonalna (luźne notatki).
+Jeden przepis = jeden plik `recipes/<slug>.md`. **Nazwa pliku to slug i trwałe ID przepisu** (małe litery a-z, cyfry, myślniki) — nie dodawaj pola `id`. Wszystkie dane w YAML front matter między `---`; treść Markdown pod spodem jest opcjonalna (luźne notatki, trafiają do JSON jako `notes`).
+
+Safari 12 nigdy nie parsuje YAML — dostaje tylko JSON-y wygenerowane przy buildzie.
+
+### Pola główne
+
+| Pole | Typ | |
+|---|---|---|
+| `schema_version` | liczba, dokładnie `1` | wymagane |
+| `title` | niepusty tekst | wymagane |
+| `description` | tekst | opcjonalne |
+| `servings` | liczba całkowita ≥ 1 | wymagane |
+| `prep_minutes` | liczba całkowita ≥ 0 | wymagane |
+| `cook_minutes` | liczba całkowita ≥ 0 — szacowany czas, nie musi być sumą czasów urządzeń | wymagane |
+| `tags` | lista tekstów, może być `[]` | wymagane |
+| `ingredients` | niepusta lista składników | wymagane |
+| `steps` | niepusta lista kroków | wymagane |
+| `ninja` | panel Ninja | wymagane ⇔ tag `ninja` |
+| `image` | `img/<plik>.jpg/.jpeg/.png` — plik w `recipes/img/`, prawdziwy JPEG/PNG | opcjonalne |
+| `source` | tekst, np. `"ChatGPT"` | opcjonalne |
+
+Pole opcjonalne albo jest wypełnione, albo go nie ma — pusty tekst / `null` to błąd.
+
+### Składniki — `ingredients[]`
+
+| Pole | Typ | |
+|---|---|---|
+| `name` | niepusty tekst | wymagane |
+| `amount` | liczba > 0 (YAML: `1.5`, nie `"1,5"`) | opcjonalne |
+| `unit` | niepusty tekst: `g`, `ml`, `szt`, `łyżeczka`… | wymagane, gdy jest `amount`; bez `amount` zabronione |
+| `note` | tekst, np. „drobno posiekana” | opcjonalne |
+| `group` | tekst, np. „Sos” — grupowanie na liście | opcjonalne |
+
+Składnik bez ilości jest OK (np. `- name: "sól"`).
+
+### Kroki — `steps[]`
+
+Numer kroku wynika z kolejności na liście — nie dodawaj numerów ani ID kroków.
+
+| Pole | Typ | |
+|---|---|---|
+| `text` | niepusty tekst | wymagane |
+| `tm6` | ustawienia TM6 (niżej) | opcjonalne |
+| `internal_temp_c` | liczba 1–100 — docelowa temperatura w środku potrawy | opcjonalne |
+| `timer_seconds` | liczba całkowita > 0 | opcjonalne |
+
+`internal_temp_c` dodawaj przy drobiu, wieprzowinie i większych kawałkach mięsa. Należy do kroku, nie do panelu urządzenia. Wyświetlaj tylko tam, gdzie jest wypełnione.
+
+### Ninja Foodi MAX Dual Zone DZ400UK — `ninja`
+
+Dwie szuflady, **bez sondy temperatury**. Jeden panel na cały przepis, nie przy krokach.
+
+- `mode`: `sync` | `match` | `independent` | `single`
+  - `sync` — dwie strefy, mogą mieć różne ustawienia, kończą razem,
+  - `match` — dwie strefy z identycznymi `function` / `temp_c` / `minutes`,
+  - `independent` — dwie niezależne strefy,
+  - `single` — tylko `zone1`, `zone2` zabroniona.
+- `zone1` wymagana; `zone2` wymagana dla `sync`/`match`/`independent`.
+- Każda strefa:
+  - `label` — opcjonalny tekst: co jest w szufladzie (np. „Ziemniaki”),
+  - `function` — **dokładnie** jedna z: `Air Fry`, `Max Crisp`, `Roast`, `Bake`, `Reheat`, `Dehydrate`,
+  - `temp_c` — liczba 40–240,
+  - `minutes` — liczba całkowita > 0.
+
+### Thermomix TM6 — `steps[].tm6`
+
+Ustawienia **per krok**, bo zmieniają się w trakcie gotowania.
+
+| Pole | Typ | |
+|---|---|---|
+| `duration_seconds` | liczba całkowita > 0 | wymagane |
+| `temperature` | liczba 37–120 albo dokładnie `Varoma`; brak pola = bez grzania | opcjonalne |
+| `speed` | 1–10 co 0.5 (np. `1.5`), `spoon` albo `turbo` | wymagane, chyba że jest `mode` |
+| `reverse` | `true` / `false` (domyślnie `false`) | opcjonalne |
+| `mode` | tekst informacyjny, np. „Wyrabianie” — tryby bez ustawianych obrotów | opcjonalne |
+
+### Tagi
+
+- Małe litery, po polsku (`deser`, `kurczak`, `łosoś`), bez duplikatów. Normalizacja (ogonki, ł → l) dzieje się tylko w wyszukiwarce.
+- Tagi urządzeń (kanoniczne): `ninja`, `tm6`. Nie zapisuj `thermomix`, `airfryer`, `air fryer`, `af` — to aliasy działające tylko w wyszukiwarce.
+- `ninja` ⇔ jest panel `ninja`. `tm6` ⇔ co najmniej jeden krok ma `tm6`.
+- Przepis może mieć oba tagi urządzeń albo żaden (np. desery).
+
+### Przykład
 
 ```yaml
 ---
-tytul: Udka z ziemniakami
-slug: udka-z-ziemniakami
-tagi: [kurczak, obiad, ninja]
-porcje: 4
-zrodlo: claude            # claude | chatgpt | wlasny | inne
-skladniki:
-  - "8 udek z kurczaka"
-  - "600 g ziemniaków"
-  - grupa: Marynata         # opcjonalne grupowanie
-    pozycje:
-      - "2 łyżki oliwy"
-      - "1 łyżeczka papryki wędzonej"
+schema_version: 1
+title: "Ziemniaczki i brokuły Ninja SYNC"
+description: "Dwie szuflady, wspólne zakończenie."
+servings: 2
+prep_minutes: 10
+cook_minutes: 22
+tags: [ninja, warzywa, dodatek]
+source: "ChatGPT"
 
-ninja:                      # TYLKO gdy tag "ninja"; cały blok opcjonalny
-  tryb_stref: sync          # sync | match | osobno | jedna
-  strefa1:
-    nazwa: Udka
-    funkcja: Roast
-    temp_c: 200
-    czas_min: 25
-    akcje: ["obróć po 15 min"]
-  strefa2:                  # pomiń przy tryb_stref: jedna
-    nazwa: Ziemniaki
-    funkcja: Air Fry
-    temp_c: 200
-    czas_min: 20
-    akcje: ["potrząśnij po 10 min"]
+ingredients:
+  - name: "małe ziemniaki"
+    amount: 500
+    unit: g
+  - name: "oliwa"
+    amount: 15
+    unit: g
+    group: "Marynata"
+  - name: "sól"
 
-kroki:
-  - tekst: "Pokrój ziemniaki w ćwiartki, wymieszaj z marynatą."
-  - tekst: "Zblenduj sos."
-    tm6:                    # opcjonalne, przy dowolnym kroku
-      czas: "30 s"
-      temp: null            # liczba °C, "Varoma" albo null
-      obroty: "7"           # "lyzka" | "1"–"10" | "turbo"
-      wsteczne: false
-      tryb: null            # opcjonalnie nazwa trybu TM6, np. "Wyrabianie"
-  - tekst: "Sprawdź udka termometrem."
-    temp_wewn_c: 75         # opcjonalne, docelowa temp. w środku
+ninja:
+  mode: sync
+  zone1:
+    label: "Ziemniaki"
+    function: "Air Fry"
+    temp_c: 195
+    minutes: 22
+  zone2:
+    label: "Brokuły"
+    function: "Air Fry"
+    temp_c: 180
+    minutes: 10
+
+steps:
+  - text: "Ustaw obie strefy według panelu Ninja. Włącz SYNC, następnie START."
+  - text: "Zblenduj sos."
+    tm6:                      # wymaga tagu tm6
+      duration_seconds: 30
+      speed: 7
+  - text: "Gotuj na parze."
+    tm6:
+      duration_seconds: 1080
+      temperature: Varoma
+      speed: 1
+      reverse: false
+  - text: "Sprawdź mięso termometrem."
+    internal_temp_c: 75
 ---
-Notatki: z dodatkiem czosnku jeszcze lepsze.
+Notatki: z czosnkiem jeszcze lepsze.
 ```
 
-### Ninja Foodi MAX Dual Zone DZ400UK
-- Dwie szuflady, **bez sondy temperatury**.
-- `funkcja` — **zamknięta lista**: `Air Fry`, `Max Crisp`, `Roast`, `Bake`, `Reheat`, `Dehydrate`.
-- `temp_c` 40–240. `tryb_stref`: `sync` (obie kończą razem), `match` (te same ustawienia w obu), `osobno`, `jedna`.
-- Ninja = jeden panel na cały przepis.
-
-### Thermomix TM6
-- Ustawienia **per krok** (pole `tm6` przy kroku), bo zmieniają się w trakcie gotowania.
-
-### Temperatura wewnętrzna
-- `temp_wewn_c` przy kroku — opcjonalne. Wyświetlaj tylko tam, gdzie jest wypełnione. Dodawaj przy drobiu, wieprzowinie i większych kawałkach mięsa.
-
-### Tagi
-- Zapisuj normalnie po polsku, małymi literami, z ogonkami (`deser`, `kurczak`, `łosoś`). Normalizacja dzieje się tylko w wyszukiwarce.
-- Tagi urządzeń (kanoniczne): `ninja`, `tm6`.
-- Aliasy w wyszukiwarce: `thermomix` → `tm6`; `airfryer`, `air fryer`, `af` → `ninja`.
-- Przepis może mieć oba tagi urządzeń albo żadnego (np. desery).
+Pełne przykłady: `recipes/ziemniaczki-brokuly-sync.md` (Ninja SYNC), `recipes/warzywa-varoma.md` (TM6 z Varomą), `recipes/deser-twarogowy.md` (bez urządzeń).
 
 ### Walidacja przy buildzie
-Build ma **failować** z czytelnym komunikatem, gdy:
-- brakuje `tytul`, `slug`, `skladniki` lub `kroki`, albo slug się powtarza,
-- `funkcja` Ninja spoza listy, `temp_c` poza 40–240, nieznany `tryb_stref`,
-- jest blok `ninja`, a brak tagu `ninja` (lub odwrotnie — tag bez bloku to tylko ostrzeżenie),
-- jest `tm6` przy kroku, a brak tagu `tm6`,
-- `obroty` TM6 spoza dozwolonych wartości.
+
+`npm run build` (i `npm run validate`) **kończy się błędem** (kod wyjścia 1, Netlify nie publikuje), gdy cokolwiek łamie reguły powyżej, m.in.: zły YAML, brak wymaganego pola, zły typ, **nieznany klucz na dowolnym poziomie**, powtórzony slug, niezgodność tagów urządzeń z danymi, `match` z różnymi strefami, złe parametry TM6, zdjęcie nieistniejące / nie JPEG-PNG. Walidator niczego nie poprawia sam.
+
+Komunikat: `plik.md → ścieżka.pola: przyczyna`, np. `warzywa-varoma.md → steps[2].tm6.speed: niepoprawna wartość 11 …` (indeksy list od 0, czyli `steps[2]` = krok 3).
+
+### Wynik buildu
+
+- `_site/search.json` — lekki indeks: `id` (slug), `title`, `tags`, `ingredients` (nazwy), `ninja_functions`, `text` (znormalizowany tekst do wyszukiwania, z aliasami tagów).
+- `_site/data/<slug>.json` — pełne dane przepisu (`id` + pola z YAML + `notes`), pobierane dopiero po wybraniu przepisu.
+- `_site/img/…` — zdjęcia przepisów (tylko te, do których odwołuje się `image`).
+
+Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`.
 
 ---
 
@@ -153,9 +233,9 @@ Build ma **failować** z czytelnym komunikatem, gdy:
 - **Strona główna:** pole wyszukiwania na górze, filtry-chipy (`Ninja`, `TM6`, funkcje Ninja), lista przepisów.
 - **Strona przepisu:**
   1. Tytuł, porcje, tagi.
-  2. **Panel Ninja** (jeśli jest) — wygląda jak wyświetlacz frytkownicy: dwie kolumny Strefa 1 / Strefa 2, funkcja + temp + czas dużą czcionką, znaczek SYNC/MATCH, akcje pod spodem.
+  2. **Panel Ninja** (jeśli jest) — wygląda jak wyświetlacz frytkownicy: dwie kolumny Strefa 1 / Strefa 2, funkcja + temp + czas dużą czcionką, znaczek SYNC/MATCH, nad każdą strefą `label` (co jest w szufladzie).
   3. Składniki (z grupami).
-  4. Kroki, numerowane. Przy kroku z `tm6` — mały panel: czas · temp · obroty · ↺ (wsteczne). Przy `temp_wewn_c` — znaczek „🌡 75°C w środku".
+  4. Kroki, numerowane. Przy kroku z `tm6` — mały panel: czas · temp · obroty · ↺ (wsteczne). Przy `internal_temp_c` — znaczek „🌡 75°C w środku".
 - Każdy przepis ma własny URL (`/p/<slug>/`). Dotknięcie kroku zaznacza go jako bieżący (`#krok-3` w URL + `localStorage`).
 - **Odporność na przeładowania:** po przeładowaniu Safari lub ponownym otwarciu z ekranu początkowego strona wraca do ostatniego przepisu i kroku (zapamiętane w `localStorage`).
 - **Zapamiętywanie stanu — decyzja z testów Etapu 1 (T4):** localStorage, ciasteczko i IndexedDB zachowały się na iPadzie identycznie, a zapisane dane przetrwały zamknięcie aplikacji. Po otwarciu z ikony iOS 12 czasem pokazuje stronę bez ponownego ładowania (kod startowy się nie wykonuje). Dlatego używamy **localStorage** i obsługujemy **oba warianty**:
@@ -167,7 +247,7 @@ Build ma **failować** z czytelnym komunikatem, gdy:
 
 ## Wyszukiwanie
 
-- Build generuje `search.json`: slug, tytuł, tagi, składniki, funkcje Ninja, czy ma TM6.
+- Build generuje `search.json` (pola opisane w „Wynik buildu”). Logika normalizacji i dopasowania jest w `tools/szukaj.mjs` (ES2017, gotowa do przeniesienia do JS na iPadzie).
 - Normalizacja zapytania i danych: małe litery, usunięcie znaków diakrytycznych przez `normalize('NFD')` + usunięcie znaków łączących, **plus ręczne mapowanie `ł→l`** (NFD nie rozkłada „ł"). „losos" ma znaleźć „łosoś".
 - Rozwijanie aliasów tagów (patrz wyżej).
 - Wiele słów = AND. Dopasowanie po fragmencie słowa.
@@ -179,7 +259,7 @@ Build ma **failować** z czytelnym komunikatem, gdy:
 ## Dodawanie przepisów (codzienny workflow)
 
 Wklejam Ci przepis (często od Claude'a lub ChatGPT) z poleceniem „dodaj do przepisów". Ty:
-1. Przerabiasz go na format powyżej (wyciągasz ustawienia Ninja do panelu, ustawienia TM6 do kroków, dodajesz sensowne tagi i `temp_wewn_c` tam, gdzie pasuje).
+1. Przerabiasz go na format powyżej (wyciągasz ustawienia Ninja do panelu, ustawienia TM6 do kroków, dodajesz sensowne tagi i `internal_temp_c` tam, gdzie pasuje).
 2. Jeśli czegoś brakuje lub jest niejednoznaczne (np. brak temperatury), pytasz — nie zgadujesz ustawień urządzeń.
 3. Uruchamiasz build z walidacją, commit, push.
 4. Odpowiadasz zgodnie z „Format raportu" (w „Co zrobiłem": dodane + slug).
@@ -215,7 +295,7 @@ Zasady:
 Mam plan Pro z limitami — **jeden etap na sesję**. Po każdym etapie zatrzymaj się, powiedz mi, co mam sprawdzić na iPadzie, i czekaj.
 
 1. ✅ **Hello world + test iPada** (zamknięty: HTTPS, pełny ekran, obrót i pamięć działają na iPadzie). Minimalna strona, deploy. Repo git i zdalne repo na GitHubie zwykle zakłada już skrypt startowy — sprawdź `git remote -v` i zakładaj tylko to, czego brakuje. Ja sprawdzam na iPadzie: czy HTTPS działa, czy „Dodaj do ekranu początkowego" otwiera pełny ekran.
-2. **Format + walidacja + 3 przykładowe przepisy:** jeden z Ninja (sync), jeden z TM6 (kroki z ustawieniami, jeden z `temp: "Varoma"`), jeden deser bez urządzeń.
+2. **Format + walidacja + 3 przykładowe przepisy:** jeden z Ninja (sync), jeden z TM6 (kroki z ustawieniami, jeden z `temperature: Varoma`), jeden deser bez urządzeń.
 3. **Widok kuchenny:** lista + strona przepisu z panelami, zapamiętywanie stanu, przełącznik jasny/ciemny.
 4. **Wyszukiwarka i filtry.**
 5. (Później, na moje życzenie) tryb gotowania krok po kroku, minutniki przy krokach, skalowanie porcji.
