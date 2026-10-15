@@ -38,6 +38,8 @@ html, body { margin: 0; padding: 0; background: #2A2F35; font-family: -apple-sys
 #tools button.on { background: #FF8A3D; color: #111; border-color: #FF8A3D; }
 #tools .grp { display: inline-block; margin-right: 18px; }
 /* Prawdziwe urządzenie (dotyk): aplikacja na cały ekran, obrót wykrywany sam, przełączniki pod ⚙ */
+/* iOS 12: dotknięcie elementu bez cursor:pointer nie wysyła zdarzenia click do nasłuchu na document */
+[data-s], [data-o], [data-t], [data-act], [data-open], [data-step], button { cursor: pointer; }
 #gear { display: none; }
 body.real { background: #000; overflow: hidden; }
 body.real #gear { display: block; position: fixed; right: 14px; bottom: 14px; z-index: 60; width: 52px; height: 52px; border-radius: 26px;

@@ -317,6 +317,7 @@ Mam plan Pro z limitami — **jeden etap na sesję**. Po każdym etapie zatrzyma
      - przycisk „📷 Zdjęcie” w pasku otwiera zdjęcie na pełny ekran,
      - panel Ninja **zawsze ciemny** (także w jasnym motywie) — jak wyświetlacz frytkownicy,
      - bieżący krok wyróżniony świecącym pierścieniem.
+   - **Pułapka iOS 12 (dotyk):** dotknięcie elementu bez `cursor: pointer` nie wysyła zdarzenia `click` do nasłuchu na `document` (event delegation). Wszystko, co ma reagować na dotyk (karty, kroki, zdjęcie, przyciski), musi mieć `cursor: pointer` albo być `<button>` / `<a>`.
    - **Zdjęcia:** źródło JPEG/PNG w `recipes/img/`; build sam robi dwie wersje JPEG — miniaturę ~300 px i dużą ~1200 px (dłuższy bok).
 4. **Wyszukiwarka i filtry.**
 5. (Później, na moje życzenie) tryb gotowania krok po kroku, minutniki przy krokach, skalowanie porcji.
