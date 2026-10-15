@@ -1,4 +1,4 @@
-// Testy całego buildu: wynik dla przykładów, pomijanie błędnych przepisów (errors.json), zdjęcia po nazwie i HEIC.
+// Testy całego buildu (na przykładach z tests/fixtures/recipes — nie na kolekcji z recipes/): wynik dla przykładów, tłumaczenia EN (warnings.json), pomijanie błędnych przepisów (errors.json), zdjęcia po nazwie i HEIC.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const readJson = (out, p) => JSON.parse(readFileSync(join(out, p), 'utf8'));
 
 function build(env) {
   return spawnSync(process.execPath, [join(root, 'tools', 'build.mjs')], {
@@ -17,12 +18,13 @@ function build(env) {
   });
 }
 
-// Wszystkie przepisy z recipes/ (kolekcja rośnie); wzorcowe przykłady sprawdzane osobno niżej.
-const SLUGS = readdirSync(join(root, 'recipes')).filter((p) => p.endsWith('.md')).map((p) => p.replace(/\.md$/, '')).sort();
+// Przykłady wzorcowe — build i testy nie zakładają niczego o kolekcji w recipes/.
+const FIXTURES = join(root, 'tests', 'fixtures', 'recipes');
+const SLUGS = readdirSync(FIXTURES).filter((p) => p.endsWith('.md')).map((p) => p.replace(/\.md$/, '')).sort();
 
 test('build przykładów: search.json, data/*.json, strony /p/<slug>/, zdjęcia, mockup', async () => {
   const out = mkdtempSync(join(tmpdir(), 'kitchen-out-'));
-  const w = build({ KITCHEN_OUT_DIR: out });
+  const w = build({ KITCHEN_RECIPES_DIR: FIXTURES, KITCHEN_OUT_DIR: out });
   assert.equal(w.status, 0, w.stderr);
 
   ['index.html', '404.html', 'app.js', 'app.css', 'apple-touch-icon-152.png'].forEach((p) => assert.ok(existsSync(join(out, p)), p));
@@ -60,13 +62,44 @@ test('build przykładów: search.json, data/*.json, strony /p/<slug>/, zdjęcia,
   }
   // Do _site trafiają tylko wersje z buildu, nie źródła.
   assert.deepEqual(readdirSync(join(out, 'img')).filter((p) => !/-(300|1200)-[0-9a-f]{8}\.jpg$/.test(p)), []);
+  assert.ok(!existsSync(join(out, 'tags.yml')));
+
+  // Tłumaczenie EN: kompletne trafia do danych przepisu, brak tłumaczenia → ostrzeżenie (przepis i tak jest na stronie).
+  assert.deepEqual(readJson(out, 'errors.json'), []);
+  assert.deepEqual(readJson(out, 'warnings.json'), [{ file: 'ziemniaczki-brokuly-sync.md', path: 'translations.en', where: 'tłumaczenie → EN',
+    reason: 'brak tłumaczenia EN — w trybie EN przepis wyświetla się po polsku' }]);
+  const udka = readJson(out, 'data/udka-z-ziemniakami.json');
+  assert.equal(udka.translations.en.labels.zone1, 'Chicken legs');
+  assert.deepEqual(udka.tags_en, ['ninja', 'chicken', 'dinner']);
+  assert.ok(!('translations' in ninja));
+  assert.deepEqual(ninja.tags_en, ['ninja', 'vegetables', 'side']);
+  // search.json: tytuł EN (tylko z kompletnego tłumaczenia), tagi EN, tekst wyszukiwania w obu językach.
+  const udkaEntry = index.find((x) => x.id === 'udka-z-ziemniakami');
+  assert.equal(udkaEntry.title_en, 'Chicken legs with potatoes');
+  ['udka', 'chicken legs', 'ziemniaki', 'smoked paprika', 'obiad', 'dinner'].forEach((w) => assert.ok(udkaEntry.text.includes(w), w));
+  const syncEntry = index.find((x) => x.id === 'ziemniaczki-brokuly-sync');
+  assert.ok(!('title_en' in syncEntry));
+  assert.deepEqual(syncEntry.tags_en, ['ninja', 'vegetables', 'side']);
+});
+
+test('prawie pusta kolekcja: jeden przepis bez tags.yml i bez tłumaczenia — build przechodzi', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'kitchen-jeden-'));
+  writeFileSync(join(dir, 'zupa.md'), [
+    '---', 'schema_version: 1', 'title: "Zupa"', 'servings: 2', 'prep_minutes: 5', 'cook_minutes: 20', 'tags: [zupa]',
+    'ingredients:', '  - name: "woda"', 'steps:', '  - text: "Gotuj."', '---', '',
+  ].join('\n'));
+  const out = join(dir, 'out');
+  const w = build({ KITCHEN_RECIPES_DIR: dir, KITCHEN_OUT_DIR: out });
+  assert.equal(w.status, 0, w.stderr);
+  assert.deepEqual(readJson(out, 'search.json').map((e) => [e.id, e.tags_en]), [['zupa', ['zupa']]]);
+  assert.deepEqual(readJson(out, 'warnings.json').map((x) => x.path), ['translations.en', 'tags[0]']);
 });
 
 test('małe zdjęcie nie jest powiększane', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'kitchen-male-'));
   mkdirSync(join(dir, 'img'));
   await sharp({ create: { width: 400, height: 200, channels: 3, background: '#c44a1e' } }).png().toFile(join(dir, 'img', 'male.png'));
-  writeFileSync(join(dir, 'deser-twarogowy.md'), readFileSync(join(root, 'recipes', 'deser-twarogowy.md'), 'utf8')
+  writeFileSync(join(dir, 'deser-twarogowy.md'), readFileSync(join(FIXTURES, 'deser-twarogowy.md'), 'utf8')
     .replace('image: img/deser-twarogowy.png', 'image: img/male.png'));
   const out = join(dir, 'out');
   const w = build({ KITCHEN_RECIPES_DIR: dir, KITCHEN_OUT_DIR: out });
@@ -76,17 +109,20 @@ test('małe zdjęcie nie jest powiększane', async () => {
   assert.equal((await sharp(join(out, d.image)).metadata()).width, 400);
 });
 
-test('pusta kolekcja: build przechodzi, search.json to []', () => {
+test('pusta kolekcja (także sam tags.yml albo brak katalogu): build przechodzi, search.json to []', () => {
   const dir = mkdtempSync(join(tmpdir(), 'kitchen-pusto-'));
-  const w = build({ KITCHEN_RECIPES_DIR: dir, KITCHEN_OUT_DIR: join(dir, 'out') });
-  assert.equal(w.status, 0, w.stderr);
-  assert.deepEqual(JSON.parse(readFileSync(join(dir, 'out', 'search.json'), 'utf8')), []);
-  assert.deepEqual(JSON.parse(readFileSync(join(dir, 'out', 'errors.json'), 'utf8')), []);
+  const onlyTags = mkdtempSync(join(tmpdir(), 'kitchen-tagi-'));
+  writeFileSync(join(onlyTags, 'tags.yml'), 'obiad: dinner\n');
+  for (const recipesDir of [dir, onlyTags, join(dir, 'nie-ma')]) {
+    const out = join(dir, 'out');
+    const w = build({ KITCHEN_RECIPES_DIR: recipesDir, KITCHEN_OUT_DIR: out });
+    assert.equal(w.status, 0, w.stderr);
+    for (const f of ['search.json', 'errors.json', 'warnings.json']) assert.deepEqual(readJson(out, f), [], f);
+  }
 });
 
-// Przepis z repo bez linii image (testy dokładają własne zdjęcia).
-const example = (slug) => readFileSync(join(root, 'recipes', slug + '.md'), 'utf8').replace(/^image: .*\r?\n/m, '');
-const readJson = (out, p) => JSON.parse(readFileSync(join(out, p), 'utf8'));
+// Przykład wzorcowy bez linii image (testy dokładają własne zdjęcia).
+const example = (slug) => readFileSync(join(FIXTURES, slug + '.md'), 'utf8').replace(/^image: .*\r?\n/m, '');
 
 test('błędne przepisy nie przerywają buildu: są pominięte, reszta publikowana, błędy w errors.json', () => {
   const dir = mkdtempSync(join(tmpdir(), 'kitchen-bad-'));

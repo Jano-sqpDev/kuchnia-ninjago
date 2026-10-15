@@ -19,14 +19,18 @@ export function normalize(text) {
     .trim();
 }
 
-// Tekst, po którym szuka iPad: tytuł, tagi (+ aliasy), składniki, funkcje Ninja.
-export function buildSearchText(entry) {
+// Tekst, po którym szuka iPad — w obu językach, żeby wyszukiwanie działało niezależnie od języka interfejsu:
+// tytuł (PL i EN), tagi (+ aliasy, + tłumaczenia z tags.yml), składniki (PL i EN — extra), funkcje Ninja.
+export function buildSearchText(entry, extra) {
   const parts = [entry.title];
+  if (entry.title_en) parts.push(entry.title_en);
   entry.tags.forEach(function (tag) {
     parts.push(tag);
     (TAG_ALIASES[tag] || []).forEach(function (alias) { parts.push(alias); });
   });
+  (entry.tags_en || []).forEach(function (tag) { if (entry.tags.indexOf(tag) === -1) parts.push(tag); });
   entry.ingredients.forEach(function (name) { parts.push(name); });
+  (extra || []).forEach(function (name) { parts.push(name); });
   entry.ninja_functions.forEach(function (f) { parts.push(f); });
   return normalize(parts.join(' '));
 }

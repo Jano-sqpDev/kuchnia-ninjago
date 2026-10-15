@@ -4,6 +4,8 @@ Odpowiadaj samym plikiem .md gotowym do wklejenia, bez komentarzy.
 
 Zamień przepis, który dostaniesz, na **jeden plik Markdown** w formacie poniżej. Plik trafia do repozytorium jako `recipes/<slug>.md` i jest wyświetlany na kuchennym iPadzie. Automatyczny walidator odrzuca każdy plik, który łamie choć jedną regułę z tej ściągi.
 
+**Dwa języki:** aplikacja ma interfejs PL i EN. Przepis piszesz po polsku, a w tym samym pliku dodajesz **kompletne tłumaczenie angielskie — blok `translations.en`** (punkt 10). Każdy nowy przepis musi go mieć. Jednostki tylko z listy angielskich skrótów (punkt 4).
+
 **Ustawienia urządzeń** (Ninja: tryb, funkcja, temperatura, czas; Thermomix TM6: czas, temperatura, obroty):
 - **Gotowy przepis** (podany przez użytkownika: własny, z internetu, od kogoś) — przenieś ustawienia z przepisu. Jeśli ich **brakuje albo są niejednoznaczne — nie zgaduj**: zamiast pliku odpowiedz krótką listą pytań (to jedyny wyjątek od „samego pliku”).
 - **Nowy przepis** (użytkownik prosi o wymyślenie przepisu) — **sam zaproponuj realne ustawienia** dla Ninja DZ400UK / TM6 i dopisz na końcu `description`: „Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu.” Pytaj tylko, gdy czegoś nie da się sensownie dobrać.
@@ -50,6 +52,7 @@ Opcjonalne notatki zwykłym tekstem.
 | `ninja` | obiekt | tylko z tagiem `ninja` | punkt 7 |
 | `image` | tekst | nie | punkt 9 — zwykle **pomiń** |
 | `source` | tekst | nie | skąd przepis, np. `"ChatGPT"` |
+| `translations` | obiekt | **tak w każdym nowym przepisie** | tłumaczenie EN — punkt 10 |
 
 ## 4. Składniki — `ingredients`
 
@@ -59,11 +62,24 @@ Każdy składnik to element listy:
 |---|---|---|---|
 | `name` | niepusty tekst | tak | np. `"małe ziemniaki"` |
 | `amount` | liczba > 0 | nie | ułamki z **kropką**: `1.5` (nie `"1,5"`) |
-| `unit` | niepusty tekst | tak, gdy jest `amount` | **bez `amount` zabronione** |
+| `unit` | jedna z listy niżej | tak, gdy jest `amount` | **bez `amount` zabronione** |
 | `note` | tekst | nie | np. `"drobno posiekana"` |
 | `group` | tekst | nie | grupa na liście, np. `"Sos"`, `"Marynata"` |
 
-- **Jednostki:** `szt`, `g`, `ml`, `łyżka`, `łyżeczka` (bez kropek: `szt`, nie `szt.`). Inne (np. `kg`, `l`, `szczypta`, `ząbek`) są dozwolone, ale przy przeliczaniu porcji zaokrąglają się mniej ładnie — używaj ich tylko, gdy trzeba.
+- **Jednostki — tylko te (angielskie skróty, małymi literami, bez kropek), w obu językach tak samo:**
+
+  | Jednostka | Znaczenie |
+  |---|---|
+  | `g` | gramy |
+  | `kg` | kilogramy |
+  | `ml` | mililitry |
+  | `l` | litry |
+  | `pcs` | sztuki (także ząbki czosnku — wtedy `note: "ząbki"`) |
+  | `tbsp` | łyżka |
+  | `tsp` | łyżeczka |
+  | `pinch` | szczypta |
+
+  **Każda inna jednostka to błąd** (`szt`, `łyżka`, `łyżeczka`, `szczypta`, `ząbek`, `szklanka`…). Coś, czego nie da się tak zapisać (np. „pęczek”, „puszka”), zapisz jako `pcs` z opisem w `note` albo jako składnik bez ilości. `pcs`, `tbsp`, `tsp` i `pinch` przy przeliczaniu porcji zaokrąglają się do połówek, `g` i `ml` do okrągłych wartości.
 - Składnik bez ilości jest OK (sól, pieprz „do smaku”): tylko `name`, bez `amount` i bez `unit`.
 - Składniki z tą samą `group` umieszczaj obok siebie.
 
@@ -89,6 +105,15 @@ Każdy składnik to element listy:
   - `ninja` ⇔ przepis ma panel `ninja` (jedno bez drugiego to błąd).
   - `tm6` ⇔ co najmniej jeden krok ma `tm6` (jedno bez drugiego to błąd).
   - Przepis może mieć oba tagi urządzeń albo żaden (np. deser bez gotowania).
+- **Tłumaczenia tagów: plik `recipes/tags.yml`** — mapa `tag_PL: tag_EN` (małe litery), np. `obiad: dinner`. W trybie EN aplikacja pokazuje tłumaczenie, a tag bez tłumaczenia — bez zmian (i ostrzeżenie). **Używasz w przepisie tagu, którego nie ma w `recipes/tags.yml` — dopisz go tam** (w tym samym commicie). Tagów urządzeń (`ninja`, `tm6`) nie tłumaczy się.
+- Gdy odpowiadasz samym plikiem (bez dostępu do repozytorium), a przepis ma tagi spoza `recipes/tags.yml` albo nie wiesz, jakie tam są — dopisz pod linią `# plik:` komentarz z tłumaczeniami, np. `# tags.yml: zupa: soup, dynia: pumpkin` (komentarz nie psuje pliku; Janusz przeniesie wpisy do `recipes/tags.yml`).
+
+```yaml
+# recipes/tags.yml
+obiad: dinner
+kurczak: chicken
+wołowina: beef
+```
 
 ## 7. Ninja Foodi MAX Dual Zone DZ400UK — `ninja`
 
@@ -159,7 +184,43 @@ Ustawienia **przy konkretnym kroku** (zmieniają się w trakcie gotowania):
 - Formaty: **JPEG, PNG albo HEIC** (zdjęcie prosto z iPhone'a). **WebP i AVIF nie działają.** Rozmiar dowolny — build sam zmniejsza.
 - Pole `image` tylko wtedy, gdy zdjęcie ma inną nazwę: `image: img/<plik>.jpg` (ścieżka względem `recipes/`).
 
-## 10. Zasady YAML (żeby plik się wczytał)
+## 10. Tłumaczenie EN — `translations.en`
+
+Ten sam plik, na końcu danych YAML (przed zamykającym `---`). Tłumaczysz **tylko teksty** — ilości, jednostki, tagi i ustawienia urządzeń aplikacja bierze z oryginału.
+
+| Pole | Typ | Wymagane | Uwagi |
+|---|---|---|---|
+| `title` | niepusty tekst | tak | tytuł po angielsku |
+| `description` | niepusty tekst | gdy oryginał ma `description` | bez `description` w oryginale — nie dodawaj |
+| `ingredients` | lista `{ name, note }` | tak | **tyle samo pozycji i w tej samej kolejności** co `ingredients`; `note` tylko tam, gdzie oryginał ma `note` (wtedy wymagane) |
+| `groups` | mapa `nazwa_PL: nazwa_EN` | gdy składniki mają `group` | każda użyta grupa, bez dodatkowych |
+| `steps` | lista `{ text, tm6_mode }` | tak | **tyle samo pozycji i w tej samej kolejności** co `steps`; `tm6_mode` tylko tam, gdzie krok ma `tm6.mode` (wtedy wymagane) |
+| `labels` | `{ zone1, zone2 }` | gdy strefy Ninja mają `label` | tłumaczenie `label` każdej strefy, która go ma |
+
+- Inne pola w tym bloku są niedozwolone (np. `amount`, `unit`, `tags` — nie tłumaczy się ich); tłumaczenie z takim polem nie zostanie użyte.
+- **Brak bloku albo niekompletne tłumaczenie nie blokuje publikacji** — przepis jest na stronie, w trybie EN wyświetla się po polsku ze znaczkiem „PL”, a na liście pojawia się pomarańczowa plakietka „bez tłumaczenia EN”. Mimo to **każdy nowy przepis musi mieć kompletny blok** (`npm run validate` wypisuje ostrzeżenia — przy Twoim przepisie ma ich nie być).
+- Po zmianie przepisu (dodany krok, składnik) popraw też tłumaczenie — inaczej przestaje pasować i aplikacja wraca do polskiego.
+
+```yaml
+translations:
+  en:
+    title: "Chicken legs with potatoes"
+    ingredients:
+      - name: "chicken legs"
+      - name: "garlic"
+        note: "cloves"
+    groups:
+      Marynata: "Marinade"
+    steps:
+      - text: "Rub the chicken legs with the marinade."
+      - text: "Steam the vegetables."
+        tm6_mode: "steaming"
+    labels:
+      zone1: "Chicken legs"
+      zone2: "Potatoes"
+```
+
+## 11. Zasady YAML (żeby plik się wczytał)
 
 - Teksty w podwójnym cudzysłowie: `title: "Zupa: pomidorowa"` — **tekst z dwukropkiem bez cudzysłowu to błąd**.
 - Wcięcia **spacjami** (2 na poziom), nigdy tabulatorem.
@@ -167,7 +228,7 @@ Ustawienia **przy konkretnym kroku** (zmieniają się w trakcie gotowania):
 - `Varoma`, `spoon`, `turbo`, `sync`, `match` itp. można pisać bez cudzysłowu.
 - Każde pole tylko raz.
 
-## 11. Pełny przykład
+## 12. Pełny przykład
 
 ```yaml
 ---
@@ -184,17 +245,17 @@ source: "ChatGPT"
 ingredients:
   - name: "udka z kurczaka"
     amount: 8
-    unit: szt
+    unit: pcs
   - name: "małe ziemniaki"
     amount: 600
     unit: g
   - name: "oliwa"
     amount: 2
-    unit: łyżka
+    unit: tbsp
     group: "Marynata"
   - name: "papryka wędzona"
     amount: 1
-    unit: łyżeczka
+    unit: tsp
     group: "Marynata"
   - name: "sól"
     group: "Marynata"
@@ -204,7 +265,7 @@ ingredients:
     group: "Sos"
   - name: "czosnek"
     amount: 2
-    unit: szt
+    unit: pcs
     note: "ząbki"
     group: "Sos"
 
@@ -244,6 +305,33 @@ steps:
       reverse: true
   - text: "Sprawdź udka termometrem w najgrubszym miejscu, przy kości."
     internal_temp_c: 75
+
+translations:
+  en:
+    title: "Chicken legs with potatoes and garlic sauce"
+    description: "Chicken legs and potatoes in two Ninja drawers, sauce made in the TM6."
+    ingredients:
+      - name: "chicken legs"
+      - name: "baby potatoes"
+      - name: "olive oil"
+      - name: "smoked paprika"
+      - name: "salt"
+      - name: "plain yoghurt"
+      - name: "garlic"
+        note: "cloves"
+    groups:
+      Marynata: "Marinade"
+      Sos: "Sauce"
+    steps:
+      - text: "Pat the chicken legs dry and rub with some of the marinade. Halve the potatoes and toss with the rest of the marinade."
+      - text: "Put the chicken in zone 1 and the potatoes in zone 2. Set the zones as shown on the Ninja panel, press SYNC, then START."
+      - text: "Halfway through, shake the potato drawer and turn the chicken legs."
+      - text: "Put the garlic in the mixing bowl and chop."
+      - text: "Add the yoghurt and mix."
+      - text: "Check the chicken with a thermometer at the thickest part, next to the bone."
+    labels:
+      zone1: "Chicken legs"
+      zone2: "Potatoes"
 ---
 Sos można przygotować dzień wcześniej.
 ```

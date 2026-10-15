@@ -27,7 +27,7 @@ ingredients:
     group: "Kotlety"
   - name: "Bułki do burgerów"
     amount: 4
-    unit: szt
+    unit: pcs
     group: "Dodatki"
   - name: "Ser cheddar"
     amount: 80

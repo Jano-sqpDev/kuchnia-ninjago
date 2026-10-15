@@ -17,6 +17,130 @@ runInNewContext(js, context);
 const plain = (v) => JSON.parse(JSON.stringify(v));
 const K = context.kitchenTest;
 
+// ── słownik pl / en ──
+
+test('słownik: oba języki mają te same klucze, bez pustych napisów', () => {
+  const pl = K.I18N.pl, en = K.I18N.en;
+  assert.deepEqual(plain(K.LANGS), ['pl', 'en']);
+  assert.deepEqual(Object.keys(en).sort(), Object.keys(pl).sort());
+  Object.keys(pl).forEach((k) => {
+    if (Array.isArray(pl[k])) {
+      assert.equal(pl[k].length, 3, 'pl.' + k + ': odmiana [1, 2–4, 5+]');
+      assert.equal(en[k].length, 2, 'en.' + k + ': odmiana [1, inne]');
+      pl[k].concat(en[k]).forEach((v) => assert.ok(typeof v === 'string' && v.trim(), k));
+    } else {
+      assert.ok(typeof pl[k] === 'string' && pl[k].trim(), 'pl.' + k);
+      assert.ok(typeof en[k] === 'string' && en[k].trim(), 'en.' + k);
+      // Te same wstawiane wartości ({n}, {total}…) w obu językach — poza {servings}, którego PL nie potrzebuje.
+      const marks = (v) => (v.match(/\{\w+\}/g) || []).filter((m) => m !== '{servings}').sort();
+      assert.deepEqual(marks(en[k]), marks(pl[k]), k);
+    }
+  });
+});
+
+test('słownik: każdy klucz użyty w app.js istnieje (T, TN, tr, trn i mapy kluczy)', () => {
+  const used = new Set();
+  for (const m of js.matchAll(/\b(?:T|TN)\('([A-Za-z]+)'/g)) used.add(m[1]);
+  for (const m of js.matchAll(/\btrn?\(lang, '([A-Za-z]+)'/g)) used.add(m[1]);
+  Object.values(K.ACTIONS).forEach((a) => Object.values(a).forEach((k) => used.add(k)));
+  Object.values(K.WHEN).forEach((k) => used.add(k));
+  ['statusIdle', 'statusRunning', 'statusPaused', 'modeSync', 'modeSyncHint', 'modeMatch', 'modeMatchHint', 'modeIndependent', 'modeIndependentHint',
+    'warningsIntro', 'problemsIntro'].forEach((k) => used.add(k));
+  assert.ok(used.size > 50, 'skaner znalazł za mało kluczy: ' + used.size);
+  used.forEach((k) => assert.ok(k in K.I18N.pl && k in K.I18N.en, 'brak klucza w słowniku: ' + k));
+  // W kodzie widoku nie zostały polskie napisy poza słownikiem (komentarze pomijamy).
+  const viewStart = js.indexOf('// ───────── przeglądarka');
+  assert.ok(viewStart > 0, 'brak znacznika sekcji przeglądarki w app.js');
+  const view = js.slice(viewStart).replace(/\/\/.*$/gm, '');
+  ['Przepisy', 'Wczytywanie', 'Zrobione', 'porcj', 'Strefa', 'Składniki', 'OBRÓĆ', 'Zamknij'].forEach((w) => assert.ok(!view.includes(w), 'napis poza słownikiem: ' + w));
+});
+
+test('słownik: tr / trn — wstawianie wartości, odmiana PL tylko w PL, EN 1 / wiele', () => {
+  assert.equal(K.tr('pl', 'tm6Step', { n: 2, total: 5 }), 'Krok <b>2</b> z 5');
+  assert.equal(K.tr('en', 'tm6Step', { n: 2, total: 5 }), 'Step <b>2</b> of 5');
+  assert.equal(K.tr('xx', 'recipes'), 'Przepisy');           // nieznany język → PL
+  assert.equal(K.normalizeLang('en'), 'en');
+  assert.equal(K.normalizeLang(null), 'pl');
+  assert.equal(K.normalizeLang('EN'), 'pl');
+  assert.equal(K.servingsWord(1, 'en'), 'serving');
+  assert.equal(K.servingsWord(2, 'en'), 'servings');
+  assert.equal(K.servingsWord(5, 'en'), 'servings');
+  assert.equal(K.servingsWord(22, 'pl'), 'porcje');
+  assert.equal(K.problemsLabel(1, 'en'), '1 recipe with an error');
+  assert.equal(K.problemsLabel(3, 'en'), '3 recipes with errors');
+  assert.equal(K.warningsLabel(1), '1 przepis bez tłumaczenia EN');
+  assert.equal(K.warningsLabel(2), '2 przepisy bez tłumaczenia EN');
+  assert.equal(K.warningsLabel(5), '5 przepisów bez tłumaczenia EN');
+  assert.equal(K.warningsLabel(2, 'en'), '2 recipes without English translation');
+  assert.equal(K.tr('en', 'ninjaFor', { n: 1, servings: K.servingsWord(1, 'en') }), 'Ninja settings are for 1 serving.');
+  assert.equal(K.tr('pl', 'ninjaFor', { n: 4, servings: 'x' }), 'Ustawienia Ninja są dla 4 porcji.');
+  assert.equal(K.tr('en', 'turnRequired', { action: 'FLIP', n: 14 }), 'FLIP AT 14 MIN');
+  assert.equal(K.tr('pl', 'turnOptional', { action: 'można obrócić', n: 14 }), 'można obrócić po 14 min');
+  assert.equal(K.decimal(75.5, 'en'), '75.5');
+  assert.equal(K.decimal(75.5), '75,5');
+});
+
+// ── przepis w danym języku: tłumaczenie albo fallback PL ──
+const RECIPE = {
+  id: 'udka', title: 'Udka', description: 'Opis', servings: 4, tags: ['ninja', 'tm6', 'kurczak'], tags_en: ['ninja', 'tm6', 'chicken'],
+  ingredients: [
+    { name: 'udka', amount: 8, unit: 'pcs' },
+    { name: 'oliwa', amount: 2, unit: 'tbsp', group: 'Marynata', note: 'extra' },
+    { name: 'sól', group: 'Marynata' },
+  ],
+  ninja: { mode: 'sync', zone1: { label: 'Udka', function: 'Roast', temp_c: 200, minutes: 28 }, zone2: { function: 'Air Fry', temp_c: 200, minutes: 20 } },
+  steps: [{ text: 'Piecz.', internal_temp_c: 75 }, { text: 'Sos.', tm6: { duration_seconds: 30, speed: 7, mode: 'Mieszanie' } }],
+  translations: { en: {
+    title: 'Chicken legs', description: 'Description',
+    ingredients: [{ name: 'chicken legs' }, { name: 'olive oil', note: 'extra virgin' }, { name: 'salt' }],
+    groups: { Marynata: 'Marinade' }, steps: [{ text: 'Roast.' }, { text: 'Sauce.', tm6_mode: 'Mixing' }], labels: { zone1: 'Chicken' },
+  } },
+};
+
+test('localizeRecipe: PL — oryginał', () => {
+  const L = plain(K.localizeRecipe(RECIPE, 'pl'));
+  assert.equal(L.title, 'Udka');
+  assert.equal(L.fallback, false);
+  assert.deepEqual(L.tags, ['ninja', 'tm6', 'kurczak']);
+  assert.deepEqual(L.ingredients[1], { amount: 2, unit: 'tbsp', name: 'oliwa', note: 'extra', groupKey: 'Marynata', group: 'Marynata' });
+  assert.equal(L.steps[1].tm6Mode, 'Mieszanie');
+  assert.equal(L.labels.zone1, 'Udka');
+});
+
+test('localizeRecipe: EN z tłumaczeniem — teksty EN, ilości, jednostki i ustawienia z oryginału', () => {
+  const L = plain(K.localizeRecipe(RECIPE, 'en'));
+  assert.deepEqual([L.title, L.description, L.fallback], ['Chicken legs', 'Description', false]);
+  assert.deepEqual(L.tags, ['ninja', 'tm6', 'chicken']);
+  assert.deepEqual(L.ingredients[1], { amount: 2, unit: 'tbsp', name: 'olive oil', note: 'extra virgin', groupKey: 'Marynata', group: 'Marinade' });
+  assert.deepEqual(L.ingredients[0], { amount: 8, unit: 'pcs', name: 'chicken legs' });
+  assert.deepEqual(L.steps.map((s) => s.text), ['Roast.', 'Sauce.']);
+  assert.equal(L.steps[0].internal_temp_c, 75);
+  assert.equal(L.steps[1].tm6.speed, 7);
+  assert.equal(L.steps[1].tm6Mode, 'Mixing');
+  assert.equal(L.labels.zone1, 'Chicken');
+  assert.equal(L.labels.zone2, undefined);
+});
+
+test('localizeRecipe: EN bez tłumaczenia (albo z niepasującym) — fallback PL, tagi EN z tags.yml', () => {
+  const noEn = Object.assign({}, RECIPE);
+  delete noEn.translations;
+  const L = plain(K.localizeRecipe(noEn, 'en'));
+  assert.deepEqual([L.title, L.fallback, L.steps[0].text, L.ingredients[1].group], ['Udka', true, 'Piecz.', 'Marynata']);
+  assert.deepEqual(L.tags, ['ninja', 'tm6', 'chicken']);
+  const broken = JSON.parse(JSON.stringify(RECIPE));
+  broken.translations.en.steps.pop();
+  assert.equal(K.localizeRecipe(broken, 'en').fallback, true);
+  assert.equal(K.localizeRecipe(broken, 'en').title, 'Udka');
+  assert.equal(K.localizeRecipe(noEn, 'pl').fallback, false);   // w PL nie ma znaczka
+});
+
+test('entryView: lista w obu językach, fallback PL bez title_en', () => {
+  const it = { id: 'a', title: 'Udka', title_en: 'Chicken legs', tags: ['kurczak'], tags_en: ['chicken'] };
+  assert.deepEqual(plain(K.entryView(it, 'en')), { title: 'Chicken legs', tags: ['chicken'], fallback: false });
+  assert.deepEqual(plain(K.entryView(it, 'pl')), { title: 'Udka', tags: ['kurczak'], fallback: false });
+  assert.deepEqual(plain(K.entryView({ id: 'b', title: 'Zupa', tags: ['zupa'] }, 'en')), { title: 'Zupa', tags: ['zupa'], fallback: true });
+});
+
 test('porcje: odmiana słowa', () => {
   assert.equal(K.servingsWord(1), 'porcja');
   assert.equal(K.servingsWord(2), 'porcje');
@@ -46,19 +170,26 @@ test('errors.json: grupowanie po plikach, pominięty jeśli choć jeden błąd p
   assert.deepEqual(plain(K.groupProblems(null)), []);
 });
 
-test('przeliczanie ilości: bez zmiany porcji wartość z przepisu', () => {
+test('przeliczanie ilości: bez zmiany porcji wartość z przepisu (PL przecinek, EN kropka)', () => {
   assert.equal(K.scaledAmount(500, 'g', 1), '500');
-  assert.equal(K.scaledAmount(1.5, 'szt', 1), '1½');
-  assert.equal(K.scaledAmount(0.25, 'łyżeczka', 1), '0,25');
+  assert.equal(K.scaledAmount(1.5, 'pcs', 1), '1½');
+  assert.equal(K.scaledAmount(0.25, 'tsp', 1), '0,25');
+  assert.equal(K.scaledAmount(0.25, 'tsp', 1, 'en'), '0.25');
   assert.equal(K.scaledAmount(1.5, 'kg', 1), '1,5');
+  assert.equal(K.scaledAmount(1.5, 'kg', 1, 'en'), '1.5');
+  assert.equal(K.scaledAmount(1.5, 'l', 1, 'pl'), '1,5');
 });
 
-test('przeliczanie ilości: sztuki i łyżki do połówek', () => {
-  assert.equal(K.scaledAmount(8, 'szt', 3 / 4), '6');
-  assert.equal(K.scaledAmount(1, 'łyżeczka', 3 / 4), '1');      // 0,75 → 1
-  assert.equal(K.scaledAmount(1, 'łyżeczka', 1 / 4), '½');      // nigdy mniej niż ½
-  assert.equal(K.scaledAmount(2, 'łyżki', 5 / 4), '2½');
-  assert.equal(K.scaledAmount(3, 'szt', 1 / 2), '1½');
+test('przeliczanie ilości: pcs / tbsp / tsp / pinch do połówek', () => {
+  assert.equal(K.scaledAmount(8, 'pcs', 3 / 4), '6');
+  assert.equal(K.scaledAmount(1, 'tsp', 3 / 4), '1');           // 0,75 → 1
+  assert.equal(K.scaledAmount(1, 'tsp', 1 / 4), '½');           // nigdy mniej niż ½
+  assert.equal(K.scaledAmount(2, 'tbsp', 5 / 4), '2½');
+  assert.equal(K.scaledAmount(3, 'pcs', 1 / 2), '1½');
+  assert.equal(K.scaledAmount(1, 'pinch', 3 / 2), '1½');
+  assert.equal(K.scaledAmount(1, 'pinch', 1 / 4, 'en'), '½');
+  assert.equal(K.scaledAmount(1.5, 'kg', 3 / 2), '2,3');         // kg / l — jedno miejsce po przecinku
+  assert.equal(K.scaledAmount(1.5, 'kg', 3 / 2, 'en'), '2.3');
 });
 
 test('przeliczanie ilości: g/ml do okrągłych wartości', () => {
@@ -79,8 +210,10 @@ test('czas i obroty TM6', () => {
   assert.equal(K.tm6Time(95), '1:35');
   assert.equal(K.tm6Speed(1), '1');
   assert.equal(K.tm6Speed(1.5), '1,5');
+  assert.equal(K.tm6Speed(1.5, 'en'), '1.5');
   assert.equal(K.tm6Speed('spoon'), 'łyżka');
-  assert.equal(K.tm6Speed('turbo'), 'Turbo');
+  assert.equal(K.tm6Speed('spoon', 'en'), 'spoon');
+  assert.equal(K.tm6Speed('turbo', 'en'), 'Turbo');
 });
 
 test('stan z localStorage: śmieci i niepoprawne zapisy nie psują aplikacji', () => {
@@ -112,6 +245,7 @@ test('klucze localStorage: nowe angielskie, stare polskie tylko do migracji', ()
   assert.ok(js.includes("STATE_KEY = 'kitchen-state'"));
   assert.ok(js.includes("THEME_KEY = 'kitchen-theme'"));
   assert.ok(js.includes("RELOAD_KEY = 'kitchen-reload'"));
+  assert.ok(js.includes("LANG_KEY = 'kitchen-lang'"));
   assert.ok(js.includes("LEGACY_KEYS = { state: 'kuchnia-stan', theme: 'kuchnia-motyw', reload: 'kuchnia-przeladowanie' }"));
   assert.ok(js.includes('migrateStorage();'));
 });
@@ -147,9 +281,11 @@ test('timer: plan SYNC z różnymi czasami — czynność krótszej strefy przes
   const plan = plain(K.timerPlan(UDKA));
   assert.equal(plan.total, 28 * MIN);
   assert.deepEqual(plan.events, [
-    { id: 'turn1', kind: 'turn', at: 14 * MIN, zone: 'Strefa 1 · Udka', action: 'flip', required: true },
-    { id: 'turn2', kind: 'turn', at: (6 + 11) * MIN, zone: 'Strefa 2 · Ziemniaki', action: 'shake', required: true },
+    { id: 'turn1', kind: 'turn', at: 14 * MIN, no: 1, label: 'Udka', action: 'flip', required: true },
+    { id: 'turn2', kind: 'turn', at: (6 + 11) * MIN, no: 2, label: 'Ziemniaki', action: 'shake', required: true },
   ]);
+  // Opisy szuflad z tłumaczenia EN trafiają do planu (alarm na liście też je zna).
+  assert.deepEqual(plain(K.timerPlan(UDKA, { zone1: 'Chicken legs', zone2: 'Potatoes' })).events.map((e) => e.label_en), ['Chicken legs', 'Potatoes']);
 });
 
 test('timer: kolejka — single, match, sync, kilka turn, równoczesne; nigdy zdarzenia końca', () => {
@@ -160,20 +296,29 @@ test('timer: kolejka — single, match, sync, kilka turn, równoczesne; nigdy zd
   assert.deepEqual(queue(K.timerPlan({ mode: 'independent', zone1: zone(30), zone2: zone(12, shake(6, false)) })), [[6, 'turn2']]);
 });
 
-test('timer: napisy nad licznikiem i w alarmie', () => {
+test('timer: napisy nad licznikiem i w alarmie (PL i EN)', () => {
   const g = (events) => ({ at: 0, events });
-  const ev = (id, action, required, z) => ({ id, kind: 'turn', at: 0, zone: z || 'Strefa 1 · Udka', action, required });
-  assert.equal(K.groupTitle(g([ev('turn1', 'flip', true)]), 'za'), 'OBRÓĆ ZA');
-  assert.equal(K.groupTitle(g([ev('turn1', 'flip', true)]), 'po'), 'OBRÓĆ PO');
-  assert.equal(K.groupTitle(g([ev('turn1', 'shake', true)]), 'teraz'), 'POTRZĄŚNIJ TERAZ');
-  assert.equal(K.groupTitle(g([ev('turn1', 'flip', false)]), 'za'), 'można obrócić za');
-  assert.equal(K.groupTitle(g([ev('turn1', 'shake', false)]), 'za'), 'można potrząsnąć za');
-  const same = g([ev('turn1', 'flip', true), ev('turn2', 'flip', true, 'Strefa 2 · Skrzydełka')]);
-  assert.equal(K.groupTitle(same, 'teraz'), 'OBRÓĆ TERAZ');
+  const ev = (no, action, required, label, labelEn) => Object.assign({ id: 'turn' + no, kind: 'turn', at: 0, no, action, required },
+    label ? { label } : {}, labelEn ? { label_en: labelEn } : {});
+  assert.equal(K.groupTitle(g([ev(1, 'flip', true)]), 'in'), 'OBRÓĆ ZA');
+  assert.equal(K.groupTitle(g([ev(1, 'flip', true)]), 'at'), 'OBRÓĆ PO');
+  assert.equal(K.groupTitle(g([ev(1, 'shake', true)]), 'now'), 'POTRZĄŚNIJ TERAZ');
+  assert.equal(K.groupTitle(g([ev(1, 'flip', false)]), 'in'), 'można obrócić za');
+  assert.equal(K.groupTitle(g([ev(1, 'shake', false)]), 'in'), 'można potrząsnąć za');
+  assert.equal(K.groupTitle(g([ev(1, 'flip', true)]), 'in', 'en'), 'FLIP IN');
+  assert.equal(K.groupTitle(g([ev(1, 'flip', true)]), 'at', 'en'), 'FLIP AT');
+  assert.equal(K.groupTitle(g([ev(1, 'shake', true)]), 'now', 'en'), 'SHAKE NOW');
+  assert.equal(K.groupTitle(g([ev(1, 'shake', false)]), 'in', 'en'), 'optional shake in');
+  const same = g([ev(1, 'flip', true, 'Udka', 'Chicken legs'), ev(2, 'flip', true, 'Skrzydełka')]);
+  assert.equal(K.groupTitle(same, 'now'), 'OBRÓĆ TERAZ');
   assert.deepEqual(plain(K.groupZones(same)), ['Strefa 1 · Udka', 'Strefa 2 · Skrzydełka']);
-  const mixed = g([ev('turn1', 'flip', true), ev('turn2', 'shake', false, 'Strefa 2 · Frytki')]);
-  assert.equal(K.groupTitle(mixed, 'za'), 'OBRÓĆ / POTRZĄŚNIJ ZA');
+  // EN: etykieta z tłumaczenia; bez tłumaczenia — polska.
+  assert.deepEqual(plain(K.groupZones(same, 'en')), ['Zone 1 · Chicken legs', 'Zone 2 · Skrzydełka']);
+  const mixed = g([ev(1, 'flip', true, 'Udka'), ev(2, 'shake', false, 'Frytki')]);
+  assert.equal(K.groupTitle(mixed, 'in'), 'OBRÓĆ / POTRZĄŚNIJ ZA');
+  assert.equal(K.groupTitle(mixed, 'in', 'en'), 'FLIP / SHAKE IN');
   assert.deepEqual(plain(K.groupZones(mixed)), ['Strefa 1 · Udka — obróć', 'Strefa 2 · Frytki — potrząśnij']);
+  assert.deepEqual(plain(K.groupZones(g([ev(1, 'flip', true)]), 'en')), ['Zone 1']);
 });
 
 test('timer: licznik do kolejnych czynności, po ostatniej „—" (target null, status done)', () => {
@@ -274,7 +419,7 @@ test('kompensacja szuflady: SYNC — przesunięcie strefy i postój sumują się
 
 test('timer: równoczesne czynności (MATCH) — jeden alarm, jeden postój', () => {
   let t = K.timerStart(K.timerPlan({ mode: 'match', zone1: zone(10, flip(5), 'Kotlety (2 szt.)'), zone2: zone(10, flip(5), 'Kotlety (2 szt.)') }), T0);
-  assert.deepEqual(plain(K.timerDue(t, at(5))).events.map((e) => e.zone), ['Strefa 1 · Kotlety (2 szt.)', 'Strefa 2 · Kotlety (2 szt.)']);
+  assert.deepEqual(plain(K.groupZones(K.timerDue(t, at(5)))), ['Strefa 1 · Kotlety (2 szt.)', 'Strefa 2 · Kotlety (2 szt.)']);
   t = K.timerAck(t, ['turn1', 'turn2'], at(5.5));
   assert.deepEqual(plain(t.holds), { turn1: 0.5 * MIN });
   assert.equal(K.timerStatus(t, at(6)), 'done');
@@ -290,7 +435,7 @@ test('timer w localStorage: przetrwa normalizeState; zapisy z v0.3/v0.3.1 (konie
   assert.equal(K.normalizeTimer(Object.assign({}, timer, { pausedAt: undefined })), null);
   assert.equal(K.normalizeTimer(null), null);
   const withEnd = JSON.parse(JSON.stringify(timer));
-  withEnd.plan.events.push({ id: 'end', kind: 'end', at: 19 * MIN, zone: '', action: '', required: true });
+  withEnd.plan.events.push({ id: 'end', kind: 'end', at: 19 * MIN, no: 1, action: '', required: true });
   assert.equal(K.normalizeTimer(withEnd), null);
   const polish = JSON.parse(JSON.stringify(timer));
   polish.plan.events[0].action = 'obróć';
@@ -298,6 +443,28 @@ test('timer w localStorage: przetrwa normalizeState; zapisy z v0.3/v0.3.1 (konie
   const oldNoHolds = JSON.parse(JSON.stringify(timer));
   delete oldNoHolds.holds;
   assert.deepEqual(plain(K.normalizeTimer(oldNoHolds)).holds, {});
+  const badNo = JSON.parse(JSON.stringify(timer));
+  badNo.plan.events[0].no = 3;
+  assert.equal(K.normalizeTimer(badNo), null);
+});
+
+test('timer z v0.3.2 (gotowy polski napis zone): przeniesiony do no / label, działa dalej', () => {
+  const old = {
+    plan: { total: 28 * MIN, events: [
+      { id: 'turn1', kind: 'turn', at: 14 * MIN, zone: 'Strefa 1 · Udka', action: 'flip', required: true },
+      { id: 'turn2', kind: 'turn', at: 17 * MIN, zone: 'Strefa 2', action: 'shake', required: false },
+    ] },
+    startedAt: T0, pausedAt: null, pausedTotal: 0, acked: ['turn1'], holds: { turn1: 20000 },
+  };
+  const t = plain(K.normalizeTimer(old));
+  assert.deepEqual(t.plan.events, [
+    { id: 'turn1', kind: 'turn', at: 14 * MIN, no: 1, label: 'Udka', action: 'flip', required: true },
+    { id: 'turn2', kind: 'turn', at: 17 * MIN, no: 2, action: 'shake', required: false },
+  ]);
+  assert.deepEqual([t.acked, t.holds, t.startedAt], [['turn1'], { turn1: 20000 }, T0]);
+  assert.deepEqual(plain(K.groupZones({ at: 0, events: t.plan.events }, 'en')), ['Zone 1 · Udka — flip', 'Zone 2 — shake']);
+  const s = plain(K.normalizeState({ recipes: { udka: { step: 2, timer: old } } }));
+  assert.equal(s.recipes.udka.timer.plan.events[0].label, 'Udka');
 });
 
 test('esc: znaki HTML', () => {

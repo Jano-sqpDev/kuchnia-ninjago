@@ -28,7 +28,7 @@ ingredients:
     group: "Patties"
   - name: "Burger buns"
     amount: 4
-    unit: szt
+    unit: pcs
     group: "Toppings"
   - name: "Cheddar"
     amount: 80

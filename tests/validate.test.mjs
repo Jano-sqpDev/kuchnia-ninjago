@@ -5,9 +5,11 @@ import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, readdirSync } from
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateRecipe, parseRecipeFile, loadRecipes, describePath, suggestSlug, splitError, imageKind, findImageBySlug, NINJA_FUNCTIONS, NINJA_MODES, TURN_ACTIONS } from '../tools/validate.mjs';
+import { validateRecipe, validateTranslations, parseTagMap, tagWarnings, translateTags, parseRecipeFile, loadRecipes, describePath, suggestSlug, splitError, imageKind, findImageBySlug, NINJA_FUNCTIONS, NINJA_MODES, TURN_ACTIONS, UNITS } from '../tools/validate.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+// Przykłady wzorcowe — testy nie zakładają, że w recipes/ jest jakiś konkretny przepis (to kolekcja Janusza).
+const FIXTURES = join(root, 'tests', 'fixtures', 'recipes');
 
 // --- dane bazowe ---
 
@@ -55,16 +57,28 @@ function expectError(data, fieldPath) {
   assert.ok(matches, 'oczekiwano błędu dla "' + fieldPath + '", są: ' + JSON.stringify(errs, null, 2));
 }
 
-// --- przykłady z repo ---
+// --- przepisy z repo i przykłady wzorcowe ---
 
-test('przykładowe przepisy z recipes/ przechodzą walidację', () => {
-  const { recipes, errors } = loadRecipes(join(root, 'recipes'));
+// Twarda bramka dla recipes/ (npm test / npm run deploy): zero błędów. Kolekcja może być pusta; ostrzeżenia nie blokują.
+test('przepisy z recipes/ przechodzą walidację (dowolna liczba, także zero)', () => {
+  const dir = join(root, 'recipes');
+  const { recipes, errors } = loadRecipes(dir);
   assert.deepEqual(errors, []);
-  // Kolekcja rośnie — sprawdzamy, że wczytano wszystkie pliki i że są wzorcowe przykłady.
-  assert.equal(recipes.length, readdirSync(join(root, 'recipes')).filter((p) => p.endsWith('.md')).length);
-  const slugs = recipes.map((r) => r.slug);
-  ['deser-twarogowy', 'udka-z-ziemniakami', 'warzywa-varoma', 'ziemniaczki-brokuly-sync']
-    .forEach((s) => assert.ok(slugs.includes(s), s));
+  assert.equal(recipes.length, readdirSync(dir).filter((p) => p.endsWith('.md')).length);
+});
+
+test('przykłady wzorcowe (tests/fixtures/recipes) przechodzą walidację; tylko jeden bez tłumaczenia EN', () => {
+  const { recipes, errors, warnings } = loadRecipes(FIXTURES);
+  assert.deepEqual(errors, []);
+  assert.deepEqual(recipes.map((r) => [r.slug, r.translated]), [
+    ['deser-twarogowy', true], ['udka-z-ziemniakami', true], ['warzywa-varoma', true], ['ziemniaczki-brokuly-sync', false],
+  ]);
+  assert.deepEqual(warnings, ['ziemniaczki-brokuly-sync.md → translations.en: brak tłumaczenia EN — w trybie EN przepis wyświetla się po polsku']);
+});
+
+test('brak katalogu z przepisami = pusta kolekcja', () => {
+  const { recipes, errors, warnings } = loadRecipes(join(tmpdir(), 'kitchen-nie-ma-takiego-katalogu'));
+  assert.deepEqual([recipes, errors, warnings], [[], [], []]);
 });
 
 test('dane bazowe testów są poprawne', () => {
@@ -366,7 +380,7 @@ function tempRecipesDir(files) {
 }
 
 // Bez linii image — testy dopisują własne zdjęcie.
-const DESSERT = readFileSync(join(root, 'recipes', 'deser-twarogowy.md'), 'utf8').replace(/^image: .*\r?\n/m, '');
+const DESSERT = readFileSync(join(FIXTURES, 'deser-twarogowy.md'), 'utf8').replace(/^image: .*\r?\n/m, '');
 const withImage = (imagePath) => DESSERT.replace('schema_version: 1', 'schema_version: 1\nimage: ' + imagePath);
 
 test('slug: niedozwolone znaki w nazwie pliku', () => {
@@ -457,6 +471,12 @@ test('docs/FORMAT-PRZEPISU.md: pierwsze zdanie, przykład przechodzi walidację,
   NINJA_MODES.forEach((m) => assert.ok(doc.includes('`' + m + '`'), 'brak trybu Ninja w ściądze: ' + m));
   TURN_ACTIONS.forEach((a) => assert.ok(doc.includes('`' + a + '`'), 'brak czynności turn w ściądze: ' + a));
   assert.ok(r.data.ninja.zone1.turn && r.data.ninja.zone2.turn.required === false, 'przykład pokazuje turn z alarmem i informacyjny');
+  // Tłumaczenie EN kompletne (z grupami i opisami szuflad), jednostki tylko z listy.
+  assert.equal(r.translated, true);
+  assert.ok(r.data.translations.en.groups && r.data.translations.en.labels.zone2);
+  r.data.ingredients.filter((i) => i.unit).forEach((i) => assert.ok(UNITS.includes(i.unit), i.unit));
+  UNITS.forEach((u) => assert.ok(doc.includes('`' + u + '`'), 'brak jednostki w ściądze: ' + u));
+  ['translations:', 'tm6_mode', 'labels:', 'groups:', 'recipes/tags.yml'].forEach((k) => assert.ok(doc.includes(k), 'brak w ściądze: ' + k));
 });
 
 test('pole image może wskazywać HEIC', () => {
@@ -465,9 +485,9 @@ test('pole image może wskazywać HEIC', () => {
   assert.deepEqual(errors, []);
 });
 
-test('w recipes/ tylko pliki .md', () => {
-  const { errors } = loadRecipes(tempRecipesDir({ 'deser.md': DESSERT, 'notatki.txt': 'x' }));
-  assert.ok(errors.some((e) => e.startsWith('notatki.txt')));
+test('w recipes/ tylko pliki .md (i tags.yml)', () => {
+  const { errors } = loadRecipes(tempRecipesDir({ 'deser.md': DESSERT, 'notatki.txt': 'x', 'tags.yml': 'deser: dessert\n' }));
+  assert.deepEqual(errors.map((e) => e.split(' → ')[0]), ['notatki.txt']);
 });
 
 test('image: poprawny JPEG i PNG przechodzą', () => {
@@ -491,4 +511,159 @@ test('image: brak pliku, zły format, ścieżka poza img/', () => {
   for (const file of ['a.md', 'b.md', 'c.md', 'd.md']) {
     assert.ok(errors.some((e) => e.startsWith(file + ' → image:')), file + ': ' + JSON.stringify(errors));
   }
+});
+
+// --- G: jednostki (zawsze angielskie skróty) ---
+
+test('jednostki: dozwolona lista przechodzi', () => {
+  assert.deepEqual(UNITS, ['g', 'kg', 'ml', 'l', 'pcs', 'tbsp', 'tsp', 'pinch']);
+  for (const u of UNITS) {
+    const r = ninjaSync();
+    r.ingredients[0].unit = u;
+    assert.deepEqual(validate(r), [], u);
+  }
+});
+
+test('jednostki: inne odrzucone, z podpowiedzią', () => {
+  for (const u of ['szt', 'łyżka', 'łyżki', 'łyżeczka', 'szczypta', 'ząbek', 'G', 'Tbsp', 'gramy', 'kostka', 'pcs.']) {
+    const r = ninjaSync();
+    r.ingredients[0].unit = u;
+    expectError(r, 'ingredients[0].unit');
+  }
+  const hint = (u) => { const r = ninjaSync(); r.ingredients[0].unit = u; return validate(r).join('\n'); };
+  assert.match(hint('szt'), /nieznana jednostka "szt" — dozwolone: g, kg, ml, l, pcs, tbsp, tsp, pinch \(zamiast "szt" użyj "pcs"\)/);
+  assert.match(hint('łyżki'), /użyj "tbsp"/);
+  assert.match(hint('łyżeczka'), /użyj "tsp"/);
+  assert.match(hint('szczypta'), /użyj "pinch"/);
+  assert.match(hint('ML'), /użyj "ml"/);
+  assert.doesNotMatch(hint('kostka'), /użyj/);
+});
+
+// --- H: tłumaczenie EN (translations.en) — tylko ostrzeżenia ---
+
+// Przepis z grupami, opisami szuflad i trybem TM6 + kompletne tłumaczenie.
+function translated() {
+  const r = ninjaSync();
+  r.description = 'Opis';
+  r.tags = ['ninja', 'tm6'];
+  r.ingredients = [
+    { name: 'ziemniaki', amount: 500, unit: 'g', note: 'małe' },
+    { name: 'oliwa', amount: 1, unit: 'tbsp', group: 'Marynata' },
+    { name: 'sól', group: 'Marynata' },
+  ];
+  r.ninja.zone2.label = 'Brokuły';
+  r.steps = [{ text: 'Piecz.' }, { text: 'Wyrabiaj.', tm6: { duration_seconds: 60, mode: 'Wyrabianie' } }];
+  r.translations = { en: {
+    title: 'Test Ninja EN',
+    description: 'Description',
+    ingredients: [{ name: 'potatoes', note: 'small' }, { name: 'olive oil' }, { name: 'salt' }],
+    groups: { Marynata: 'Marinade' },
+    steps: [{ text: 'Bake.' }, { text: 'Knead.', tm6_mode: 'Dough' }],
+    labels: { zone1: 'Potatoes', zone2: 'Broccoli' },
+  } };
+  return r;
+}
+const tWarn = (data) => validateTranslations(data, { file: 'test.md' });
+function expectWarning(data, fieldPath, reasonRe) {
+  const warns = tWarn(data);
+  assert.ok(warns.some((w) => w.startsWith('test.md → ' + fieldPath + ':') && (!reasonRe || reasonRe.test(w))),
+    'oczekiwano ostrzeżenia dla "' + fieldPath + '", są: ' + JSON.stringify(warns, null, 2));
+  assert.deepEqual(validate(data), [], 'tłumaczenie nigdy nie daje błędu');
+}
+
+test('tłumaczenie: kompletne — bez błędów i bez ostrzeżeń', () => {
+  assert.deepEqual(validate(translated()), []);
+  assert.deepEqual(tWarn(translated()), []);
+});
+
+test('tłumaczenie: brak bloku = ostrzeżenie, nie błąd', () => {
+  const r = translated();
+  delete r.translations;
+  assert.deepEqual(validate(r), []);
+  assert.deepEqual(tWarn(r), ['test.md → translations.en: brak tłumaczenia EN — w trybie EN przepis wyświetla się po polsku']);
+  r.translations = {};
+  expectWarning(r, 'translations.en', /brak tłumaczenia EN/);
+});
+
+test('tłumaczenie: niekompletne — brakujące pola', () => {
+  let r = translated(); delete r.translations.en.title; expectWarning(r, 'translations.en.title', /brak tłumaczenia/);
+  r = translated(); delete r.translations.en.description; expectWarning(r, 'translations.en.description');
+  r = translated(); delete r.translations.en.ingredients; expectWarning(r, 'translations.en.ingredients');
+  r = translated(); delete r.translations.en.steps; expectWarning(r, 'translations.en.steps');
+  r = translated(); delete r.translations.en.ingredients[0].note; expectWarning(r, 'translations.en.ingredients[0].note');
+  r = translated(); delete r.translations.en.steps[1].tm6_mode; expectWarning(r, 'translations.en.steps[1].tm6_mode');
+  r = translated(); r.translations.en.steps[0].text = ''; expectWarning(r, 'translations.en.steps[0].text', /niepustym tekstem/);
+  r = translated(); delete r.translations.en.groups; expectWarning(r, 'translations.en.groups', /"Marynata"/);
+  r = translated(); r.translations.en.groups = { Sos: 'Sauce' };
+  expectWarning(r, 'translations.en.groups', /brak tłumaczenia grupy "Marynata"/);
+  expectWarning(r, 'translations.en.groups', /grupy "Sos" nie ma w ingredients/);
+  r = translated(); delete r.translations.en.labels; expectWarning(r, 'translations.en.labels', /zone1, zone2/);
+  r = translated(); delete r.translations.en.labels.zone2; expectWarning(r, 'translations.en.labels.zone2');
+});
+
+test('tłumaczenie: zła liczba pozycji (tyle samo i w tej samej kolejności)', () => {
+  let r = translated(); r.translations.en.steps.pop();
+  expectWarning(r, 'translations.en.steps', /tyle samo pozycji i w tej samej kolejności co steps \(2\), jest 1/);
+  r = translated(); r.translations.en.ingredients.push({ name: 'pepper' });
+  expectWarning(r, 'translations.en.ingredients', /\(3\), jest 4/);
+});
+
+test('tłumaczenie: zbędne pola, nieznane klucze i złe typy', () => {
+  let r = translated(); delete r.description; expectWarning(r, 'translations.en.description', /oryginał nie ma description/);
+  r = translated(); r.translations.en.ingredients[1].note = 'x'; expectWarning(r, 'translations.en.ingredients[1].note', /oryginał nie ma note/);
+  r = translated(); r.translations.en.steps[0].tm6_mode = 'x'; expectWarning(r, 'translations.en.steps[0].tm6_mode');
+  r = translated(); r.ninja.mode = 'single'; delete r.ninja.zone2; expectWarning(r, 'translations.en.labels.zone2', /oryginał nie ma/);
+  r = translated(); r.translations.en.subtitle = 'x'; expectWarning(r, 'translations.en.subtitle', /nieznane pole/);
+  r = translated(); r.translations.en.steps[0].tm6 = {}; expectWarning(r, 'translations.en.steps[0].tm6', /nieznane pole/);
+  r = translated(); r.translations.de = { title: 'x' }; expectWarning(r, 'translations.de', /nieznany język/);
+  r = translated(); r.translations = 'EN'; expectWarning(r, 'translations');
+  r = translated(); r.translations.en.steps = 'Bake.'; expectWarning(r, 'translations.en.steps', /musi być listą/);
+  r = translated(); r.translations.en.ingredients[0] = 'potatoes'; expectWarning(r, 'translations.en.ingredients[0]');
+  r = translated(); r.translations.en.title = 5; expectWarning(r, 'translations.en.title');
+});
+
+test('tłumaczenie: ścieżka po polsku na liście ostrzeżeń', () => {
+  assert.equal(describePath('translations.en.steps[2].text'), 'tłumaczenie → EN → krok 3 → treść');
+  assert.equal(describePath('translations.en.labels.zone1'), 'tłumaczenie → EN → opisy szuflad → strefa 1');
+});
+
+// --- I: tagi i recipes/tags.yml ---
+
+test('tags.yml: mapa tag PL → EN; złe wpisy pominięte z ostrzeżeniem', () => {
+  assert.deepEqual(parseTagMap('# komentarz\nobiad: dinner\nwołowina: beef\n'), { map: { obiad: 'dinner', 'wołowina': 'beef' }, warnings: [] });
+  assert.deepEqual(parseTagMap(''), { map: {}, warnings: [] });
+  const bad = parseTagMap('Obiad: dinner\nzupa: Soup\nryby:\nkurczak: chicken\n');
+  assert.deepEqual(bad.map, { kurczak: 'chicken' });
+  assert.equal(bad.warnings.length, 3);
+  assert.ok(bad.warnings.every((w) => w.startsWith('tags.yml → ')));
+  assert.match(parseTagMap('obiad: [dinner\n').warnings[0], /^tags\.yml → \(YAML\): niepoprawny YAML/);
+  assert.match(parseTagMap('- obiad\n').warnings[0], /musi być mapą/);
+});
+
+test('tagi: tłumaczenie z tags.yml, brakujące i tagi urządzeń bez zmian; ostrzeżenie tylko dla brakujących', () => {
+  const map = { obiad: 'dinner', kurczak: 'chicken', ninja: 'XXX' };
+  assert.deepEqual(translateTags(['ninja', 'tm6', 'kurczak', 'obiad', 'zupa'], map), ['ninja', 'tm6', 'chicken', 'dinner', 'zupa']);
+  assert.deepEqual(tagWarnings(['ninja', 'tm6', 'kurczak', 'zupa'], map, { file: 'a.md' }),
+    ['a.md → tags[3]: brak tłumaczenia tagu "zupa" w recipes/tags.yml']);
+});
+
+test('loadRecipes: ostrzeżenia osobno od błędów; przepis z ostrzeżeniem jest publikowany', () => {
+  const ok = readFileSync(join(FIXTURES, 'deser-twarogowy.md'), 'utf8').replace(/\r\n/g, '\n').replace(/^image: .*\n/m, '');
+  const noEn = ok.replace(/\ntranslations:[\s\S]*?\n---/, '\n---');
+  const shortEn = ok.replace(/\n      - text: "Divide the cream into portions."/, '');
+  const dir = tempRecipesDir({
+    'ok.md': ok, 'bez-en.md': noEn, 'krotkie-en.md': shortEn, 'zly.md': noEn.replace('servings: 2', 'servings: 0'),
+    'tags.yml': 'deser: dessert\nwysokobiałkowe: high-protein\n',
+  });
+  const { recipes, errors, problems, warnings, notices } = loadRecipes(dir);
+  assert.deepEqual(recipes.map((r) => [r.slug, r.translated]), [['bez-en', false], ['krotkie-en', false], ['ok', true]]);
+  assert.deepEqual(errors.map((e) => e.split(' → ')[0]), ['zly.md']);
+  assert.equal(problems.length, 1);
+  // bez-pieczenia nie ma w tags.yml → ostrzeżenie dla każdego przepisu; zły przepis nie dostaje ostrzeżeń.
+  assert.deepEqual(notices.map((n) => n.file + ' ' + n.path), [
+    'bez-en.md translations.en', 'bez-en.md tags[2]', 'krotkie-en.md translations.en.steps', 'krotkie-en.md tags[2]', 'ok.md tags[2]',
+  ]);
+  assert.deepEqual(notices[0], { file: 'bez-en.md', path: 'translations.en', where: 'tłumaczenie → EN',
+    reason: 'brak tłumaczenia EN — w trybie EN przepis wyświetla się po polsku' });
+  assert.equal(warnings.length, notices.length);
 });

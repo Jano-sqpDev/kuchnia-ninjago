@@ -4,7 +4,14 @@ import { dirname, join } from 'node:path';
 import { loadRecipes } from './validate.mjs';
 
 const recipesDir = process.env.KITCHEN_RECIPES_DIR || join(dirname(fileURLToPath(import.meta.url)), '..', 'recipes');
-const { recipes, errors } = loadRecipes(recipesDir);
+const { recipes, errors, warnings } = loadRecipes(recipesDir);
+
+// Ostrzeżenia (tłumaczenie EN, tagi bez tłumaczenia) nie zmieniają kodu wyjścia — przepis i tak się publikuje.
+if (warnings.length) {
+  console.warn('\nOstrzeżenia (' + warnings.length + ') — przepis się publikuje, ale w trybie EN częściowo po polsku:\n');
+  warnings.forEach((w) => console.warn('  ⚠ ' + w));
+  console.warn('');
+}
 
 if (errors.length) {
   console.error('\nBłędy w przepisach (' + errors.length + '):\n');
@@ -12,4 +19,4 @@ if (errors.length) {
   console.error('');
   process.exit(1);
 }
-console.log('Walidacja OK — przepisy: ' + recipes.length);
+console.log('Walidacja OK — przepisy: ' + recipes.length + (warnings.length ? ', ostrzeżenia: ' + warnings.length : ''));

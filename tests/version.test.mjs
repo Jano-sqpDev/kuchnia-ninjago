@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url';
 import { displayVersion, versionFromPackageJson, buildId, injectVersion } from '../tools/version.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+// Build na przykładach wzorcowych — nie na kolekcji z recipes/ (może być pusta albo się zmieniać).
+const FIXTURES = join(root, 'tests', 'fixtures', 'recipes');
 
 test('wersja wyświetlana: bez łatki .0, z łatką gdy jest', () => {
   assert.equal(displayVersion('0.1.0'), 'v0.1');
@@ -20,7 +22,7 @@ test('wersja wyświetlana: bez łatki .0, z łatką gdy jest', () => {
 test('build wstrzykuje wersję z package.json do strony', () => {
   const out = mkdtempSync(join(tmpdir(), 'kitchen-version-'));
   const w = spawnSync(process.execPath, [join(root, 'tools', 'build.mjs')], {
-    env: Object.assign({}, process.env, { KITCHEN_OUT_DIR: out }), encoding: 'utf8',
+    env: Object.assign({}, process.env, { KITCHEN_RECIPES_DIR: FIXTURES, KITCHEN_OUT_DIR: out }), encoding: 'utf8',
   });
   assert.equal(w.status, 0, w.stderr);
   const html = readFileSync(join(out, 'index.html'), 'utf8');
@@ -38,7 +40,7 @@ test('build wstrzykuje wersję z package.json do strony', () => {
 function buildAndGetId(env) {
   const out = mkdtempSync(join(tmpdir(), 'kitchen-build-'));
   const w = spawnSync(process.execPath, [join(root, 'tools', 'build.mjs')], {
-    env: Object.assign({}, process.env, { KITCHEN_OUT_DIR: out }, env), encoding: 'utf8',
+    env: Object.assign({}, process.env, { KITCHEN_RECIPES_DIR: FIXTURES, KITCHEN_OUT_DIR: out }, env), encoding: 'utf8',
   });
   assert.equal(w.status, 0, w.stderr);
   return JSON.parse(readFileSync(join(out, 'version.json'), 'utf8')).build;
@@ -47,7 +49,7 @@ function buildAndGetId(env) {
 test('identyfikator buildu: ten sam wynik → ten sam id, zmiana przepisu → nowy id', () => {
   assert.equal(buildAndGetId({}), buildAndGetId({}));
   const dir = mkdtempSync(join(tmpdir(), 'kitchen-id-'));
-  const deser = readFileSync(join(root, 'recipes', 'deser-twarogowy.md'), 'utf8').replace(/^image: .*\r?\n/m, '');
+  const deser = readFileSync(join(FIXTURES, 'deser-twarogowy.md'), 'utf8').replace(/^image: .*\r?\n/m, '');
   writeFileSync(join(dir, 'deser-twarogowy.md'), deser);
   const przed = buildAndGetId({ KITCHEN_RECIPES_DIR: dir });
   writeFileSync(join(dir, 'deser-twarogowy.md'), deser.replace('prep_minutes: 5', 'prep_minutes: 6'));

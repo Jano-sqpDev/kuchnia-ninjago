@@ -46,6 +46,10 @@ button { font-family: inherit; }
 .btn { -webkit-flex: 0 0 auto; flex: 0 0 auto; min-width: 52px; height: 52px; border-radius: 26px; border: 1px solid var(--well-edge); background: var(--well); color: var(--ink);
   font-size: 22px; padding: 0 16px; margin-left: 10px; white-space: nowrap; display: -webkit-inline-flex; display: inline-flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
 .btn.back { margin-left: 0; margin-right: 14px; font-size: 20px; font-weight: 600; }
+/* przełącznik języka „PL | EN" — wybrany język wyróżniony */
+.btn.lang { font-size: 18px; font-weight: 700; color: var(--muted); padding: 0 14px; }
+.btn.lang .sep { margin: 0 8px; color: var(--well-edge); }
+.btn.lang .on { color: var(--live); }
 
 .scroll { -webkit-flex: 1 1 auto; flex: 1 1 auto; position: relative; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
@@ -70,6 +74,11 @@ button { font-family: inherit; }
 .dev { display: inline-block; font-size: 14px; font-weight: 800; letter-spacing: .06em; padding: 4px 9px; border-radius: 6px; margin-right: 6px; }
 .dev.ninja { color: #111; background: #FF8A3D; }
 .dev.tm6 { color: #fff; background: var(--tm6); }
+/* tryb EN, przepis bez tłumaczenia — wyświetlany po polsku */
+.dev.pl { color: var(--ink2); background: transparent; border: 1px solid var(--muted); padding: 3px 8px; }
+.pl-only { padding: 6px 20px 0; color: var(--ink2); font-size: 16px; }
+.pl-only .dev { margin-right: 8px; }
+h2 .dev.pl { font-size: 12px; letter-spacing: .06em; margin-left: 8px; vertical-align: middle; }
 
 /* zdjęcia i kafelek zastępczy */
 .ph { position: relative; overflow: hidden; text-align: center; color: rgba(255,255,255,.9); background: var(--chip); }
@@ -232,11 +241,15 @@ h2 { font-size: 16px; text-transform: uppercase; letter-spacing: .1em; color: va
 .problems-badge { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; width: calc(100% - 40px); margin: 16px 20px 0;
   min-height: 56px; padding: 12px 18px; border-radius: 14px; border: 2px solid #D92D20; background: #D92D20; color: #FFFFFF;
   font-size: 21px; font-weight: 800; text-align: left; }
+/* pomarańczowa: przepisy bez pełnego tłumaczenia EN (tylko ostrzeżenie) */
+.problems-badge.warn { border-color: #FF8A3D; background: #FF8A3D; color: #111; }
 .problems-badge .more { margin-left: auto; padding-left: 16px; font-size: 18px; font-weight: 600; opacity: .9; white-space: nowrap; }
 #problems { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 10; background: var(--plate);
   display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; }
 #problems .pbar { -webkit-flex: 0 0 auto; flex: 0 0 auto; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center;
   padding: 16px 20px 12px; background: #D92D20; color: #FFFFFF; }
+#problems.warn .pbar { background: #FF8A3D; color: #111; }
+#problems.warn .pfile { border-left-color: #FF8A3D; }
 #problems .pbar h1 { font-size: 26px; margin: 0; -webkit-flex: 1 1 auto; flex: 1 1 auto; }
 #problems .close { -webkit-flex: 0 0 auto; flex: 0 0 auto; height: 56px; border-radius: 28px; border: 0; background: #FFFFFF; color: #111; font-size: 22px; font-weight: 800; padding: 0 22px; margin-left: 12px; }
 #problems .plist { -webkit-flex: 1 1 auto; flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 8px 20px 28px; }

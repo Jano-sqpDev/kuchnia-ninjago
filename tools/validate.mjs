@@ -2,6 +2,8 @@
 // Walidator niczego nie poprawia — tylko zgłasza błędy w formacie:
 //   plik.md → ścieżka.pola: przyczyna
 // Build pomija przepisy z błędami i publikuje resztę; npm run validate i testy kończą się błędem.
+// Tłumaczenie (translations.en) i tagi bez tłumaczenia (recipes/tags.yml) dają tylko OSTRZEŻENIA:
+// przepis zawsze jest publikowany, a w trybie EN bez pełnego tłumaczenia wyświetla się po polsku.
 import { readdirSync, readFileSync, existsSync, statSync, openSync, readSync, closeSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
 import { parseDocument } from 'yaml';
@@ -11,16 +13,33 @@ export const NINJA_MODES = ['sync', 'match', 'independent', 'single'];
 // Tagi, które trzeba zapisywać w formie kanonicznej (tm6 / ninja).
 const FORBIDDEN_TAGS = { thermomix: 'tm6', airfryer: 'ninja', 'air fryer': 'ninja', af: 'ninja' };
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+// Tagi urządzeń — bez tłumaczenia (w obu językach tak samo).
+export const DEVICE_TAGS = ['ninja', 'tm6'];
+// Jednostki: zawsze angielskie skróty, w obu językach interfejsu.
+export const UNITS = ['g', 'kg', 'ml', 'l', 'pcs', 'tbsp', 'tsp', 'pinch'];
+// Podpowiedź przy nieznanej jednostce (porównanie małymi literami).
+const UNIT_HINTS = {
+  szt: 'pcs', 'szt.': 'pcs', sztuka: 'pcs', sztuki: 'pcs', sztuk: 'pcs', 'ząbek': 'pcs', 'ząbki': 'pcs', 'ząbków': 'pcs',
+  piece: 'pcs', pieces: 'pcs', pc: 'pcs',
+  'łyżka': 'tbsp', 'łyżki': 'tbsp', 'łyżek': 'tbsp', 'łyż.': 'tbsp', tablespoon: 'tbsp', tablespoons: 'tbsp',
+  'łyżeczka': 'tsp', 'łyżeczki': 'tsp', 'łyżeczek': 'tsp', 'łyżeczkę': 'tsp', teaspoon: 'tsp', teaspoons: 'tsp',
+  szczypta: 'pinch', szczypty: 'pinch', szczypt: 'pinch',
+  gram: 'g', gramy: 'g', gramów: 'g', gr: 'g', kilogram: 'kg', litr: 'l', litry: 'l', litrów: 'l', mililitr: 'ml',
+};
 
 const KEYS = {
   root: ['schema_version', 'title', 'description', 'servings', 'prep_minutes', 'cook_minutes',
-    'tags', 'ingredients', 'steps', 'ninja', 'image', 'source'],
+    'tags', 'ingredients', 'steps', 'ninja', 'image', 'source', 'translations'],
   ingredient: ['name', 'amount', 'unit', 'note', 'group'],
   step: ['text', 'tm6', 'internal_temp_c', 'timer_seconds'],
   tm6: ['duration_seconds', 'temperature', 'speed', 'reverse', 'mode'],
   ninja: ['mode', 'zone1', 'zone2'],
   zone: ['label', 'function', 'temp_c', 'minutes', 'turn'],
   turn: ['action', 'after_min', 'required'],
+  translationEn: ['title', 'description', 'ingredients', 'groups', 'steps', 'labels'],
+  translationIngredient: ['name', 'note'],
+  translationStep: ['text', 'tm6_mode'],
+  translationLabels: ['zone1', 'zone2'],
 };
 // ninja.zoneN.turn.action — kody czynności (napis na ekranie dobiera aplikacja: flip → „OBRÓĆ", shake → „POTRZĄŚNIJ").
 export const TURN_ACTIONS = ['flip', 'shake'];
@@ -135,6 +154,11 @@ export function validateRecipe(data, { file, recipesDir } = {}) {
         addError(s + '.unit', 'jednostka bez ilości — dodaj amount albo przenieś opis do note');
       }
       checkOptionalText(ing, 'unit', s + '.unit');
+      if (isText(ing.unit) && !UNITS.includes(ing.unit)) {
+        const hint = UNIT_HINTS[ing.unit.toLowerCase()] || (UNITS.includes(ing.unit.toLowerCase()) ? ing.unit.toLowerCase() : null);
+        addError(s + '.unit', 'nieznana jednostka ' + describeValue(ing.unit) + ' — dozwolone: ' + UNITS.join(', ') +
+          (hint ? ' (zamiast "' + ing.unit + '" użyj "' + hint + '")' : ''));
+      }
       checkOptionalText(ing, 'note', s + '.note');
       checkOptionalText(ing, 'group', s + '.group');
     });
@@ -267,6 +291,134 @@ export function validateRecipe(data, { file, recipesDir } = {}) {
   return errs;
 }
 
+// Tłumaczenie EN (translations.en) — wywoływane tylko dla poprawnego przepisu.
+// Zwraca listę OSTRZEŻEŃ w formacie błędów (pusta = tłumaczenie kompletne i zgodne z oryginałem).
+// Ostrzeżenie nigdy nie ukrywa przepisu: build publikuje go bez tłumaczenia (w trybie EN — po polsku).
+export function validateTranslations(data, { file } = {}) {
+  const warns = [];
+  const warn = (fieldPath, reason) => warns.push(file + ' → ' + fieldPath + ': ' + reason);
+  const unknownKeys = (obj, allowed, fieldPath) => Object.keys(obj).forEach((k) => {
+    if (!allowed.includes(k)) warn(fieldPath + '.' + k, 'nieznane pole');
+  });
+  // Tekst wymagany, gdy oryginał go ma; zbędny, gdy oryginał go nie ma.
+  const matchText = (obj, k, fieldPath, needed, what) => {
+    if (k in obj) {
+      if (!needed) warn(fieldPath, 'oryginał nie ma ' + what + ' — usuń to pole');
+      else if (!isText(obj[k])) warn(fieldPath, 'musi być niepustym tekstem, jest ' + describeValue(obj[k]));
+    } else if (needed) warn(fieldPath, 'brak tłumaczenia (' + what + ')');
+  };
+
+  if (!('translations' in data)) {
+    warn('translations.en', 'brak tłumaczenia EN — w trybie EN przepis wyświetla się po polsku');
+    return warns;
+  }
+  const tr = data.translations;
+  if (!isObj(tr)) { warn('translations', 'musi być obiektem z blokiem en'); return warns; }
+  Object.keys(tr).forEach((k) => { if (k !== 'en') warn('translations.' + k, 'nieznany język — dozwolony tylko en'); });
+  if (!('en' in tr)) { warn('translations.en', 'brak tłumaczenia EN — w trybie EN przepis wyświetla się po polsku'); return warns; }
+  const en = tr.en;
+  const p = 'translations.en';
+  if (!isObj(en)) { warn(p, 'musi być obiektem z polami title, ingredients, steps…'); return warns; }
+  unknownKeys(en, KEYS.translationEn, p);
+
+  matchText(en, 'title', p + '.title', true, 'title');
+  matchText(en, 'description', p + '.description', 'description' in data, 'description');
+
+  // Listy: tyle samo pozycji i w tej samej kolejności co w oryginale.
+  function matchList(k, orig, itemKeys, checkItem) {
+    const fieldPath = p + '.' + k;
+    if (!(k in en)) { warn(fieldPath, 'brak tłumaczenia (' + k + ')'); return; }
+    const list = en[k];
+    if (!Array.isArray(list)) { warn(fieldPath, 'musi być listą — tyle samo pozycji co ' + k + ' (' + orig.length + ')'); return; }
+    if (list.length !== orig.length) warn(fieldPath, 'musi mieć tyle samo pozycji i w tej samej kolejności co ' + k + ' (' + orig.length + '), jest ' + list.length);
+    list.forEach((item, i) => {
+      const s = fieldPath + '[' + i + ']';
+      if (!isObj(item)) { warn(s, 'musi być obiektem, jest ' + describeValue(item)); return; }
+      unknownKeys(item, itemKeys, s);
+      if (i < orig.length) checkItem(item, orig[i], s);
+    });
+  }
+  matchList('ingredients', data.ingredients, KEYS.translationIngredient, (item, orig, s) => {
+    matchText(item, 'name', s + '.name', true, 'name');
+    matchText(item, 'note', s + '.note', 'note' in orig, 'note');
+  });
+  matchList('steps', data.steps, KEYS.translationStep, (item, orig, s) => {
+    matchText(item, 'text', s + '.text', true, 'text');
+    matchText(item, 'tm6_mode', s + '.tm6_mode', !!(orig.tm6 && 'mode' in orig.tm6), 'tm6.mode');
+  });
+
+  // Grupy składników: mapa nazwa PL → nazwa EN, dla każdej użytej grupy.
+  const groups = [];
+  data.ingredients.forEach((ing) => { if (ing.group && !groups.includes(ing.group)) groups.push(ing.group); });
+  if ('groups' in en) {
+    if (!isObj(en.groups)) warn(p + '.groups', 'musi być mapą: nazwa grupy PL: nazwa EN');
+    else {
+      groups.forEach((g) => {
+        if (!(g in en.groups)) warn(p + '.groups', 'brak tłumaczenia grupy "' + g + '"');
+        else if (!isText(en.groups[g])) warn(p + '.groups', 'tłumaczenie grupy "' + g + '" musi być niepustym tekstem');
+      });
+      Object.keys(en.groups).forEach((g) => {
+        if (!groups.includes(g)) warn(p + '.groups', 'grupy "' + g + '" nie ma w ingredients — usuń ją');
+      });
+    }
+  } else if (groups.length) warn(p + '.groups', 'brak tłumaczenia grup: ' + groups.map((g) => '"' + g + '"').join(', '));
+
+  // Opisy szuflad Ninja (label): zone1 / zone2, gdy oryginał je ma.
+  const n = data.ninja;
+  const labelled = ['zone1', 'zone2'].filter((z) => n && !(z === 'zone2' && n.mode === 'single') && n[z] && 'label' in n[z]);
+  if ('labels' in en) {
+    if (!isObj(en.labels)) warn(p + '.labels', 'musi być obiektem z polami zone1 / zone2');
+    else {
+      unknownKeys(en.labels, KEYS.translationLabels, p + '.labels');
+      KEYS.translationLabels.forEach((z) => matchText(en.labels, z, p + '.labels.' + z, labelled.includes(z), 'ninja.' + z + '.label'));
+    }
+  } else if (labelled.length) warn(p + '.labels', 'brak tłumaczenia opisów szuflad: ' + labelled.join(', '));
+
+  return warns;
+}
+
+// Tagi bez tłumaczenia w recipes/tags.yml (tagi urządzeń pomijamy). Ostrzeżenia — w trybie EN tag zostaje po polsku.
+export function tagWarnings(tags, tagMap, { file } = {}) {
+  const warns = [];
+  tags.forEach((tag, i) => {
+    if (!DEVICE_TAGS.includes(tag) && !Object.prototype.hasOwnProperty.call(tagMap, tag)) {
+      warns.push(file + ' → tags[' + i + ']: brak tłumaczenia tagu "' + tag + '" w recipes/tags.yml');
+    }
+  });
+  return warns;
+}
+
+// recipes/tags.yml: mapa tag_PL: tag_EN. Zwraca { map, warnings } — zły plik nie psuje buildu (pusta mapa + ostrzeżenie).
+export function parseTagMap(text) {
+  const map = {};
+  const warnings = [];
+  const w = (fieldPath, reason) => warnings.push('tags.yml → ' + fieldPath + ': ' + reason);
+  const doc = parseDocument(text.replace(/^﻿/, ''), { uniqueKeys: true, prettyErrors: false });
+  if (doc.errors.length) {
+    const e = doc.errors[0];
+    const pl = YAML_ERRORS_PL[e.code];
+    const original = e.message.split('\n')[0];
+    w('(YAML)', 'niepoprawny YAML: ' + (pl ? pl + ' [' + original + ']' : original) + ' — tagi w trybie EN bez tłumaczenia');
+    return { map, warnings };
+  }
+  const data = doc.toJS();
+  if (data === null || data === undefined) return { map, warnings };
+  if (!isObj(data)) { w('(plik)', 'musi być mapą: tag_PL: tag_EN'); return { map, warnings }; }
+  Object.keys(data).forEach((tag) => {
+    const v = data[tag];
+    if (tag !== tag.trim().toLowerCase()) w(tag, 'tag zapisuj małymi literami');
+    else if (!isText(v)) w(tag, 'tłumaczenie musi być niepustym tekstem, jest ' + describeValue(v));
+    else if (v !== v.trim().toLowerCase()) w(tag, 'tłumaczenie zapisuj małymi literami: "' + v + '"');
+    else map[tag] = v;
+  });
+  return { map, warnings };
+}
+
+// Tagi w trybie EN: tłumaczenie z tags.yml, brakujące i tagi urządzeń bez zmian.
+export function translateTags(tags, tagMap) {
+  return tags.map((tag) => (!DEVICE_TAGS.includes(tag) && Object.prototype.hasOwnProperty.call(tagMap, tag) ? tagMap[tag] : tag));
+}
+
 const IMAGE_PATH_RE = /^img\/(?:[a-z0-9._-]+\/)*[a-z0-9._-]+\.(jpe?g|png|heic|heif)$/i;
 const IMAGE_EXT_ORDER = ['jpg', 'jpeg', 'png', 'heic', 'heif'];
 const HEIC_BRANDS = ['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis', 'mif1', 'msf1'];
@@ -331,6 +483,7 @@ const FIELD_NAMES = {
   timer_seconds: 'minutnik', duration_seconds: 'czas', temperature: 'temperatura', speed: 'obroty', reverse: 'wsteczne',
   mode: 'tryb', zone1: 'strefa 1', zone2: 'strefa 2', label: 'opis szuflady', function: 'funkcja', temp_c: 'temperatura',
   minutes: 'minuty', turn: 'obracanie', action: 'czynność', after_min: 'po ilu minutach', required: 'alarm',
+  translations: 'tłumaczenie', en: 'EN', groups: 'grupy', labels: 'opisy szuflad', tm6_mode: 'tryb TM6',
 };
 const LIST_ITEMS = { ingredients: 'składnik', steps: 'krok', tags: 'tag' };
 const SPECIAL_PATHS = {
@@ -347,25 +500,49 @@ export function describePath(path) {
   }).join(' → ');
 }
 
-// Wczytuje wszystkie przepisy z katalogu.
-// Zwraca { recipes, errors, problems }:
-//   recipes  — poprawne przepisy: { slug, data, body, image } (image: ścieżka względem recipes/ albo null),
+// Plik z tłumaczeniami tagów w katalogu przepisów (utrzymuje ChatGPT).
+export const TAGS_FILE = 'tags.yml';
+
+// Wczytuje wszystkie przepisy z katalogu (brak katalogu = pusta kolekcja).
+// Zwraca { recipes, errors, problems, warnings, notices, tagMap }:
+//   recipes  — poprawne przepisy: { slug, data, body, image, translated } (image: ścieżka względem recipes/ albo null;
+//              translated: tłumaczenie EN kompletne — tylko wtedy trafia na stronę),
 //   errors   — wszystkie komunikaty „plik → ścieżka: przyczyna" (npm run validate, testy),
-//   problems — te same błędy jako { file, path, where, reason, skipped } (dla strony: errors.json).
+//   problems — te same błędy jako { file, path, where, reason, skipped } (dla strony: errors.json),
+//   warnings — ostrzeżenia (tłumaczenie EN, tagi bez tłumaczenia, tags.yml) w tym samym formacie co errors,
+//   notices  — ostrzeżenia jako { file, path, where, reason } (dla strony: warnings.json),
+//   tagMap   — tłumaczenia tagów z tags.yml.
 // skipped = true: przepisu nie ma na stronie; false: jest, ale np. bez zdjęcia.
 export function loadRecipes(recipesDir) {
   const recipes = [];
   const errors = [];
   const problems = [];
+  const warnings = [];
+  const notices = [];
   const slugs = new Map();
   const report = (lines, skipped) => lines.forEach((line) => {
     errors.push(line);
     const e = splitError(line);
     problems.push({ file: e.file, path: e.path, where: describePath(e.path), reason: e.reason, skipped });
   });
+  const notice = (lines) => lines.forEach((line) => {
+    warnings.push(line);
+    const e = splitError(line);
+    notices.push({ file: e.file, path: e.path, where: describePath(e.path), reason: e.reason });
+  });
+
+  if (!existsSync(recipesDir)) return { recipes, errors, problems, warnings, notices, tagMap: {} };
+
+  let tagMap = {};
+  const tagsPath = join(recipesDir, TAGS_FILE);
+  if (existsSync(tagsPath)) {
+    const t = parseTagMap(readFileSync(tagsPath, 'utf8'));
+    tagMap = t.map;
+    notice(t.warnings);
+  }
 
   const files = readdirSync(recipesDir, { withFileTypes: true })
-    .filter((d) => d.isFile() && d.name !== '.gitkeep')
+    .filter((d) => d.isFile() && d.name !== '.gitkeep' && d.name !== TAGS_FILE)
     .map((d) => d.name)
     .sort();
 
@@ -398,8 +575,11 @@ export function loadRecipes(recipesDir) {
       if (problem) report([file + ' → image: (zdjęcie po nazwie) ' + problem], false);
       else image = auto;
     }
-    recipes.push({ slug, data: result.data, body: result.body, image });
+    const translationWarnings = validateTranslations(result.data, { file });
+    notice(translationWarnings);
+    notice(tagWarnings(result.data.tags, tagMap, { file }));
+    recipes.push({ slug, data: result.data, body: result.body, image, translated: translationWarnings.length === 0 });
   });
 
-  return { recipes, errors, problems };
+  return { recipes, errors, problems, warnings, notices, tagMap };
 }

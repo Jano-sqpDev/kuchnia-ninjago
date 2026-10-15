@@ -58,22 +58,25 @@ J:\APP_DEV\kuchnia-ninjago\      ← kontener, poza repo: mockupy, robocze logi 
     ├── AGENTS.md              ← instrukcja dla zewnętrznych agentów (Codex/ChatGPT): tylko przepisy
     ├── README.md
     ├── docs\                  ← mockupy HTML, notatki projektowe, FORMAT-PRZEPISU.md (ściąga formatu)
-    ├── recipes\               ← <slug>.md, jeden plik na przepis; zdjęcia w recipes\img\
+    ├── recipes\               ← <slug>.md, jeden plik na przepis; zdjęcia w recipes\img\; tags.yml (tłumaczenia tagów)
     ├── src\                   ← szablony, client JS, CSS
     ├── public\                ← ikony ekranu początkowego, statyczne pliki
     ├── tools\                 ← skrypty buildu i walidacji (*.mjs)
     ├── tests\                 ← testy node:test (*.test.mjs), bez frameworka; fixtures\ — pliki testowe (HEIC)
+    │   └── fixtures\recipes\  ← przykłady wzorcowe (Ninja SYNC z turn, TM6 z Varomą, deser, bez tłumaczenia) + tags.yml
     ├── package.json
     └── .gitignore             ← node_modules, katalog wyjściowy buildu, .env*
 ```
 
 - **Konwencja językowa (od v0.2.3):**
   - **po angielsku:** nazwy plików i katalogów, polecenia npm, identyfikatory w kodzie (funkcje, zmienne, stałe, klasy i id w CSS/HTML, wartości `data-act`, klucze localStorage, zmienne środowiskowe, znaczniki w szablonach),
-  - **po polsku:** interfejs aplikacji (teksty na ekranie), komunikaty walidatora i skryptów, komentarze w kodzie i w `.gitignore`, nazwy testów, CLAUDE.md, README, docs i raporty,
+  - **po polsku i po angielsku (od v0.4):** interfejs aplikacji (teksty na ekranie) — wszystkie napisy w słowniku `I18N` (`pl` / `en`) w `src/app.js`, nigdy wpisane w kod widoku,
+  - **po polsku:** komunikaty walidatora i skryptów (także na liście błędów/ostrzeżeń w trybie EN — są dla Janusza), komentarze w kodzie i w `.gitignore`, nazwy testów, CLAUDE.md, README, docs i raporty,
   - pola YAML przepisów (schemat v1) są po angielsku i się nie zmieniają; tagi i treść przepisów — jak w „Format przepisu”,
   - wyjątki celowo po polsku: adres kroku `#krok-N` (część zasad widoku), stare klucze localStorage (`kuchnia-*`), które aplikacja czyta tylko raz, żeby je przenieść, oraz `docs/FORMAT-PRZEPISU.md` (nazwa nadana przez Janusza — ściąga wklejana do ChatGPT).
 - Pliki w `tools\`: `build.mjs`, `validate.mjs` (walidator), `validate-cli.mjs` (`npm run validate`), `search.mjs`, `output.mjs` (kształt JSON-ów), `images.mjs`, `version.mjs`, `icons.mjs` (`npm run icons`), `deploy.mjs` (`npm run deploy`).
 - Testy jednostkowe w `tests\` dla walidatora i normalizacji wyszukiwania (np. „losos" → „łosoś", aliasy tagów).
+- **Testy i build nie zakładają niczego o `recipes/`** (to kolekcja Janusza — ChatGPT dodaje i usuwa przepisy). Przykłady wzorcowe są w `tests/fixtures/recipes/` i testy buildu działają na nich (`KITCHEN_RECIPES_DIR`). Jedyny test na `recipes/`: zero błędów walidacji (twarda bramka dla `npm run deploy`); pusta kolekcja przechodzi.
 
 ---
 
@@ -101,6 +104,7 @@ Safari 12 nigdy nie parsuje YAML — dostaje tylko JSON-y wygenerowane przy buil
 | `ninja` | panel Ninja | wymagane ⇔ tag `ninja` |
 | `image` | `img/<plik>.jpg/.jpeg/.png/.heic` — plik w `recipes/img/`, prawdziwy JPEG/PNG/HEIC. **Zwykle niepotrzebne:** bez tego pola build sam bierze `recipes/img/<slug>.jpg/.jpeg/.png/.heic` (wielkość liter rozszerzenia dowolna; kolejność: jpg, jpeg, png, heic) | opcjonalne |
 | `source` | tekst, np. `"ChatGPT"` | opcjonalne |
+| `translations` | tłumaczenie EN — sekcja „Tłumaczenie EN” | opcjonalne (brak = ostrzeżenie); wymagane w każdym nowym przepisie od ChatGPT |
 
 Pole opcjonalne albo jest wypełnione, albo go nie ma — pusty tekst / `null` to błąd.
 
@@ -110,7 +114,7 @@ Pole opcjonalne albo jest wypełnione, albo go nie ma — pusty tekst / `null` t
 |---|---|---|
 | `name` | niepusty tekst | wymagane |
 | `amount` | liczba > 0 (YAML: `1.5`, nie `"1,5"`) | opcjonalne |
-| `unit` | niepusty tekst: `g`, `ml`, `szt`, `łyżeczka`… | wymagane, gdy jest `amount`; bez `amount` zabronione |
+| `unit` | **dokładnie** jedna z: `g`, `kg`, `ml`, `l`, `pcs`, `tbsp`, `tsp`, `pinch` (od v0.4; angielskie skróty w obu językach; inne → błąd z podpowiedzią, np. `szt` → `pcs`) | wymagane, gdy jest `amount`; bez `amount` zabronione |
 | `note` | tekst, np. „drobno posiekana” | opcjonalne |
 | `group` | tekst, np. „Sos” — grupowanie na liście | opcjonalne |
 
@@ -147,7 +151,7 @@ Dwie szuflady, **bez sondy temperatury**. Jeden panel na cały przepis, nie przy
   - `temp_c` — liczba 40–240,
   - `minutes` — liczba całkowita > 0,
   - `turn` — opcjonalne (od v0.3): przypomnienie o obróceniu / potrząśnięciu w tej strefie. **Brak pola = obracanie niepotrzebne** (wszystkie starsze przepisy działają bez zmian):
-    - `action` — kod czynności, **dokładnie** `flip` (obróć) albo `shake` (potrząśnij) (wymagane w obiekcie `turn`; od v0.3.1 — w v0.3 były polskie słowa, żaden przepis ich nie użył). Napisy na ekranie dobiera aplikacja: flip → „OBRÓĆ”, shake → „POTRZĄŚNIJ” (słownik `ACTIONS` w `src/app.js`; w Etapie 6 dojdą wersje EN),
+    - `action` — kod czynności, **dokładnie** `flip` (obróć) albo `shake` (potrząśnij) (wymagane w obiekcie `turn`; od v0.3.1 — w v0.3 były polskie słowa, żaden przepis ich nie użył). Napisy na ekranie dobiera aplikacja: flip → „OBRÓĆ” / „FLIP”, shake → „POTRZĄŚNIJ” / „SHAKE” (`ACTIONS` → słownik `I18N` w `src/app.js`),
     - `after_min` — liczba całkowita > 0 i **mniejsza niż `minutes` tej strefy** (wymagane) — liczone od startu tej strefy,
     - `required` — `true` (domyślnie, gdy brak pola) = alarm w timerze; `false` = tylko informacja „można obrócić po X min”, bez alarmu.
   - W `match` pole `turn` może się różnić między strefami (porównywane są tylko `function`, `temp_c`, `minutes`).
@@ -192,6 +196,31 @@ Ustawienia **per krok**, bo zmieniają się w trakcie gotowania.
 - Tagi urządzeń (kanoniczne): `ninja`, `tm6`. Nie zapisuj `thermomix`, `airfryer`, `air fryer`, `af` — to aliasy działające tylko w wyszukiwarce.
 - `ninja` ⇔ jest panel `ninja`. `tm6` ⇔ co najmniej jeden krok ma `tm6`.
 - Przepis może mieć oba tagi urządzeń albo żaden (np. desery).
+- **Tłumaczenia tagów: `recipes/tags.yml`** — mapa `tag_PL: tag_EN` (małe litery), utrzymuje ją ChatGPT (nowy tag w przepisie → wpis w tags.yml). W trybie EN tag tłumaczony, brakujący bez zmian; tagi urządzeń bez tłumaczenia. Tag bez wpisu = ostrzeżenie. Zły tags.yml (YAML, wielkie litery) nie psuje buildu — złe wpisy są pomijane z ostrzeżeniem. Build: `tags_en` w `search.json` i `data/<slug>.json`.
+
+### Tłumaczenie EN — `translations` (od v0.4)
+
+Opcjonalny blok w tym samym pliku, zgodny wstecz (`schema_version` zostaje 1). Tłumaczy tylko teksty — ilości, jednostki, tagi i ustawienia urządzeń zawsze z oryginału.
+
+```yaml
+translations:
+  en:
+    title: "…"                  # wymagane w bloku
+    description: "…"            # wymagane ⇔ oryginał ma description
+    ingredients:                # tyle samo i w tej samej kolejności co ingredients
+      - name: "…"
+        note: "…"               # wymagane ⇔ oryginał ma note
+    groups:                     # nazwa_grupy_PL: nazwa_EN — każda użyta grupa, bez dodatkowych
+      Marynata: "Marinade"
+    steps:                      # tyle samo i w tej samej kolejności co steps
+      - text: "…"
+        tm6_mode: "…"           # wymagane ⇔ krok ma tm6.mode
+    labels: { zone1: "…", zone2: "…" }   # ⇔ strefy Ninja mają label
+```
+
+- **Wszystko w `translations` daje tylko OSTRZEŻENIA, nigdy błędy** (także nieznane klucze, złe typy, inna liczba pozycji, nieznany język): przepis po polsku jest poprawny, więc zawsze się publikuje. `validateTranslations()` w `tools/validate.mjs`.
+- Build publikuje `translations` w `data/<slug>.json` (i `title_en` w `search.json`) **tylko przy kompletnym tłumaczeniu bez ostrzeżeń**. Niekompletne = brak tłumaczenia: w trybie EN przepis po polsku ze znaczkiem „PL” (bez mieszania języków).
+- Treść Markdown pod YAML (`notes`) nie ma tłumaczenia — w trybie EN ze znaczkiem PL.
 
 ### Przykład
 
@@ -247,7 +276,7 @@ steps:
 Notatki: z czosnkiem jeszcze lepsze.
 ```
 
-Pełne przykłady: `recipes/ziemniaczki-brokuly-sync.md` (Ninja SYNC), `recipes/warzywa-varoma.md` (TM6 z Varomą), `recipes/deser-twarogowy.md` (bez urządzeń).
+Pełne przykłady (wzorcowe, w testach): `tests/fixtures/recipes/udka-z-ziemniakami.md` (Ninja SYNC z `turn`, grupy, tłumaczenie z `labels`), `warzywa-varoma.md` (TM6 z Varomą i `tm6_mode`), `deser-twarogowy.md` (bez urządzeń, `pinch`), `ziemniaczki-brokuly-sync.md` (celowo bez tłumaczenia). Pełny przykład z tłumaczeniem dla ChatGPT: `docs/FORMAT-PRZEPISU.md`.
 
 ### Walidacja przy buildzie
 
@@ -257,24 +286,27 @@ Dwa poziomy (od v0.2.4):
 - **`npm run validate` i `npm test` — twardo:** każdy błąd w `recipes/` = kod wyjścia 1. `npm run deploy` wymaga zielonych testów, więc z mojej strony nic błędnego nie wychodzi.
 - **`npm run build` (Cloudflare Pages) — odpornie:** przepisy dodane z pominięciem testów (GitHub w przeglądarce, commity ChatGPT/Codexa na `main`) mogą mieć błędy. Build **pomija tylko błędny plik**, publikuje resztę i zapisuje listę błędów do `_site/errors.json`. Zdjęcie, którego nie da się użyć (zły format, HEIC nie do odczytania), nie ukrywa przepisu — przepis wychodzi bez zdjęcia, a błąd też trafia na listę. Aplikacja pokazuje na liście czerwoną plakietkę „N przepis(ów) z błędem”, po dotknięciu — listę: plik, pole po ludzku („krok 3 → TM6 → obroty”), przyczyna, i czy przepis jest ukryty, czy tylko bez zdjęcia. Kodem 1 kończą build tylko błędy aplikacji (brak znaczników w `src/*.html`, `src/app.js` niezgodny z Safari 12).
 
+Ostrzeżenia (od v0.4) — trzeci poziom: braki w tłumaczeniu EN (`translations`), tagi bez wpisu w `recipes/tags.yml`, problemy z samym tags.yml. Nie zmieniają kodu wyjścia `npm run validate` / `npm test` (wypisywane z `⚠`), przepis zawsze się publikuje, lista trafia do `_site/warnings.json`. Aplikacja pokazuje pomarańczową plakietkę „N przepis(ów) bez tłumaczenia EN” (osobno od czerwonej), po dotknięciu — listę z przyczyną. `loadRecipes()` zwraca je jako `warnings` / `notices`, a `translated` przy przepisie mówi, czy tłumaczenie jest kompletne.
+
 Komunikat: `plik.md → ścieżka.pola: przyczyna`, np. `warzywa-varoma.md → steps[2].tm6.speed: niepoprawna wartość 11 …` (indeksy list od 0, czyli `steps[2]` = krok 3). Błędy składni YAML mają numer linii w pliku i polskie wyjaśnienie najczęstszych przyczyn (oryginał biblioteki w nawiasie kwadratowym).
 
 ### Wynik buildu
 
-- `_site/search.json` — lekki indeks (lista + wyszukiwanie): `id` (slug), `title`, `tags`, `ingredients` (nazwy), `ninja_functions`, `servings`, `prep_minutes`, `cook_minutes`, `thumb` (miniatura, tylko gdy jest zdjęcie), `text` (znormalizowany tekst do wyszukiwania, z aliasami tagów).
-- `_site/data/<slug>.json` — pełne dane przepisu (`id` + pola z YAML + `notes`), pobierane dopiero po wybraniu przepisu. `image` to tu adres dużej wersji zdjęcia, `thumb` — miniatury.
+- `_site/search.json` — lekki indeks (lista + wyszukiwanie): `id` (slug), `title`, `title_en` (tylko z kompletnego tłumaczenia), `tags`, `tags_en` (z tags.yml), `ingredients` (nazwy PL), `ninja_functions`, `servings`, `prep_minutes`, `cook_minutes`, `thumb` (miniatura, tylko gdy jest zdjęcie), `text` (znormalizowany tekst do wyszukiwania **w obu językach**: tytuł, tagi z aliasami i tłumaczeniami, składniki PL i EN).
+- `_site/data/<slug>.json` — pełne dane przepisu (`id` + pola z YAML + `tags_en` + `notes`), pobierane dopiero po wybraniu przepisu. `image` to tu adres dużej wersji zdjęcia, `thumb` — miniatury. `translations` tylko przy kompletnym tłumaczeniu.
+- `_site/warnings.json` — ostrzeżenia: `[{ file, path, where, reason }]` (pusta lista `[]`, gdy brak). Pobierany z `?b=<id buildu>`.
 - `_site/img/<nazwa>-300-<skrót>.jpg` i `-1200-` — miniatura i duża wersja zdjęcia (JPEG, dłuższy bok 300 / 1200 px, małych nie powiększa; `tools/images.mjs`). Skrót treści w nazwie: po podmianie zdjęcia Safari nie pokaże starego. Źródła z `recipes/img/` nie trafiają na stronę. HEIC (iPhone) dekoduje `heic-decode` (libheif w WASM) — `sharp` z npm nie ma dekodera HEVC.
 - `_site/errors.json` — przepisy z błędem: `[{ file, path, where, reason, skipped }]` (`where` — ścieżka pola po polsku, `skipped: true` — przepisu nie ma na stronie, `false` — jest, ale bez zdjęcia). Pusta lista `[]`, gdy wszystko w porządku. Pobierany z `?b=<id buildu>`.
 - `_site/p/<slug>/index.html` i `_site/404.html` — ta sama powłoka aplikacji co `index.html`; widok wybiera `app.js` po adresie.
 - `_site/app.js` — `src/app.js` po `esbuild --target=safari12` (błąd → build przerwany); `_site/app.css` bez zmian.
-- `_site/version.json` — `{ "build": "<id>", "version": "v…" }`. `<id>` to 8 znaków skrótu wszystkiego, co pobiera iPad (szablony stron, app.js, app.css, search.json, data/*.json); ten sam wynik → ten sam id.
+- `_site/version.json` — `{ "build": "<id>", "version": "v…" }`. `<id>` to 8 znaków skrótu wszystkiego, co pobiera iPad (szablony stron, app.js, app.css, search.json, errors.json, warnings.json, data/*.json); ten sam wynik → ten sam id.
 - `_site/_headers` (z `public/`) — `version.json` bez pamięci podręcznej, strony aplikacji zawsze sprawdzane na serwerze. Cloudflare Pages czyta go z katalogu publikacji.
 
 ### Świeże dane na iPadzie (identyfikator buildu)
 
 iOS 12 w trybie z ekranu początkowego potrafi trzymać stare kopie stron i JSON-ów nawet po wyczyszczeniu danych Safari. Dlatego:
 - build wstawia id do HTML: `<html data-build="{{BUILD}}">`, `app.js?{{BUILD}}`, `app.css?{{BUILD}}`; krótki id w napisie wersji: `{{BUILD_SHORT}}`; strona bez `{{VERSION}}` lub `{{BUILD}}` przerywa build,
-- wszystkie pobrania danych mają id w adresie: `/search.json?b=<id>`, `/data/<slug>.json?b=<id>` (zdjęcia mają skrót treści w nazwie),
+- wszystkie pobrania danych mają id w adresie: `/search.json?b=<id>`, `/data/<slug>.json?b=<id>`, `/errors.json?b=<id>`, `/warnings.json?b=<id>` (zdjęcia mają skrót treści w nazwie),
 - przy starcie, `pageshow` i `visibilitychange` aplikacja pobiera `/version.json?t=<czas>`; inny id niż w stronie → przeładowanie pod adresem `…?b=<nowy id>#krok-N` (nowy adres = brak starej kopii); przepis, krok i porcje wracają z localStorage, a `?b=` znika z adresu,
 - bez pętli: do danego id przeładowuje się najwyżej raz (`kitchen-reload` w localStorage).
 
@@ -284,7 +316,13 @@ Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`, `np
 
 ## Wygląd i działanie (widok kuchenny)
 
-- Interfejs po polsku. Jednostki metryczne, °C.
+- **Interfejs dwujęzyczny PL / EN (od v0.4)** — Janusz używa PL, Helena (uczy się gotować) EN, na jednym iPadzie:
+  - przełącznik „PL | EN” w górnym pasku (każdy ekran, `<button>` ≥ 44 pt, wybrany język wyróżniony), domyślnie PL, wybór w `kitchen-lang`; `<html lang>` i tytuł strony zgodne z językiem; zmiana języka przerysowuje bieżący ekran bez zmiany przewinięcia,
+  - wszystkie napisy w słowniku `I18N` (`tr` / `trn`); test pilnuje tych samych kluczy w obu językach i że każdy użyty klucz istnieje. Odmiana „porcja/porcje/porcji” tylko w PL; EN „1 serving / 2 servings”. Liczby dziesiętne: PL przecinek, EN kropka,
+  - timer: „OBRÓĆ / POTRZĄŚNIJ ZA / PO / TERAZ” → „FLIP / SHAKE IN / AT / NOW”, „można obrócić” → „optional flip”, „Zrobione” → „Done”, „Strefa” → „Zone” (opis szuflady z `translations.en.labels`),
+  - przepis w EN: teksty z `translations.en` (`localizeRecipe()`); bez tłumaczenia — po polsku z małym znaczkiem „PL” (na karcie listy i pod nagłówkiem przepisu); tagi EN z `tags_en`,
+  - komunikaty walidatora na listach błędów / ostrzeżeń zostają po polsku (dla Janusza), otoczka po angielsku.
+- **Jednostki: zawsze angielskie skróty w obu językach** — `g`, `kg`, `ml`, `l`, `pcs`, `tbsp`, `tsp`, `pinch`. Metryczne, °C.
 - Czytelność z odległości: tekst bazowy ≥ 20 px, ustawienia urządzeń wyraźnie większe. Cele dotyku ≥ 44 pt. Wysoki kontrast. Ręczny przełącznik jasny/ciemny (zapamiętany w `localStorage`).
 - **Strona główna:** pole wyszukiwania na górze, filtry-chipy (`Ninja`, `TM6`, funkcje Ninja), lista przepisów.
 - **Strona przepisu:**
@@ -311,7 +349,7 @@ Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`, `np
   - **zaległe alarmy:** po powrocie z tła / przeładowaniu / ponownym otwarciu alarm, którego moment minął, pokazuje się od razu (kilka zaległych — po kolei),
   - **dźwięk:** Web Audio (`webkitAudioContext` w Safari 12), odblokowywany dotknięciem START / WZNÓW (oraz każdym dotknięciem przy aktywnym timerze — po przeładowaniu iOS znowu blokuje dźwięk do pierwszego dotknięcia). Brak dźwięku → sam komunikat z dopiskiem. **Bez obietnic przy zablokowanym ekranie i aplikacji w tle** — pasek timera to mówi,
   - `steps[].timer_seconds` — nadal nieużywane.
-- **Klucze localStorage:** `kitchen-state` (otwarty przepis + krok, porcje i timer Ninja dla ostatnich 30 przepisów; timer w `recipes[slug].timer` = `{ plan, startedAt, pausedAt, pausedTotal, acked, holds }` — plan czynności zapisany przy START; timery z v0.3/v0.3.1 (ze zdarzeniem końca albo polskimi słowami w `action`) są odrzucane, więc alarmy działają także po przeładowaniu na liście; rozszerzenie wsteczne zgodne: zapisy bez `timer` działają, zepsuty timer jest odrzucany), `kitchen-theme` (`light`/`dark`), `kitchen-reload` (ochrona przed pętlą przeładowań). Zapisy sprzed v0.2.3 (`kuchnia-stan`, `kuchnia-motyw`, `kuchnia-przeladowanie`) są przy pierwszym uruchomieniu przenoszone do nowych kluczy, a stare usuwane. Przy każdej przyszłej zmianie nazw kluczy lub kształtu zapisu — ta sama zasada: migracja, żeby iPad nie zgubił stanu.
+- **Klucze localStorage:** `kitchen-state` (otwarty przepis + krok, porcje i timer Ninja dla ostatnich 30 przepisów; timer w `recipes[slug].timer` = `{ plan, startedAt, pausedAt, pausedTotal, acked, holds }` — plan czynności zapisany przy START; timery z v0.3/v0.3.1 (ze zdarzeniem końca albo polskimi słowami w `action`) są odrzucane, więc alarmy działają także po przeładowaniu na liście; rozszerzenie wsteczne zgodne: zapisy bez `timer` działają, zepsuty timer jest odrzucany), `kitchen-theme` (`light`/`dark`), `kitchen-reload` (ochrona przed pętlą przeładowań), `kitchen-lang` (`pl`/`en`, od v0.4 — nowy klucz, bez starszego odpowiednika; brak / inna wartość = PL). Zdarzenia w planie timera (od v0.4): `{ id, kind: 'turn', at, no, label?, label_en?, action, required }` — napisy powstają przy wyświetlaniu w bieżącym języku; zapisy z v0.3.2 z gotowym polskim napisem `zone` („Strefa 1 · Udka”) są przenoszone do `no` / `label` (działający timer przetrwa aktualizację). Zapisy sprzed v0.2.3 (`kuchnia-stan`, `kuchnia-motyw`, `kuchnia-przeladowanie`) są przy pierwszym uruchomieniu przenoszone do nowych kluczy, a stare usuwane. Przy każdej przyszłej zmianie nazw kluczy lub kształtu zapisu — ta sama zasada: migracja, żeby iPad nie zgubił stanu.
 - Tryb „aplikacji": `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, `apple-touch-icon` 152×152 i 167×167, poprawny `viewport`. Po „Dodaj do ekranu początkowego" ma się otwierać bez paska Safari.
 - Nawigacja wstecz musi być w interfejsie (w trybie pełnoekranowym nie ma przycisku Wstecz przeglądarki).
 
@@ -342,7 +380,7 @@ Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`, `np
 
 ### Gdy wprost poproszę Cię o przepis („dodaj do przepisów”, „popraw przepis X”)
 
-1. Przerabiasz go na format powyżej (ustawienia Ninja do panelu, TM6 do kroków, sensowne tagi, `internal_temp_c` tam, gdzie pasuje). Ilości tylko na liście składników — w tekście kroków bez liczb ilości („wlej wodę”, nie „wlej 500 ml wody”).
+1. Przerabiasz go na format powyżej (ustawienia Ninja do panelu, TM6 do kroków, sensowne tagi, `internal_temp_c` tam, gdzie pasuje, jednostki z listy, kompletny blok `translations.en`, nowe tagi dopisane do `recipes/tags.yml`). Ilości tylko na liście składników — w tekście kroków bez liczb ilości („wlej wodę”, nie „wlej 500 ml wody”).
 2. Ustawienia urządzeń: jak w `AGENTS.md` — przy gotowym przepisie pytasz, gdy brakuje lub są niejednoznaczne; przy nowym proponujesz z dopiskiem w `description`.
 3. Commit i `npm run deploy`.
 4. Odpowiadasz zgodnie z „Format raportu" (w „Co zrobiłem": dodane/poprawione + slug).
@@ -417,9 +455,10 @@ Mam plan Pro z limitami — **jeden etap na sesję**. Po każdym etapie zatrzyma
        - Chipy TM6 w ramce kroku zostają.
      - Zmiana bieżącego kroku **nie przerysowuje ekranu** ani nie resetuje przewinięcia — aktualizuj tylko elementy kroków.
      - **Pułapka iOS 12 (dotyk):** dotknięcie elementu bez `cursor: pointer` nie wysyła zdarzenia `click` do nasłuchu na `document` (event delegation). Wszystko, co reaguje na dotyk (karty, kroki, zdjęcie, przyciski), ma `cursor: pointer` albo jest `<button>` / `<a>`.
-     - **Przeliczanie porcji:** przyciski − / + przy liczbie porcji (zakres 1–12). Ilości przeliczane z zaokrąglaniem: `szt` i łyżki do połówek, `g`/`ml` do okrągłych wartości; składniki bez ilości bez zmian. Link „przepis: N” wraca do oryginalnej liczby porcji. Wybrana liczba porcji zapamiętywana razem z krokiem. Ustawienia Ninja i TM6 się **nie zmieniają**; przy zmienionej liczbie porcji pod panelem Ninja pojawia się uwaga.
+     - **Przeliczanie porcji:** przyciski − / + przy liczbie porcji (zakres 1–12). Ilości przeliczane z zaokrąglaniem: `pcs`, `tbsp`, `tsp`, `pinch` do połówek (do v0.3: `szt` i łyżki), `g`/`ml` do okrągłych wartości; składniki bez ilości bez zmian. Link „przepis: N” wraca do oryginalnej liczby porcji. Wybrana liczba porcji zapamiętywana razem z krokiem. Ustawienia Ninja i TM6 się **nie zmieniają**; przy zmienionej liczbie porcji pod panelem Ninja pojawia się uwaga.
 4. **Wyszukiwarka i filtry.**
 5. **Timer czynności Ninja — przypomnienia o obracaniu/potrząsaniu (v0.3–v0.3.2)** — pole `ninja.zoneN.turn`, timer pod panelem Ninja tylko w przepisach z `turn`, kompensacja wysuniętej szuflady (opis w „Wygląd i działanie”). Do sprawdzenia na iPadzie.
-6. (Później, na moje życzenie) tryb gotowania krok po kroku, minutniki przy krokach TM6 (`timer_seconds`).
+6. **Dwujęzyczność PL / EN (v0.4)** — słownik interfejsu, przełącznik „PL | EN”, jednostki z listy angielskich skrótów, `translations.en` w pliku przepisu (ostrzeżenia, pomarańczowa plakietka, fallback PL), `recipes/tags.yml`, wyszukiwanie w obu językach, testy niezależne od `recipes/` (przykłady w `tests/fixtures/recipes/`). Do sprawdzenia na iPadzie.
+7. (Później, na moje życzenie) tryb gotowania krok po kroku, minutniki przy krokach TM6 (`timer_seconds`).
 
 Ręcznie robię tylko: założenie konta na hostingu i połączenie go z repo GitHub.

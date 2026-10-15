@@ -6,8 +6,18 @@ To repozytorium to kuchenny wyświetlacz przepisów na starym iPadzie. Kod aplik
 
 - Dodawanie i poprawianie przepisów: pliki `recipes/<slug>.md`.
 - Dodawanie zdjęć przepisów: pliki `recipes/img/<slug>.jpg` (albo `.png`, `.heic`).
-- Lista tagów: `recipes/tags.yml`.
+- Tłumaczenia tagów na angielski: `recipes/tags.yml` (mapa `tag_PL: tag_EN`).
+- Wzorcowe przykłady formatu (tylko do podglądu, nie zmieniaj ich): `tests/fixtures/recipes/`.
 - Format przepisu, wszystkie pola i reguły: **`docs/FORMAT-PRZEPISU.md`** — przeczytaj całość przed pracą i trzymaj się jej dokładnie.
+
+## Dwa języki (PL / EN) — obowiązkowe przy każdym nowym przepisie
+
+Aplikacja ma interfejs po polsku i po angielsku (przełącznik „PL | EN”). Dlatego:
+
+- **Każdy NOWY przepis musi mieć kompletny blok `translations.en`** (tytuł, opis, wszystkie składniki i kroki w tej samej kolejności, grupy, opisy szuflad Ninja — `docs/FORMAT-PRZEPISU.md`, punkt 10). Przy poprawianiu przepisu zaktualizuj też tłumaczenie (dodany krok = dodany krok w `translations.en.steps`).
+- **Jednostki tylko z listy:** `g`, `kg`, `ml`, `l`, `pcs`, `tbsp`, `tsp`, `pinch` (angielskie skróty, w obu językach). Każda inna jednostka to błąd walidacji.
+- **Nowy tag** (taki, którego nie ma w `recipes/tags.yml`) — dopisz go do `recipes/tags.yml` z tłumaczeniem, w tym samym commicie co przepis.
+- Brak lub niekompletne tłumaczenie nie blokuje publikacji (to tylko ostrzeżenie — przepis wyświetla się wtedy po polsku), ale **`npm run validate` nie może wypisać żadnego ostrzeżenia dotyczącego Twojego przepisu.**
 
 ## Czego nie wolno
 
@@ -33,14 +43,14 @@ npm run validate
 npm test
 ```
 
-**Oba polecenia muszą przejść bez błędów.** Jeśli coś pada — popraw przepis (nie testy ani kod) i uruchom ponownie.
+**Oba polecenia muszą przejść bez błędów**, a `npm run validate` nie może pokazać ostrzeżeń (`⚠`) dla przepisu, który dodajesz lub poprawiasz (brak tłumaczenia EN, tag bez wpisu w `recipes/tags.yml`). Jeśli coś pada — popraw przepis (nie testy ani kod) i uruchom ponownie.
 
 **Jeśli nie możesz uruchomić tych poleceń** (brak terminala, brak Node.js, brak dostępu do sieci przy `npm install`) — napisz to wprost w opisie commita (i w odpowiedzi dla użytkownika), np. „Nie uruchomiłem `npm run validate` ani `npm test` — brak dostępu do terminala”. **Nigdy nie pisz, że walidacja przeszła, jeśli jej nie uruchomiłeś.** Komunikat walidatora ma postać `plik.md → ścieżka.pola: przyczyna`, np. `pierogi.md → steps[2].tm6.speed: niepoprawna wartość 11` (`steps[2]` = krok 3).
 
 ## Zapis zmian: commit bezpośrednio na `main`
 
 - Zmiany w przepisach zapisuj **bezpośrednio na gałęzi `main`, bez pull requestów** — strona publikuje się sama po każdym commicie.
-- **Jeden przepis = jeden commit** (przepis razem z jego zdjęciem).
+- **Jeden przepis = jeden commit** (przepis razem z jego zdjęciem i nowymi tagami w `recipes/tags.yml`).
 - Pierwsza linia opisu commita: **`Przepis: <tytuł przepisu>`**, np. `Przepis: Pierogi ruskie`.
 - Dalej w opisie: skąd przepis (gotowy czy nowy), czy ustawienia urządzeń są z przepisu, czy proponowane, czy coś było niejasne oraz wynik `npm run validate` i `npm test` (albo informacja, że nie dało się ich uruchomić).
 - **Pull request tylko wtedy, gdy użytkownik wprost o to poprosi** (wtedy tytuł PR taki sam: `Przepis: <tytuł>`).
