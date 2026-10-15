@@ -17,7 +17,8 @@ function build(env) {
   });
 }
 
-const SLUGI = ['deser-twarogowy', 'udka-z-ziemniakami', 'warzywa-varoma', 'ziemniaczki-brokuly-sync'];
+// Wszystkie przepisy z recipes/ (kolekcja rośnie); wzorcowe przykłady sprawdzane osobno niżej.
+const SLUGI = readdirSync(join(root, 'recipes')).filter((p) => p.endsWith('.md')).map((p) => p.replace(/\.md$/, '')).sort();
 
 test('build przykładów: search.json, data/*.json, strony /p/<slug>/, zdjęcia, mockup', async () => {
   const out = mkdtempSync(join(tmpdir(), 'kuchnia-out-'));

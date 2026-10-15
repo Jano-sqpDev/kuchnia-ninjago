@@ -1,7 +1,7 @@
 // Testy walidatora przepisów: przykłady przechodzą, błędne dane są wykrywane.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -60,8 +60,11 @@ function oczekujBledu(data, sciezka) {
 test('przykładowe przepisy z recipes/ przechodzą walidację', () => {
   const { recipes, errors } = loadRecipes(join(root, 'recipes'));
   assert.deepEqual(errors, []);
-  assert.deepEqual(recipes.map((r) => r.slug).sort(),
-    ['deser-twarogowy', 'udka-z-ziemniakami', 'warzywa-varoma', 'ziemniaczki-brokuly-sync']);
+  // Kolekcja rośnie — sprawdzamy, że wczytano wszystkie pliki i że są wzorcowe przykłady.
+  assert.equal(recipes.length, readdirSync(join(root, 'recipes')).filter((p) => p.endsWith('.md')).length);
+  const slugi = recipes.map((r) => r.slug);
+  ['deser-twarogowy', 'udka-z-ziemniakami', 'warzywa-varoma', 'ziemniaczki-brokuly-sync']
+    .forEach((s) => assert.ok(slugi.includes(s), s));
 });
 
 test('dane bazowe testów są poprawne', () => {
