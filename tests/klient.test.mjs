@@ -63,16 +63,6 @@ test('czas i obroty TM6', () => {
   assert.equal(K.obrotyTm6('turbo'), 'Turbo');
 });
 
-test('panel TM6: bieżący, następny, ostatni krok TM6', () => {
-  const kroki = [{}, { tm6: {} }, { tm6: {} }, {}, {}];
-  assert.deepEqual(zwykly(K.krokTm6(kroki, 0)), { k: 1, rodzaj: 'nastepny' });
-  assert.deepEqual(zwykly(K.krokTm6(kroki, 1)), { k: 1, rodzaj: 'biezacy' });
-  assert.deepEqual(zwykly(K.krokTm6(kroki, 2)), { k: 2, rodzaj: 'biezacy' });
-  assert.deepEqual(zwykly(K.krokTm6(kroki, 3)), { k: 2, rodzaj: 'ostatni' });
-  assert.deepEqual(zwykly(K.krokTm6(kroki, 4)), { k: 2, rodzaj: 'ostatni' });
-  assert.equal(K.krokTm6([{}, {}], 0), null);
-});
-
 test('stan z localStorage: śmieci i stare zapisy nie psują aplikacji', () => {
   assert.deepEqual(zwykly(K.poprawStan(null)), { ekran: 'lista', przepisy: {} });
   assert.deepEqual(zwykly(K.poprawStan('x')), { ekran: 'lista', przepisy: {} });

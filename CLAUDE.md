@@ -323,17 +323,19 @@ Mam plan Pro z limitami — **jeden etap na sesję**. Po każdym etapie zatrzyma
 1. ✅ **Hello world + test iPada** (zamknięty: HTTPS, pełny ekran, obrót i pamięć działają na iPadzie). Minimalna strona, deploy. Repo git i zdalne repo na GitHubie zwykle zakłada już skrypt startowy — sprawdź `git remote -v` i zakładaj tylko to, czego brakuje. Ja sprawdzam na iPadzie: czy HTTPS działa, czy „Dodaj do ekranu początkowego" otwiera pełny ekran.
 2. ✅ **Format + walidacja + 3 przykładowe przepisy:** jeden z Ninja (sync), jeden z TM6 (kroki z ustawieniami, jeden z `temperature: Varoma`), jeden deser bez urządzeń.
 3. **Widok kuchenny:** lista + strona przepisu z panelami, zapamiętywanie stanu, przełącznik jasny/ciemny.
-   - **UI według `docs/mockup-ui-v1.html`** (zaakceptowany projekt; podgląd na żywo: `/mockup.html`):
+   - **UI według `docs/mockup-ui-v1.html`** (zaakceptowany projekt; podgląd na żywo: `/mockup.html`). Poprawki oznaczone „v0.2.1, zastępuje mockup” mają pierwszeństwo przed mockupem:
      - lista z miniaturami zdjęć,
      - duże zdjęcie przy przepisie,
-     - przycisk „📷 Zdjęcie” w pasku otwiera zdjęcie na pełny ekran,
+     - zdjęcie na pełny ekran otwiera się **tylko z miniatury** przy przepisie („⤢ Powiększ”) — w górnym pasku **nie ma** przycisku „📷 Zdjęcie” (v0.2.1, zastępuje mockup),
      - panel Ninja **zawsze ciemny** (także w jasnym motywie) — jak wyświetlacz frytkownicy,
      - bieżący krok wyróżniony świecącym pierścieniem.
    - **Zdjęcia:** źródło JPEG/PNG w `recipes/img/`; build sam robi dwie wersje JPEG — miniaturę ~300 px i dużą ~1200 px (dłuższy bok).
    - **Zasady Etapu 3 (dodatkowo):**
      - Panel Ninja **przypięty pod paskiem** — przewija się tylko treść pod nim.
      - **Panel TM6** przypięty pod paskiem (pod panelem Ninja, jeśli przepis ma oba): trzy równe tarcze — czas, temperatura (lub „Varoma”, lub wyszarzone „bez grzania”), obroty (z „↺ wsteczne”, jeśli `reverse`); tryb TM6 (`mode`) w nagłówku panelu.
-       - Pokazuje ustawienia **bieżącego** kroku i aktualizuje się przy zmianie kroku (bez przerysowania ekranu). Gdy bieżący krok nie ma TM6 — przygaszony z napisem „Następny krok TM6: N”; gdy dalszych nie ma — ostatni krok TM6.
+       - Pokazuje ustawienia **bieżącego** kroku i aktualizuje się przy zmianie kroku (bez przerysowania ekranu).
+       - Gdy bieżący krok nie ma TM6: tarcze puste („—”, wyszarzone), w nagłówku „Ten krok bez TM6”. Panel zostaje na miejscu i ma tę samą wysokość (ekran nie skacze). **Bez** „Następny krok TM6” / „Ostatni krok TM6” (v0.2.1, zastępuje mockup).
+       - Mocny kontrast, czytelny z ~1 m także przy jasnym motywie reszty strony: jasna zieleń pierścieni i nagłówka, białe cyfry na tarczach, gruby pierścień (v0.2.1, zastępuje mockup).
        - Chipy TM6 w ramce kroku zostają.
      - Zmiana bieżącego kroku **nie przerysowuje ekranu** ani nie resetuje przewinięcia — aktualizuj tylko elementy kroków.
      - **Pułapka iOS 12 (dotyk):** dotknięcie elementu bez `cursor: pointer` nie wysyła zdarzenia `click` do nasłuchu na `document` (event delegation). Wszystko, co reaguje na dotyk (karty, kroki, zdjęcie, przyciski), ma `cursor: pointer` albo jest `<button>` / `<a>`.

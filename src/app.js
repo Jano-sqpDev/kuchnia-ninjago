@@ -64,14 +64,6 @@
     return dziesietna(speed);
   }
 
-  // Który krok TM6 pokazać w panelu: bieżący, następny, a gdy dalszych nie ma — ostatni.
-  function krokTm6(steps, cur) {
-    var i;
-    if (steps[cur] && steps[cur].tm6) return { k: cur, rodzaj: 'biezacy' };
-    for (i = cur + 1; i < steps.length; i++) if (steps[i].tm6) return { k: i, rodzaj: 'nastepny' };
-    for (i = Math.min(cur, steps.length) - 1; i >= 0; i--) if (steps[i].tm6) return { k: i, rodzaj: 'ostatni' };
-    return null;
-  }
 
   function maTm6(r) {
     for (var i = 0; i < r.steps.length; i++) if (r.steps[i].tm6) return true;
@@ -103,7 +95,7 @@
 
   var api = {
     porcjeSlowo: porcjeSlowo, ilosc: ilosc, czasTm6: czasTm6, obrotyTm6: obrotyTm6,
-    krokTm6: krokTm6, poprawStan: poprawStan, esc: esc,
+    poprawStan: poprawStan, esc: esc,
   };
   // Testy w Node uruchamiają ten plik bez przeglądarki — dostają tylko czyste funkcje.
   if (!global.document) { global.kuchniaTest = api; return; }
@@ -278,7 +270,7 @@
     global.history.replaceState(global.history.state, '', adresPrzepisu(r.id, krok));
 
     var h = '<div class="bar"><button class="btn back" data-act="wstecz">‹ Przepisy</button><h1>' + esc(r.title) + '</h1>' +
-      (r.image ? '<button class="btn" data-act="zdjecie">📷 Zdjęcie</button>' : '') + przyciskMotywu() + '</div>';
+      przyciskMotywu() + '</div>';
 
     var tm6 = maTm6(r);
     if (r.ninja || tm6) {
@@ -347,22 +339,22 @@
       : 'Przy mniejszej ilości sprawdzaj wcześniej — może być gotowe szybciej.') + '</div>';
   }
 
-  // Panel TM6: ustawienia BIEŻĄCEGO kroku; gdy bieżący krok nie ma TM6 — przygaszony następny (albo ostatni) krok TM6.
+  // Panel TM6: ustawienia BIEŻĄCEGO kroku. Krok bez TM6 → puste, wyszarzone tarcze (ta sama wysokość, ekran nie skacze).
   function panelTm6(r, cur) {
-    var w = krokTm6(r.steps, cur);
-    if (!w) return '';
-    var t = r.steps[w.k].tm6;
-    var naglowek = w.rodzaj === 'biezacy' ? 'Krok <b>' + (w.k + 1) + '</b> z ' + r.steps.length
-      : (w.rodzaj === 'nastepny' ? 'Następny krok TM6: <b>' + (w.k + 1) + '</b>' : 'Ostatni krok TM6: <b>' + (w.k + 1) + '</b>');
     function tarcza(v, u, opis, wyl, male) {
       return '<div class="dial' + (wyl ? ' off' : '') + '"><div class="ring"><div class="v' + (male ? ' sm' : '') + '">' + v + '</div>' +
         (u ? '<div class="u">' + u + '</div>' : '') + '</div><div class="dl">' + opis + '</div></div>';
+    }
+    var t = r.steps[cur] && r.steps[cur].tm6;
+    if (!t) {
+      return '<div class="tpanel"><div class="th"><span class="tk">TM6</span>Ten krok bez TM6</div><div class="dials">' +
+        tarcza('—', '', 'Czas', true) + tarcza('—', '', 'Temperatura', true) + tarcza('—', '', 'Obroty', true) + '</div></div>';
     }
     var temp = t.temperature === undefined ? tarcza('—', 'bez grzania', 'Temperatura', true)
       : (t.temperature === 'Varoma' ? tarcza('Varoma', '', 'Temperatura', false, true) : tarcza(t.temperature, '°C', 'Temperatura'));
     var obroty = t.speed === undefined ? tarcza('—', '', 'Obroty', true)
       : tarcza(obrotyTm6(t.speed), t.reverse ? '↺ wsteczne' : '', 'Obroty', false, typeof t.speed !== 'number');
-    return '<div class="tpanel' + (w.rodzaj === 'biezacy' ? '' : ' dim') + '"><div class="th"><span class="tk">TM6</span>' + naglowek +
+    return '<div class="tpanel"><div class="th"><span class="tk">TM6</span>Krok <b>' + (cur + 1) + '</b> z ' + r.steps.length +
       (t.mode ? '<span class="tmode">' + esc(t.mode) + '</span>' : '') + '</div><div class="dials">' +
       tarcza(czasTm6(t.duration_seconds), 'min:s', 'Czas') + temp + obroty + '</div></div>';
   }
