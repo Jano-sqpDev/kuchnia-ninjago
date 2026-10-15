@@ -47,7 +47,7 @@ function zbuduj(env) {
 test('identyfikator buildu: ten sam wynik → ten sam id, zmiana przepisu → nowy id', () => {
   assert.equal(zbuduj({}), zbuduj({}));
   const dir = mkdtempSync(join(tmpdir(), 'kuchnia-id-'));
-  const deser = readFileSync(join(root, 'recipes', 'deser-twarogowy.md'), 'utf8').replace(/^image: .*\n/m, '');
+  const deser = readFileSync(join(root, 'recipes', 'deser-twarogowy.md'), 'utf8').replace(/^image: .*\r?\n/m, '');
   writeFileSync(join(dir, 'deser-twarogowy.md'), deser);
   const przed = zbuduj({ KUCHNIA_RECIPES_DIR: dir });
   writeFileSync(join(dir, 'deser-twarogowy.md'), deser.replace('prep_minutes: 5', 'prep_minutes: 6'));
