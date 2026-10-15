@@ -75,4 +75,34 @@ steps:
     internal_temp_c: 75
   - text: "Na gorących kotletach ułóż cheddar. Pozostaw na chwilę, aby ser lekko się rozpuścił."
   - text: "Przekrój bułki. Posmaruj je ketchupem i musztardą. Dodaj sałatę, pomidora, ogórki oraz kotlety z serem. Zamknij burgery i podawaj."
+translations:
+  en:
+    title: "Beef Burgers (Ninja)"
+    description: "Juicy lean beef burgers: 4 patties of 125 g each, approximately 1 cm thick before cooking. 11 min — test time, to be confirmed. Below 70°C after 10 min; approximately 86°C after 12 min."
+    ingredients:
+      - name: "Lean beef mince (5% fat)"
+      - name: "Salt"
+      - name: "Black pepper"
+      - name: "Garlic granules"
+      - name: "Burger buns"
+      - name: "Cheddar"
+      - name: "Tomato"
+      - name: "Lettuce"
+      - name: "Pickles"
+      - name: "Ketchup"
+      - name: "Mustard"
+    groups:
+      Kotlety: "Patties"
+      Dodatki: "Toppings"
+      Sos: "Sauce"
+    steps:
+      - text: "Place the minced beef in a bowl with salt, pepper and garlic. Mix gently without overworking the meat."
+      - text: "Divide the meat evenly. Shape flat patties about 1 cm thick, without making a dimple in the centre."
+      - text: "Place the patties on the additional PETHREE racks, two per drawer with space between them. Use the settings on the Ninja panel (no preheat), press MATCH, then START. Do not flip the patties."
+      - text: "Insert the thermometer horizontally from the side into the centre of the patty at the back of a drawer, as it tends to be 2–3°C cooler than the one near the handle. Ensure the internal temperature stays at the target for 30 seconds. If it does not, cook a little longer and check again."
+      - text: "Put cheddar on the hot patties and leave briefly to melt."
+      - text: "Slice the buns and spread with ketchup and mustard. Add lettuce, tomato, pickles and the cheesy patties. Close and serve."
+    labels:
+      zone1: "Patties (2 pcs)"
+      zone2: "Patties (2 pcs)"
 ---
