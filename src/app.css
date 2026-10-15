@@ -138,15 +138,24 @@ button { font-family: inherit; }
 /* timer pieczenia — pod panelem Ninja, zawsze ciemny jak wyświetlacz frytkownicy */
 .ntimer { margin: 8px 20px 0; padding: 10px 14px; border-radius: 18px; background: #050709; border: 1px solid #222A31; color: #EAEEF2;
   display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
-.ntimer .tclock { -webkit-flex: 0 0 auto; flex: 0 0 auto; min-width: 150px; font-size: 52px; font-weight: 300; line-height: 1; color: #FF8A3D; font-variant-numeric: tabular-nums; }
+/* lewa część: co i gdzie → DUŻY licznik do najbliższej czynności → „do końca" */
+.ntimer .tmain { -webkit-flex: 1 1 auto; flex: 1 1 auto; min-width: 0; }
+.ntimer .ttitle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ntimer .tact { font-size: 22px; font-weight: 900; letter-spacing: .05em; color: #FF8A3D; margin-right: 12px; }
+.ntimer.soft .tact { font-weight: 600; letter-spacing: 0; color: #9DABB8; }
+.ntimer.toend .tact, .ntimer.done .tact { color: #34C759; }
+.ntimer .tzone { font-size: 20px; font-weight: 700; color: #EAEEF2; }
+.ntimer .tclock { font-size: 60px; font-weight: 300; line-height: 1.05; color: #FF8A3D; font-variant-numeric: tabular-nums; }
+.ntimer.soft .tclock { color: #C9D3DC; }
+.ntimer.toend .tclock, .ntimer.done .tclock { color: #34C759; }
 .ntimer.idle .tclock { color: #6E7C89; }
 .ntimer.paused .tclock { color: #9FD0FF; }
-.ntimer.done .tclock { color: #34C759; }
-.ntimer .tinfo { -webkit-flex: 1 1 auto; flex: 1 1 auto; min-width: 0; margin: 0 12px; }
-.ntimer .tstate { font-size: 14px; color: #8D99A5; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
-.ntimer .tnext { font-size: 18px; color: #EAEEF2; margin-top: 2px; }
-.ntimer .tnote { font-size: 12px; color: #6E7C89; margin-top: 3px; }
-.ntimer .tbtns { -webkit-flex: 0 0 auto; flex: 0 0 auto; white-space: nowrap; }
+.ntimer .tleft { font-size: 16px; color: #9DABB8; font-variant-numeric: tabular-nums; }
+/* prawa część: stan, przyciski, uwaga o alarmie */
+.ntimer .tside { -webkit-flex: 0 0 auto; flex: 0 0 auto; text-align: right; margin-left: 12px; }
+.ntimer .tstate { font-size: 14px; color: #8D99A5; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; margin-bottom: 6px; }
+.ntimer .tnote { font-size: 12px; color: #6E7C89; margin-top: 6px; }
+.ntimer .tbtns { white-space: nowrap; }
 .tbtn { height: 56px; min-width: 112px; padding: 0 18px; margin-left: 10px; border-radius: 28px; border: 2px solid #3A444E; background: transparent;
   color: #EAEEF2; font-size: 20px; font-weight: 800; letter-spacing: .06em; }
 .tbtn.go { background: #FF8A3D; border-color: #FF8A3D; color: #111; }

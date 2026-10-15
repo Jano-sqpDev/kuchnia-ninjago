@@ -122,7 +122,7 @@ Przy liczbie porcji, która nie mieści się w jednej szufladzie, użyj `match` 
 
 | Pole | Typ | Uwagi |
 |---|---|---|
-| `action` | **dokładnie** `obróć` albo `potrząśnij` | wymagane; `obróć` — mięso, ryby, większe kawałki; `potrząśnij` — frytki, ziemniaki, warzywa w kawałkach |
+| `action` | **dokładnie** `flip` albo `shake` (kod, małymi literami) | wymagane; `flip` = obróć (mięso, ryby, większe kawałki); `shake` = potrząśnij (frytki, ziemniaki, warzywa w kawałkach). Aplikacja sama wyświetla „OBRÓĆ” / „POTRZĄŚNIJ” — **nie pisz polskich słów w tym polu** |
 | `after_min` | liczba całkowita > 0, **mniejsza niż `minutes` tej strefy** | wymagane; po ilu minutach od startu tej strefy (zwykle mniej więcej w połowie) |
 | `required` | `true` / `false` | opcjonalne, domyślnie `true` = alarm; `false` = tylko informacja „można obrócić”, bez alarmu |
 
@@ -137,7 +137,7 @@ Przy liczbie porcji, która nie mieści się w jednej szufladzie, użyj `match` 
     temp_c: 200
     minutes: 28
     turn:
-      action: obróć
+      action: flip
       after_min: 14
 ```
 
@@ -216,7 +216,7 @@ ninja:
     temp_c: 200
     minutes: 28
     turn:
-      action: obróć
+      action: flip
       after_min: 14
   zone2:
     label: "Ziemniaki"
@@ -224,7 +224,7 @@ ninja:
     temp_c: 200
     minutes: 22
     turn:
-      action: potrząśnij
+      action: shake
       after_min: 11
       required: false
 

@@ -228,12 +228,12 @@ test('match wymaga identycznych ustawień stref (label może się różnić)', (
 
 // --- E: TM6 ---
 
-test('turn: poprawne warianty (obróć / potrząśnij, required domyślnie, false = informacja)', () => {
+test('turn: poprawne warianty (flip / shake, required domyślnie, false = informacja)', () => {
   const r = ninjaSync(); // zone1: 20 min, zone2: 10 min
-  r.ninja.zone1.turn = { action: 'obróć', after_min: 10, required: true };
-  r.ninja.zone2.turn = { action: 'potrząśnij', after_min: 5 };
+  r.ninja.zone1.turn = { action: 'flip', after_min: 10, required: true };
+  r.ninja.zone2.turn = { action: 'shake', after_min: 5 };
   assert.deepEqual(validate(r), []);
-  r.ninja.zone2.turn = { action: 'potrząśnij', after_min: 9, required: false };
+  r.ninja.zone2.turn = { action: 'shake', after_min: 9, required: false };
   assert.deepEqual(validate(r), []);
 });
 
@@ -247,16 +247,21 @@ test('turn: błędne wartości', () => {
   const withTurn = (turn, zone = 'zone1') => { const r = ninjaSync(); r.ninja[zone].turn = turn; return r; };
   expectError(withTurn('po 10 min'), 'ninja.zone1.turn');
   expectError(withTurn({ after_min: 10 }), 'ninja.zone1.turn.action');
-  expectError(withTurn({ action: 'obroc', after_min: 10 }), 'ninja.zone1.turn.action');
+  expectError(withTurn({ action: 'obróć', after_min: 10 }), 'ninja.zone1.turn.action');
   expectError(withTurn({ action: 'Obróć', after_min: 10 }), 'ninja.zone1.turn.action');
-  expectError(withTurn({ action: 'obróć' }), 'ninja.zone1.turn.after_min');
-  expectError(withTurn({ action: 'obróć', after_min: 0 }), 'ninja.zone1.turn.after_min');
-  expectError(withTurn({ action: 'obróć', after_min: 7.5 }), 'ninja.zone1.turn.after_min');
-  expectError(withTurn({ action: 'obróć', after_min: 20 }), 'ninja.zone1.turn.after_min');      // = minutes strefy
-  expectError(withTurn({ action: 'obróć', after_min: 12 }, 'zone2'), 'ninja.zone2.turn.after_min'); // > 10 min strefy 2
-  expectError(withTurn({ action: 'obróć', after_min: 5, required: 'tak' }), 'ninja.zone1.turn.required');
-  expectError(withTurn({ action: 'obróć', after_min: 5, alarm: true }), 'ninja.zone1.turn.alarm');
-  const errs = validate(withTurn({ action: 'obróć', after_min: 25 }));
+  expectError(withTurn({ action: 'potrząśnij', after_min: 10 }), 'ninja.zone1.turn.action'); // stare słowa z v0.3 → kody
+  expectError(withTurn({ action: 'Flip', after_min: 10 }), 'ninja.zone1.turn.action');
+  expectError(withTurn({ action: 'turn', after_min: 10 }), 'ninja.zone1.turn.action');
+  expectError(withTurn({ action: '', after_min: 10 }), 'ninja.zone1.turn.action');
+  assert.match(validate(withTurn({ action: 'obróć', after_min: 10 })).join('\n'), /nieznana czynność "obróć" — dozwolone: flip, shake/);
+  expectError(withTurn({ action: 'flip' }), 'ninja.zone1.turn.after_min');
+  expectError(withTurn({ action: 'flip', after_min: 0 }), 'ninja.zone1.turn.after_min');
+  expectError(withTurn({ action: 'flip', after_min: 7.5 }), 'ninja.zone1.turn.after_min');
+  expectError(withTurn({ action: 'flip', after_min: 20 }), 'ninja.zone1.turn.after_min');      // = minutes strefy
+  expectError(withTurn({ action: 'flip', after_min: 12 }, 'zone2'), 'ninja.zone2.turn.after_min'); // > 10 min strefy 2
+  expectError(withTurn({ action: 'flip', after_min: 5, required: 'tak' }), 'ninja.zone1.turn.required');
+  expectError(withTurn({ action: 'flip', after_min: 5, alarm: true }), 'ninja.zone1.turn.alarm');
+  const errs = validate(withTurn({ action: 'flip', after_min: 25 }));
   assert.match(errs.join('\n'), /turn\.after_min: musi być mniejsze niż czas strefy \(20 min\), jest 25/);
 });
 

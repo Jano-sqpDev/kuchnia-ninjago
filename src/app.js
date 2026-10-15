@@ -123,7 +123,14 @@
 
   var MINUTE = 60000;
 
-  function zoneName(no, z) { return 'Strefa ' + no + (z.label ? ' (' + z.label + ')' : ''); }
+  function zoneName(no, z) { return 'Strefa ' + no + (z.label ? ' · ' + z.label : ''); }
+
+  // Kody czynności z YAML (turn.action) → napisy. W Etapie 6 dojdą wersje EN.
+  var ACTIONS = {
+    flip: { up: 'OBRÓĆ', soft: 'można obrócić', lower: 'obróć' },
+    shake: { up: 'POTRZĄŚNIJ', soft: 'można potrząsnąć', lower: 'potrząśnij' },
+  };
+  function actionText(code) { return ACTIONS[code] || ACTIONS.flip; }
 
   // Plan timera z panelu Ninja: czas całkowity (ms) i zdarzenia od startu (obrócenie, koniec).
   // SYNC: krótsza strefa startuje później (obie kończą razem), więc jej obrócenie przesuwa się o różnicę czasów.
@@ -168,27 +175,56 @@
     if (timerElapsed(t, now) >= t.plan.total) return 'done';
     return t.pausedAt !== null ? 'paused' : 'running';
   }
-  // Alarm do pokazania teraz: najwcześniejsze minione, niepotwierdzone zdarzenie z alarmem (required).
+  // Alarm do pokazania teraz: najwcześniejsze minione, niepotwierdzone zdarzenia z alarmem (required) —
+  // wszystkie z tej samej chwili razem (jeden komunikat dla obu stref).
   // Po końcu pieczenia zaległe obrócenia nie mają sensu — trafiają do skip, a pokazujemy GOTOWE.
-  // Zwraca { event, skip } albo null.
+  // Zwraca { events: [...], skip: [id] } albo null.
   function timerDue(t, now) {
     if (!t) return null;
-    var elapsed = timerElapsed(t, now), ended = elapsed >= t.plan.total, due = null, skip = [];
+    var elapsed = timerElapsed(t, now), ended = elapsed >= t.plan.total, due = [], skip = [];
     t.plan.events.forEach(function (e) {
       if (!e.required || t.acked.indexOf(e.id) !== -1 || e.at > elapsed) return;
       if (ended && e.kind === 'turn') { skip.push(e.id); return; }
-      if (!due) due = e;
+      if (!due.length || e.at === due[0].at) due.push(e);
     });
-    return due || skip.length ? { event: due, skip: skip } : null;
+    return due.length || skip.length ? { events: due, skip: skip } : null;
   }
-  // Najbliższe nadchodzące obrócenie (także informacyjne): { event, inMs } albo null.
-  function timerNext(t, now) {
-    if (!t) return null;
-    var elapsed = timerElapsed(t, now), next = null;
-    t.plan.events.forEach(function (e) {
-      if (!next && e.kind === 'turn' && e.at > elapsed && t.acked.indexOf(e.id) === -1) next = e;
+  // Kolejka zdarzeń dla licznika: wszystkie obrócenia (z alarmem i informacyjne) i koniec,
+  // po czasie; zdarzenia z tej samej chwili w jednej grupie. [{ at, events: [...] }]
+  function timerQueue(plan) {
+    var groups = [];
+    plan.events.forEach(function (e) {
+      var last = groups[groups.length - 1];
+      if (last && last.at === e.at) last.events.push(e);
+      else groups.push({ at: e.at, events: [e] });
     });
-    return next ? { event: next, inMs: next.at - elapsed } : null;
+    return groups;
+  }
+  // Cel dużego licznika: najbliższa grupa, której moment jeszcze nie minął (minięcie albo „Zrobione"
+  // → następna). null = wszystko minęło (koniec).
+  function timerTarget(plan, elapsed, acked) {
+    var groups = timerQueue(plan);
+    for (var i = 0; i < groups.length; i++) {
+      var open = groups[i].events.some(function (e) { return acked.indexOf(e.id) === -1; });
+      if (groups[i].at > elapsed && open) return groups[i];
+    }
+    return null;
+  }
+  // Napis nad licznikiem / w alarmie: when = 'za' | 'po' | 'teraz'.
+  // „OBRÓĆ ZA", „OBRÓĆ / POTRZĄŚNIJ ZA", „można obrócić za" (bez alarmu), „GOTOWE ZA".
+  function groupTitle(group, when) {
+    var e0 = group.events[0];
+    if (e0.kind === 'end') return 'GOTOWE ' + when.toUpperCase();
+    var required = group.events.some(function (e) { return e.required; }), codes = [];
+    group.events.forEach(function (e) { if (codes.indexOf(e.action) === -1) codes.push(e.action); });
+    if (required) return codes.map(function (c) { return actionText(c).up; }).join(' / ') + ' ' + when.toUpperCase();
+    return codes.map(function (c) { return actionText(c).soft; }).join(' / ') + ' ' + when;
+  }
+  // Strefy grupy: „Strefa 1 · Udka"; przy różnych czynnościach z dopiskiem („Strefa 2 · Frytki — potrząśnij").
+  function groupZones(group) {
+    if (group.events[0].kind === 'end') return [];
+    var mixed = group.events.some(function (e) { return e.action !== group.events[0].action; });
+    return group.events.map(function (e) { return e.zone + (mixed ? ' — ' + actionText(e.action).lower : ''); });
   }
   // 1 680 000 ms → „28:00"; sekundy zaokrąglane w górę (0:01 do samego końca).
   function clock(ms) {
@@ -203,7 +239,8 @@
     if (t.pausedAt !== null && !num(t.pausedAt)) return null;
     var events = p.events.filter(function (e) {
       return e && typeof e.id === 'string' && (e.kind === 'turn' || e.kind === 'end') && num(e.at) &&
-        typeof e.zone === 'string' && typeof e.action === 'string' && typeof e.required === 'boolean';
+        typeof e.zone === 'string' && typeof e.required === 'boolean' &&
+        (e.kind === 'end' ? e.action === '' : !!ACTIONS[e.action]); // timery z v0.3 (polskie słowa) odrzucone
     });
     if (events.length !== p.events.length) return null;
     var acked = Array.isArray(t.acked) ? t.acked.filter(function (id) { return typeof id === 'string'; }) : [];
@@ -227,7 +264,8 @@
     servingsWord: servingsWord, problemsLabel: problemsLabel, groupProblems: groupProblems, scaledAmount: scaledAmount, tm6Time: tm6Time, tm6Speed: tm6Speed,
     normalizeState: normalizeState, migrateLegacyState: migrateLegacyState, esc: esc,
     timerPlan: timerPlan, timerStart: timerStart, timerPause: timerPause, timerResume: timerResume, timerAck: timerAck,
-    timerElapsed: timerElapsed, timerStatus: timerStatus, timerDue: timerDue, timerNext: timerNext, clock: clock,
+    timerElapsed: timerElapsed, timerStatus: timerStatus, timerDue: timerDue, timerQueue: timerQueue, timerTarget: timerTarget,
+    groupTitle: groupTitle, groupZones: groupZones, clock: clock,
     normalizeTimer: normalizeTimer,
   };
   // Testy w Node uruchamiają ten plik bez przeglądarki — dostają tylko czyste funkcje.
@@ -503,9 +541,9 @@
 
   // Napis o obracaniu przy strefie: „OBRÓĆ PO 10 MIN" (z alarmem) albo „można obrócić po 10 min" (informacja).
   function turnText(turn) {
-    var shake = turn.action === 'potrząśnij';
-    if (turn.required === false) return (shake ? 'można potrząsnąć' : 'można obrócić') + ' po ' + turn.after_min + ' min';
-    return (shake ? 'POTRZĄŚNIJ' : 'OBRÓĆ') + ' PO ' + turn.after_min + ' MIN';
+    var a = actionText(turn.action);
+    if (turn.required === false) return a.soft + ' po ' + turn.after_min + ' min';
+    return a.up + ' PO ' + turn.after_min + ' MIN';
   }
 
   function ninjaPanel(n) {
@@ -669,11 +707,13 @@
     });
   }
 
+  // Pasek: [co i gdzie / DUŻY licznik do najbliższej czynności / do końca]   [stan, przyciski, uwaga o alarmie]
   function timerBarHtml() {
-    return '<div class="ntimer" id="ninja-timer"><div class="tclock" id="timer-clock"></div>' +
-      '<div class="tinfo"><div class="tstate" id="timer-state"></div><div class="tnext" id="timer-next"></div>' +
-      '<div class="tnote">Alarm działa tylko przy włączonym ekranie i otwartej aplikacji.</div></div>' +
-      '<div class="tbtns" id="timer-btns"></div></div>';
+    return '<div class="ntimer" id="ninja-timer"><div class="tmain">' +
+      '<div class="ttitle"><span class="tact" id="timer-act"></span><span class="tzone" id="timer-zone"></span></div>' +
+      '<div class="tclock" id="timer-clock"></div><div class="tleft" id="timer-left"></div></div>' +
+      '<div class="tside"><div class="tstate" id="timer-state"></div><div class="tbtns" id="timer-btns"></div>' +
+      '<div class="tnote">Alarm tylko przy włączonym ekranie i otwartej aplikacji.</div></div></div>';
   }
 
   var resetArmedUntil = 0;   // RESET wymaga drugiego dotknięcia w ciągu 3 s (przypadkowe dotknięcie w kuchni)
@@ -687,29 +727,33 @@
     return reset;
   }
 
-  var STATUS_LABELS = { idle: 'Timer pieczenia', running: 'Odliczanie', paused: 'Pauza', done: 'Gotowe' };
+  var STATUS_LABELS = { idle: 'Dotknij START razem z Ninja', running: 'Odliczanie', paused: 'Pauza', done: 'Gotowe' };
 
   // Odświeża tylko elementy paska timera i napisy obracania przy strefach — bez przerysowania ekranu.
+  // Duży licznik = czas do NAJBLIŻSZEJ czynności (obrócenie / potrząśnięcie / koniec); pod nim „do końca".
   function updateTimerUI() {
     if (V.screen !== 'recipe' || !V.r.ninja) return;
     var clockEl = doc.getElementById('timer-clock');
     if (!clockEl) return;
     var now = Date.now(), t = getTimer(V.slug), status = timerStatus(t, now);
-    var plan = t ? t.plan : timerPlan(V.r.ninja);
-    clockEl.innerHTML = clock(plan.total - (t ? timerElapsed(t, now) : 0));
-    var bar = doc.getElementById('ninja-timer');
-    bar.className = 'ntimer ' + status;
-    doc.getElementById('timer-state').innerHTML = STATUS_LABELS[status];
-    var next = '';
-    if (status === 'idle') next = 'Dotknij START razem ze START na Ninja.';
-    else if (status === 'done') next = 'Pieczenie zakończone.';
-    else {
-      var n = timerNext(t, now);
-      if (n) next = (n.event.required ? (n.event.action === 'potrząśnij' ? 'Potrząśnij' : 'Obróć') : (n.event.action === 'potrząśnij' ? 'Można potrząsnąć' : 'Można obrócić')) +
-        ': ' + esc(n.event.zone) + ' za ' + clock(n.inMs);
-      if (status === 'paused') next = 'Timer zatrzymany. ' + next;
+    var plan = t ? t.plan : timerPlan(V.r.ninja), elapsed = t ? timerElapsed(t, now) : 0;
+    var target = timerTarget(plan, elapsed, t ? t.acked : []);
+    var hasTurns = plan.events.length > 1;
+    var title = '', zones = [], soft = false;
+    if (target) {
+      title = groupTitle(target, status === 'idle' ? 'po' : 'za');
+      zones = groupZones(target);
+      soft = !target.events.some(function (e) { return e.required; });
+    } else {
+      title = 'GOTOWE';
     }
-    doc.getElementById('timer-next').innerHTML = next;
+    clockEl.innerHTML = clock(target ? target.at - elapsed : 0);
+    doc.getElementById('timer-act').innerHTML = esc(title);
+    doc.getElementById('timer-zone').innerHTML = zones.length ? esc(zones.join(' + ')) : '';
+    doc.getElementById('timer-left').innerHTML = hasTurns && status !== 'done' ? 'do końca ' + clock(plan.total - elapsed) : '';
+    var bar = doc.getElementById('ninja-timer');
+    bar.className = 'ntimer ' + status + (soft ? ' soft' : '') + (target && target.events[0].kind === 'end' ? ' toend' : '');
+    doc.getElementById('timer-state').innerHTML = STATUS_LABELS[status];
     var btns = doc.getElementById('timer-btns'), key = status + (now < resetArmedUntil ? '!' : '');
     if (btns.getAttribute('data-key') !== key) { btns.innerHTML = timerButtons(status); btns.setAttribute('data-key', key); }
     // Napisy przy strefach: po momencie obrócenia (albo po potwierdzeniu) przygaszone z „✓".
@@ -784,15 +828,16 @@
 
   // ── alarmy: nakładka na całym ekranie (poza #app, więc przerysowanie widoku jej nie usuwa) ──
   var alarmBeepAt = 0, alarmShownAt = 0;
-  function showAlarm(slug, e) {
-    var p = state.recipes[slug], d = doc.createElement('div');
-    var turn = e.kind === 'turn', sound = beep(e.kind);
+  // events — zdarzenia z tej samej chwili (np. obie strefy w MATCH): jeden komunikat.
+  function showAlarm(slug, events) {
+    var p = state.recipes[slug], d = doc.createElement('div'), group = { at: events[0].at, events: events };
+    var turn = events[0].kind === 'turn', sound = beep(events[0].kind);
     d.id = 'alarm';
     d.className = turn ? 'turn' : 'end';
     d.setAttribute('data-slug', slug);
-    d.setAttribute('data-event', e.id);
-    d.innerHTML = '<div class="abox"><div class="atitle">' + (turn ? (e.action === 'potrząśnij' ? 'POTRZĄŚNIJ' : 'OBRÓĆ') + ' TERAZ' : 'GOTOWE') + '</div>' +
-      (turn ? '<div class="azone">' + esc(e.zone) + '</div>' : '') +
+    d.setAttribute('data-events', events.map(function (e) { return e.id; }).join(','));
+    d.innerHTML = '<div class="abox"><div class="atitle">' + esc(turn ? groupTitle(group, 'teraz') : 'GOTOWE') + '</div>' +
+      groupZones(group).map(function (z) { return '<div class="azone">' + esc(z) + '</div>'; }).join('') +
       '<div class="arecipe">' + esc(p && p.title ? p.title : '') + '</div>' +
       '<div class="ahint">' + (turn ? 'Timer liczy dalej.' : 'Pieczenie zakończone — wyjmij jedzenie z Ninja.') + '</div>' +
       '<button class="aok" data-act="alarm-ok">' + (turn ? 'Zrobione' : 'OK') + '</button>' +
@@ -807,8 +852,8 @@
   function ackAlarm() {
     var a = doc.getElementById('alarm');
     if (!a) return;
-    var slug = a.getAttribute('data-slug'), id = a.getAttribute('data-event');
-    setTimer(slug, timerAck(getTimer(slug), [id]));
+    var slug = a.getAttribute('data-slug'), ids = a.getAttribute('data-events').split(',');
+    setTimer(slug, timerAck(getTimer(slug), ids));
     closeAlarm();
     tick(); // następny zaległy alarm od razu
   }
@@ -827,7 +872,7 @@
       var t = getTimer(slugs[i]), due = timerDue(t, now);
       if (!due) continue;
       if (due.skip.length) { t = timerAck(t, due.skip); setTimer(slugs[i], t); }
-      if (due.event) { showAlarm(slugs[i], due.event); updateTimerUI(); return; }
+      if (due.events.length) { showAlarm(slugs[i], due.events); updateTimerUI(); return; }
     }
   }
   global.setInterval(tick, 1000);

@@ -147,7 +147,7 @@ Dwie szuflady, **bez sondy temperatury**. Jeden panel na cały przepis, nie przy
   - `temp_c` — liczba 40–240,
   - `minutes` — liczba całkowita > 0,
   - `turn` — opcjonalne (od v0.3): przypomnienie o obróceniu / potrząśnięciu w tej strefie. **Brak pola = obracanie niepotrzebne** (wszystkie starsze przepisy działają bez zmian):
-    - `action` — **dokładnie** `obróć` albo `potrząśnij` (wymagane w obiekcie `turn`),
+    - `action` — kod czynności, **dokładnie** `flip` (obróć) albo `shake` (potrząśnij) (wymagane w obiekcie `turn`; od v0.3.1 — w v0.3 były polskie słowa, żaden przepis ich nie użył). Napisy na ekranie dobiera aplikacja: flip → „OBRÓĆ”, shake → „POTRZĄŚNIJ” (słownik `ACTIONS` w `src/app.js`; w Etapie 6 dojdą wersje EN),
     - `after_min` — liczba całkowita > 0 i **mniejsza niż `minutes` tej strefy** (wymagane) — liczone od startu tej strefy,
     - `required` — `true` (domyślnie, gdy brak pola) = alarm w timerze; `false` = tylko informacja „można obrócić po X min”, bez alarmu.
   - W `match` pole `turn` może się różnić między strefami (porównywane są tylko `function`, `temp_c`, `minutes`).
@@ -161,7 +161,7 @@ ninja:
     temp_c: 200
     minutes: 28
     turn:
-      action: obróć
+      action: flip
       after_min: 14
   zone2:
     label: "Ziemniaki"
@@ -169,7 +169,7 @@ ninja:
     temp_c: 200
     minutes: 22
     turn:
-      action: potrząśnij
+      action: shake
       after_min: 11
       required: false
 ```
@@ -298,12 +298,14 @@ Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`, `np
   1. stan zapisywany **od razu** przy każdym dotknięciu kroku / zmianie przepisu (nie dopiero przy zamykaniu),
   2. stan odtwarzany przy załadowaniu strony,
   3. obsługa powrotu strony bez przeładowania: `pageshow` (także z `event.persisted`) i `visibilitychange` — przy powrocie odczytaj stan z localStorage i odśwież widok.
-- **Timer pieczenia Ninja (v0.3)** — pasek pod panelem Ninja (część przypiętego panelu, zawsze ciemny):
-  - duże MM:SS do końca **najdłuższej** strefy; przyciski START / PAUZA / WZNÓW / RESET (RESET wymaga drugiego dotknięcia w ciągu 3 s); obok podpowiedź o najbliższym obróceniu („Obróć: Strefa 1 (Udka) za 04:12”),
+- **Timer pieczenia Ninja (v0.3, licznik do najbliższej czynności od v0.3.1)** — pasek pod panelem Ninja (część przypiętego panelu, zawsze ciemny):
+  - **kolejka zdarzeń:** wszystkie `turn` (z alarmem i informacyjne) ze wszystkich stref, po czasie (z przesunięciem SYNC), na końcu „koniec pieczenia”; zdarzenia z tej samej chwili tworzą jedną grupę (jeden napis, jeden alarm z obiema strefami),
+  - **duże MM:SS = czas do najbliższego zdarzenia**; nad nim napis „OBRÓĆ ZA” / „POTRZĄŚNIJ ZA” (dla `required: false` łagodniej: „można obrócić za” / „można potrząsnąć za”) + „Strefa N · label”, dla końca „GOTOWE ZA”; po minięciu momentu albo „Zrobione” licznik przechodzi do następnego zdarzenia; pod licznikiem mała linijka „do końca MM:SS” (tylko gdy przepis ma `turn`),
+  - przed startem: zapowiedź pierwszego zdarzenia („OBRÓĆ PO 14:00” albo „GOTOWE PO 22:00”) i START; przyciski START / PAUZA / WZNÓW / RESET (RESET wymaga drugiego dotknięcia w ciągu 3 s),
   - przy strefach z `turn`: „OBRÓĆ / POTRZĄŚNIJ PO X MIN” (pomarańczowy chip, `required`) albo dyskretne „można obrócić po X min”; widoczne przed i w trakcie odliczania, po czasie przygaszone z „✓”,
   - **czas z zegara:** zapisany start + suma pauz (`Date.now()`), nie liczba wywołań `setInterval` — tyknięcie co 1 s tylko odświeża ekran i sprawdza alarmy,
   - **SYNC:** krótsza strefa startuje w Ninja później (obie kończą razem), więc jej obrócenie = (różnica czasów stref + `after_min`) od startu timera; MATCH / INDEPENDENT / SINGLE — od startu,
-  - **alarmy:** obrócenie (tylko `required: true`) — nakładka na cały ekran „OBRÓĆ TERAZ — Strefa 1 (Udka)” + dźwięk, przycisk „Zrobione” (nie zatrzymuje timera); koniec — „GOTOWE” + dźwięk. Sygnał powtarzany co 5 s przez minutę, dopóki nikt nie potwierdzi. Nakładka jest poza `#app`, więc działa też na liście i przy innym przepisie,
+  - **alarmy:** obrócenie (tylko `required: true`) — nakładka na cały ekran „OBRÓĆ TERAZ — Strefa 1 · Udka” (równoczesne zdarzenia w jednym komunikacie) + dźwięk, przycisk „Zrobione” (nie zatrzymuje timera); koniec — „GOTOWE” + dźwięk. Sygnał powtarzany co 5 s przez minutę, dopóki nikt nie potwierdzi. Nakładka jest poza `#app`, więc działa też na liście i przy innym przepisie,
   - **zaległe alarmy:** po powrocie z tła / przeładowaniu / ponownym otwarciu alarm, którego moment minął, pokazuje się od razu; gdy minął już koniec — tylko „GOTOWE” (zaległe obrócenia są pomijane),
   - **dźwięk:** Web Audio (`webkitAudioContext` w Safari 12), odblokowywany dotknięciem START / WZNÓW (oraz każdym dotknięciem przy aktywnym timerze — po przeładowaniu iOS znowu blokuje dźwięk do pierwszego dotknięcia). Brak dźwięku → sam komunikat z dopiskiem. **Bez obietnic przy zablokowanym ekranie i aplikacji w tle** — pasek timera to mówi,
   - aplikacja nie wie, kiedy Ninja się zatrzymuje (np. przy wysunięciu szuflady) — przy dłuższej przerwie PAUZA / WZNÓW,

@@ -22,8 +22,8 @@ const KEYS = {
   zone: ['label', 'function', 'temp_c', 'minutes', 'turn'],
   turn: ['action', 'after_min', 'required'],
 };
-// ninja.zoneN.turn.action — dokładnie tak (polskie słowa, bo to treść komunikatu na ekranie).
-export const TURN_ACTIONS = ['obróć', 'potrząśnij'];
+// ninja.zoneN.turn.action — kody czynności (napis na ekranie dobiera aplikacja: flip → „OBRÓĆ", shake → „POTRZĄŚNIJ").
+export const TURN_ACTIONS = ['flip', 'shake'];
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
