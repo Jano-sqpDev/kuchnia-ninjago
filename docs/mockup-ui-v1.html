@@ -37,6 +37,15 @@ html, body { margin: 0; padding: 0; background: #2A2F35; font-family: -apple-sys
 #tools button { font-size: 14px; padding: 6px 10px; margin: 0 4px 6px 0; border: 1px solid #555; background: #3A4048; color: #EEE; border-radius: 6px; }
 #tools button.on { background: #FF8A3D; color: #111; border-color: #FF8A3D; }
 #tools .grp { display: inline-block; margin-right: 18px; }
+/* Prawdziwe urządzenie (dotyk): aplikacja na cały ekran, obrót wykrywany sam, przełączniki pod ⚙ */
+#gear { display: none; }
+body.real { background: #000; overflow: hidden; }
+body.real #gear { display: block; position: fixed; right: 14px; bottom: 14px; z-index: 60; width: 52px; height: 52px; border-radius: 26px;
+  border: 0; background: rgba(0,0,0,.55); color: #fff; font-size: 24px; }
+body.real #tools { display: none; position: fixed; right: 12px; bottom: 76px; z-index: 60; max-width: 92%; background: rgba(20,24,28,.97); border-radius: 14px; padding: 12px; }
+body.real #tools.open { display: block; }
+body.real #tools .og { display: none; }
+body.real #device { border-radius: 0; box-shadow: none; }
 
 #stage { position: relative; }
 #device { position: absolute; left: 0; top: 0; overflow: hidden; border-radius: 18px; box-shadow: 0 10px 40px rgba(0,0,0,.6);
@@ -162,10 +171,10 @@ h2 { font-size: 16px; text-transform: uppercase; letter-spacing: .1em; color: va
   <div class="grp"><span>Ekran:</span>
     <button data-s="list" class="on">Lista</button><button data-s="udka">Przepis Ninja</button><button data-s="varoma">Przepis TM6</button><button data-s="deser">Deser</button><button data-s="empty">Pusta lista</button><button data-s="error">Błąd</button>
   </div>
-  <div class="grp"><span>Orientacja:</span><button data-o="land" class="on">Poziom 1024×768</button><button data-o="port">Pion 768×1024</button></div>
+  <div class="grp og"><span>Orientacja:</span><button data-o="land" class="on">Poziom 1024×768</button><button data-o="port">Pion 768×1024</button></div>
   <div class="grp"><span>Motyw:</span><button data-t="dark" class="on">Ciemny</button><button data-t="light">Jasny</button></div>
 </div>
-<div id="stage"><div id="device"><div id="app"></div></div></div>
+<button id="gear" data-act="gear">⚙</button><div id="stage"><div id="device"><div id="app"></div></div></div>
 
 <script>
 // ES5 — świadomie bez let/const/arrow/template literals, żeby mockup działał też na iPadzie.
@@ -208,6 +217,8 @@ function photo(key, cls, size, cap) {
   return '<div class="ph ' + cls + '" style="background:#333;background:linear-gradient(135deg,' + c[0] + ',' + c[1] + ')"><div class="em" style="font-size:' + size + 'px">' + c[2] + '</div>' +
     (cap ? '<div class="cap">' + cap + '</div>' : '') + '</div>';
 }
+var REAL = (("ontouchstart" in window) && location.search.indexOf("ramka") < 0) || location.search.indexOf("pelny") >= 0;
+if (REAL) document.body.className = "real";
 var S = { photo: false, screen: "list", orient: "land", theme: "dark", cur: { udka: 3, varoma: 2, deser: 0 } };
 
 function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
@@ -295,7 +306,16 @@ function render() {
 }
 
 function fit() {
-  var d = document.getElementById("device"), w = S.orient === "land" ? 1024 : 768, hh = S.orient === "land" ? 768 : 1024;
+  var d = document.getElementById("device");
+  if (REAL) {
+    var o = window.innerWidth > window.innerHeight ? "land" : "port";
+    if (o !== S.orient) { S.orient = o; render(); return; }
+    d.style.width = window.innerWidth + "px"; d.style.height = window.innerHeight + "px"; d.style.left = "0";
+    d.style.webkitTransform = "none"; d.style.transform = "none";
+    document.getElementById("stage").style.height = window.innerHeight + "px";
+    return;
+  }
+  var w = S.orient === "land" ? 1024 : 768, hh = S.orient === "land" ? 768 : 1024;
   var top = document.getElementById("tools").offsetHeight;
   var sc = Math.min(1, (window.innerWidth - 32) / w, (window.innerHeight - top - 16) / hh);
   d.style.width = w + "px"; d.style.height = hh + "px"; d.style.left = "16px";
@@ -316,6 +336,7 @@ document.addEventListener("click", function (e) {
       if (t.getAttribute("data-o")) { S.orient = t.getAttribute("data-o"); mark("data-o", S.orient); render(); return; }
       if (t.getAttribute("data-t")) { S.theme = t.getAttribute("data-t"); mark("data-t", S.theme); render(); return; }
       if (t.getAttribute("data-act") === "theme") { S.theme = S.theme === "dark" ? "light" : "dark"; mark("data-t", S.theme); render(); return; }
+      if (t.getAttribute("data-act") === "gear") { var tl = document.getElementById("tools"); tl.className = tl.className ? "" : "open"; return; }
       if (t.getAttribute("data-act") === "photo") { S.photo = true; render(); return; }
       if (t.getAttribute("data-act") === "close") { S.photo = false; render(); return; }
       if (t.getAttribute("data-act") === "back") { S.screen = "list"; mark("data-s", "list"); render(); return; }
