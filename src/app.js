@@ -19,11 +19,30 @@
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  // 1 porcja, 2 porcje, 5 porcji, 22 porcje
-  function servingsWord(n) {
+  // Odmiana po liczbie: plural(2, 'porcja', 'porcje', 'porcji') → 'porcje'
+  function plural(n, one, few, many) {
     var d = n % 10, dd = n % 100;
-    if (n === 1) return 'porcja';
-    return d >= 2 && d <= 4 && (dd < 12 || dd > 14) ? 'porcje' : 'porcji';
+    if (n === 1) return one;
+    return d >= 2 && d <= 4 && (dd < 12 || dd > 14) ? few : many;
+  }
+
+  // 1 porcja, 2 porcje, 5 porcji, 22 porcje
+  function servingsWord(n) { return plural(n, 'porcja', 'porcje', 'porcji'); }
+
+  // Plakietka na liście: „1 przepis z błędem", „3 przepisy z błędem", „5 przepisów z błędem".
+  function problemsLabel(n) { return n + ' ' + plural(n, 'przepis', 'przepisy', 'przepisów') + ' z błędem'; }
+
+  // errors.json → [{ file, skipped, items: [{ where, reason, path }] }] w kolejności plików.
+  function groupProblems(list) {
+    var groups = [], byFile = {};
+    (list || []).forEach(function (p) {
+      if (!p || typeof p.file !== 'string') return;
+      var g = byFile[p.file];
+      if (!g) { g = byFile[p.file] = { file: p.file, skipped: false, items: [] }; groups.push(g); }
+      if (p.skipped) g.skipped = true;
+      g.items.push({ where: String(p.where || p.path || ''), reason: String(p.reason || ''), path: String(p.path || '') });
+    });
+    return groups;
   }
 
   // 1.5 → „1,5"
@@ -111,7 +130,7 @@
   }
 
   var api = {
-    servingsWord: servingsWord, scaledAmount: scaledAmount, tm6Time: tm6Time, tm6Speed: tm6Speed,
+    servingsWord: servingsWord, problemsLabel: problemsLabel, groupProblems: groupProblems, scaledAmount: scaledAmount, tm6Time: tm6Time, tm6Speed: tm6Speed,
     normalizeState: normalizeState, migrateLegacyState: migrateLegacyState, esc: esc,
   };
   // Testy w Node uruchamiają ten plik bez przeglądarki — dostają tylko czyste funkcje.
@@ -200,6 +219,7 @@
   var V = { screen: 'start', slug: null, r: null, step: 0, servings: 0 };
   var index = null;            // search.json (lista)
   var recipeCache = {};        // pobrane data/<slug>.json
+  var problems = [];           // errors.json pogrupowane po plikach (przepisy pominięte przez build)
   var listScroll = 0;          // żeby „‹ Przepisy" wracało w to samo miejsce listy
 
   function render(h, scroll) {
@@ -231,6 +251,11 @@
     saveState();
     if (!index) {
       render(listBar() + '<div class="scroll"><div class="loading">Wczytywanie…</div></div>');
+      // Lista błędów jest dodatkiem: gdy się nie wczyta, lista przepisów i tak działa.
+      fetchJson('/errors.json?b=' + BUILD, function (d) {
+        problems = groupProblems(d);
+        if (V.screen === 'list' && index && problems.length) drawList(currentScroll());
+      }, function () { /* brak errors.json — bez plakietki */ });
       fetchJson('/search.json?b=' + BUILD, function (d) {
         index = d;
         if (V.screen === 'list') drawList(0);
@@ -242,12 +267,25 @@
     drawList(scroll === undefined ? listScroll : scroll);
   }
 
+  function currentScroll() {
+    var sc = app.querySelector('.scroll');
+    return sc ? sc.scrollTop : 0;
+  }
+
+  // Czerwona plakietka „N przepisów z błędem" — dotknięcie pokazuje listę błędów.
+  function problemsBadge() {
+    if (!problems.length) return '';
+    return '<button class="problems-badge" data-act="problems">⚠ ' + esc(problemsLabel(problems.length)) +
+      '<span class="more">Pokaż ›</span></button>';
+  }
+
   function drawList(scroll) {
     if (!index.length) {
-      render(listBar() + '<div class="scroll"><div class="empty">Nie ma jeszcze przepisów.<br><br>Dodaj pierwszy przez Claude Code: „dodaj do przepisów”.</div></div>');
+      render(listBar() + '<div class="scroll">' + problemsBadge() +
+        '<div class="empty">Nie ma jeszcze przepisów.<br><br>Dodaj pierwszy: plik w recipes/ na GitHubie albo przez Claude Code („dodaj do przepisów”).</div></div>');
       return;
     }
-    var h = listBar() + '<div class="scroll">';
+    var h = listBar() + '<div class="scroll">' + problemsBadge();
     // Miejsce na wyszukiwarkę (Etap 4).
     h += '<div class="search"><div class="box">Szukaj: nazwa, składnik, tag… (wkrótce)</div></div>';
     h += resumeCard();
@@ -478,6 +516,30 @@
     if (v) v.parentNode.removeChild(v);
   }
 
+  // Lista przepisów z błędem — nakładka nad listą (przewijana), zamykana przyciskiem.
+  function showProblems() {
+    if (!problems.length || doc.getElementById('problems')) return;
+    var h = '<div class="pbar"><h1>' + esc(problemsLabel(problems.length)) + '</h1><button class="close" data-act="close-problems">✕ Zamknij</button></div>' +
+      '<div class="plist"><p class="pintro">Te pliki w repo mają błędy. Popraw je na GitHubie (albo poproś o to Claude / Codex) — po publikacji plakietka zniknie.</p>';
+    problems.forEach(function (g) {
+      h += '<div class="pfile"><div class="pname">recipes/' + esc(g.file) + '</div><div class="pstate' + (g.skipped ? ' skipped' : '') + '">' +
+        (g.skipped ? 'Przepisu nie ma na liście, dopóki błąd nie zostanie poprawiony.' : 'Przepis jest na liście, ale bez zdjęcia.') + '</div>';
+      g.items.forEach(function (it) {
+        h += '<div class="pitem"><b>' + esc(it.where) + '</b>: ' + esc(it.reason) +
+          (it.path && it.path !== it.where && it.path.charAt(0) !== '(' ? '<div class="ppath">'+ esc(it.path) + '</div>' : '') + '</div>';
+      });
+      h += '</div>';
+    });
+    var d = doc.createElement('div');
+    d.id = 'problems';
+    d.innerHTML = h + '</div>';
+    app.appendChild(d);
+  }
+  function closeProblems() {
+    var p = doc.getElementById('problems');
+    if (p) p.parentNode.removeChild(p);
+  }
+
   // ── nawigacja ──
   function slugFromUrl() {
     var m = /^\/p\/([a-z0-9-]+)\/?$/.exec(global.location.pathname);
@@ -490,6 +552,7 @@
 
   function goToRecipe(slug) {
     closePhoto();
+    closeProblems();
     var sc = app.querySelector('.scroll');
     listScroll = V.screen === 'list' && sc ? sc.scrollTop : 0;
     global.history.pushState({ fromList: true }, '', recipeUrl(slug, 0));
@@ -504,6 +567,7 @@
   }
   function routeFromUrl() {
     closePhoto();
+    closeProblems();
     var slug = slugFromUrl();
     if (slug) openRecipe(slug, stepFromUrl());
     else showList();
@@ -520,6 +584,8 @@
           else if (a === 'back') goBack();
           else if (a === 'photo') showPhoto();
           else if (a === 'close') closePhoto();
+          else if (a === 'problems') showProblems();
+          else if (a === 'close-problems') closeProblems();
           else if (a === 'servings+') setServings(V.servings + 1);
           else if (a === 'servings-') setServings(V.servings - 1);
           else if (a === 'servings0') setServings(V.r.servings);

@@ -26,6 +26,26 @@ test('porcje: odmiana słowa', () => {
   assert.equal(K.servingsWord(22), 'porcje');
 });
 
+test('plakietka błędów: odmiana „przepis”', () => {
+  assert.equal(K.problemsLabel(1), '1 przepis z błędem');
+  assert.equal(K.problemsLabel(3), '3 przepisy z błędem');
+  assert.equal(K.problemsLabel(5), '5 przepisów z błędem');
+  assert.equal(K.problemsLabel(12), '12 przepisów z błędem');
+  assert.equal(K.problemsLabel(22), '22 przepisy z błędem');
+});
+
+test('errors.json: grupowanie po plikach, pominięty jeśli choć jeden błąd pomija', () => {
+  const groups = plain(K.groupProblems([
+    { file: 'a.md', path: 'servings', where: 'porcje', reason: 'musi być >= 1', skipped: true },
+    { file: 'b.md', path: 'image', where: 'zdjęcie', reason: 'HEIC', skipped: false },
+    { file: 'a.md', path: 'title', where: 'tytuł', reason: 'brak', skipped: true },
+    null, { path: 'x' },
+  ]));
+  assert.deepEqual(groups.map((g) => [g.file, g.skipped, g.items.length]), [['a.md', true, 2], ['b.md', false, 1]]);
+  assert.deepEqual(groups[0].items[1], { where: 'tytuł', reason: 'brak', path: 'title' });
+  assert.deepEqual(plain(K.groupProblems(null)), []);
+});
+
 test('przeliczanie ilości: bez zmiany porcji wartość z przepisu', () => {
   assert.equal(K.scaledAmount(500, 'g', 1), '500');
   assert.equal(K.scaledAmount(1.5, 'szt', 1), '1½');

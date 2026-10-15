@@ -1,6 +1,7 @@
-// Wczytywanie i walidacja przepisów z recipes/<slug>.md (schemat v1, opis w CLAUDE.md).
+// Wczytywanie i walidacja przepisów z recipes/<slug>.md (schemat v1, opis w CLAUDE.md i docs/FORMAT-PRZEPISU.md).
 // Walidator niczego nie poprawia — tylko zgłasza błędy w formacie:
 //   plik.md → ścieżka.pola: przyczyna
+// Build pomija przepisy z błędami i publikuje resztę; npm run validate i testy kończą się błędem.
 import { readdirSync, readFileSync, existsSync, statSync, openSync, readSync, closeSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
 import { parseDocument } from 'yaml';
@@ -27,6 +28,18 @@ const isInt = (v) => Number.isInteger(v);
 const isText = (v) => typeof v === 'string' && v.trim() !== '';
 const describeValue = (v) => (v === null ? 'pusta wartość' : JSON.stringify(v));
 
+// Najczęstsze błędy składni YAML po polsku (kody z biblioteki yaml); oryginał zostaje w nawiasie.
+const YAML_ERRORS_PL = {
+  MISSING_CHAR: 'brakuje znaku zamykającego — najczęściej cudzysłowu " albo nawiasu ]',
+  DUPLICATE_KEY: 'to samo pole występuje dwa razy',
+  TAB_AS_INDENT: 'wcięcie zrobione tabulatorem — używaj spacji',
+  BLOCK_AS_IMPLICIT_KEY: 'dwukropek w tekście bez cudzysłowu — weź cały tekst w cudzysłów "…"',
+  MULTILINE_IMPLICIT_KEY: 'tekst rozbity na kilka linii bez cudzysłowu — weź go w cudzysłów "…"',
+  BAD_INDENT: 'złe wcięcie — pola na tym samym poziomie muszą zaczynać się w tej samej kolumnie',
+  UNEXPECTED_TOKEN: 'nieoczekiwany znak — sprawdź wcięcia, myślniki list i dwukropki',
+  BAD_SCALAR_START: 'tekst zaczyna się znakiem specjalnym — weź go w cudzysłów "…"',
+};
+
 // Rozdziela plik na front matter (YAML) i treść Markdown.
 export function parseRecipeFile(text) {
   const t = text.replace(/^﻿/, '').replace(/\r\n?/g, '\n');
@@ -35,8 +48,12 @@ export function parseRecipeFile(text) {
   const doc = parseDocument(m[1], { uniqueKeys: true, prettyErrors: false });
   if (doc.errors.length) {
     const e = doc.errors[0];
-    const lineInfo = e.linePos && e.linePos[0] ? ' (linia ' + (e.linePos[0].line + 1) + ')' : '';
-    return { error: 'niepoprawny YAML' + lineInfo + ': ' + e.message.split('\n')[0] };
+    // Numer linii w pliku liczony z pozycji błędu; linia 1 to otwierające ---.
+    const lineInfo = e.pos && typeof e.pos[0] === 'number'
+      ? ' (linia ' + (m[1].slice(0, e.pos[0]).split('\n').length + 1) + ')' : '';
+    const original = e.message.split('\n')[0];
+    const pl = YAML_ERRORS_PL[e.code];
+    return { error: 'niepoprawny YAML' + lineInfo + ': ' + (pl ? pl + ' [' + original + ']' : original) };
   }
   return { data: doc.toJS(), body: (m[2] || '').trim() };
 }
@@ -217,34 +234,118 @@ export function validateRecipe(data, { file, recipesDir } = {}) {
   if (hasTm6Tag && tm6StepCount === 0) addError('tags', 'jest tag "tm6", ale żaden krok nie ma ustawień tm6');
   if (!hasTm6Tag && tm6StepCount > 0) addError('tags', 'kroki mają ustawienia tm6, ale brak tagu "tm6"');
 
-  // --- zdjęcie ---
+  // --- zdjęcie (pole image; zdjęcie po nazwie sprawdza loadRecipes) ---
   if ('image' in data) validateImage(data.image);
 
   function validateImage(img) {
     if (!isText(img)) { addError('image', 'musi być ścieżką do pliku, np. img/' + basename(file, '.md') + '.jpg'); return; }
-    if (!/^img\/(?:[a-z0-9._-]+\/)*[a-z0-9._-]+\.(jpe?g|png)$/i.test(img) || img.split('/').includes('..')) {
-      addError('image', 'musi wskazywać plik JPEG/PNG w recipes/img/, np. img/' + basename(file, '.md') + '.jpg (jest "' + img + '")');
+    if (!IMAGE_PATH_RE.test(img) || img.split('/').includes('..')) {
+      addError('image', 'musi wskazywać plik JPEG/PNG/HEIC w recipes/img/, np. img/' + basename(file, '.md') + '.jpg (jest "' + img + '")');
       return;
     }
-    const fullPath = join(recipesDir || '.', img);
-    if (!existsSync(fullPath) || !statSync(fullPath).isFile()) { addError('image', 'plik nie istnieje: recipes/' + img); return; }
-    const header = Buffer.alloc(8);
-    const fd = openSync(fullPath, 'r');
-    readSync(fd, header, 0, 8, 0);
-    closeSync(fd);
-    const jpeg = header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
-    const png = header.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-    if (!jpeg && !png) addError('image', 'plik recipes/' + img + ' nie jest prawdziwym JPEG/PNG (WebP/AVIF nie działają na Safari 12)');
+    const problem = checkImageFile(recipesDir || '.', img);
+    if (problem) addError('image', problem);
   }
 
   return errs;
 }
 
-// Wczytuje wszystkie przepisy z katalogu. Zwraca { recipes, errors }.
+const IMAGE_PATH_RE = /^img\/(?:[a-z0-9._-]+\/)*[a-z0-9._-]+\.(jpe?g|png|heic|heif)$/i;
+const IMAGE_EXT_ORDER = ['jpg', 'jpeg', 'png', 'heic', 'heif'];
+const HEIC_BRANDS = ['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis', 'mif1', 'msf1'];
+
+// Format zdjęcia po pierwszych bajtach: 'jpeg' | 'png' | 'heic' | null.
+export function imageKind(header) {
+  if (header.length >= 3 && header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff) return 'jpeg';
+  if (header.length >= 8 && header.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'png';
+  if (header.length >= 12 && header.toString('latin1', 4, 8) === 'ftyp' && HEIC_BRANDS.includes(header.toString('latin1', 8, 12))) return 'heic';
+  return null;
+}
+
+function readHeader(fullPath) {
+  const header = Buffer.alloc(12);
+  const fd = openSync(fullPath, 'r');
+  const n = readSync(fd, header, 0, 12, 0);
+  closeSync(fd);
+  return header.slice(0, n);
+}
+
+// Sprawdza plik zdjęcia (ścieżka względem recipes/). Zwraca opis problemu albo null.
+function checkImageFile(recipesDir, img) {
+  const fullPath = join(recipesDir, img);
+  if (!existsSync(fullPath) || !statSync(fullPath).isFile()) return 'plik nie istnieje: recipes/' + img;
+  if (!imageKind(readHeader(fullPath))) {
+    return 'plik recipes/' + img + ' nie jest prawdziwym JPEG/PNG/HEIC (WebP i AVIF nie działają na Safari 12 — zapisz zdjęcie jako JPEG)';
+  }
+  return null;
+}
+
+// Zdjęcie po nazwie: recipes/img/<slug>.jpg / .jpeg / .png / .heic (wielkość liter bez znaczenia).
+// Zwraca ścieżkę względem recipes/ (np. „img/udka.JPG") albo null.
+export function findImageBySlug(recipesDir, slug) {
+  const dir = join(recipesDir, 'img');
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) return null;
+  const found = readdirSync(dir)
+    .map((name) => ({ name, m: /^(.+)\.(jpe?g|png|heic|heif)$/i.exec(name) }))
+    .filter((x) => x.m && x.m[1].toLowerCase() === slug)
+    .sort((a, b) => IMAGE_EXT_ORDER.indexOf(a.m[2].toLowerCase()) - IMAGE_EXT_ORDER.indexOf(b.m[2].toLowerCase()));
+  return found.length ? 'img/' + found[0].name : null;
+}
+
+// Propozycja poprawnej nazwy pliku: „Pierogi Ruskie.md" → „pierogi-ruskie.md".
+export function suggestSlug(name) {
+  return name.toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'nazwa-przepisu';
+}
+
+// „plik.md → ścieżka: przyczyna" → { file, path, reason }
+export function splitError(line) {
+  const a = line.indexOf(' → ');
+  const rest = line.slice(a + 3);
+  const b = rest.indexOf(': ');
+  return { file: line.slice(0, a), path: rest.slice(0, b), reason: rest.slice(b + 2) };
+}
+
+const FIELD_NAMES = {
+  schema_version: 'wersja schematu', title: 'tytuł', description: 'opis', servings: 'porcje',
+  prep_minutes: 'czas przygotowania', cook_minutes: 'czas gotowania', tags: 'tagi', ingredients: 'składniki',
+  steps: 'kroki', ninja: 'Ninja', image: 'zdjęcie', source: 'źródło', name: 'nazwa', amount: 'ilość',
+  unit: 'jednostka', note: 'uwaga', group: 'grupa', text: 'treść', tm6: 'TM6', internal_temp_c: 'temperatura w środku',
+  timer_seconds: 'minutnik', duration_seconds: 'czas', temperature: 'temperatura', speed: 'obroty', reverse: 'wsteczne',
+  mode: 'tryb', zone1: 'strefa 1', zone2: 'strefa 2', label: 'opis szuflady', function: 'funkcja', temp_c: 'temperatura',
+  minutes: 'minuty',
+};
+const LIST_ITEMS = { ingredients: 'składnik', steps: 'krok', tags: 'tag' };
+const SPECIAL_PATHS = {
+  '(YAML)': 'zapis pliku (YAML)', '(plik)': 'plik', '(nazwa pliku)': 'nazwa pliku', '(front matter)': 'początek pliku (---)',
+};
+
+// Ścieżka pola po ludzku: „steps[2].tm6.speed" → „krok 3 → TM6 → obroty".
+export function describePath(path) {
+  if (SPECIAL_PATHS[path]) return SPECIAL_PATHS[path];
+  return path.split('.').map((part) => {
+    const m = /^([a-z0-9_]+)\[(\d+)\]$/.exec(part);
+    if (m) return (LIST_ITEMS[m[1]] || FIELD_NAMES[m[1]] || m[1]) + ' ' + (Number(m[2]) + 1);
+    return FIELD_NAMES[part] || '„' + part + '”';
+  }).join(' → ');
+}
+
+// Wczytuje wszystkie przepisy z katalogu.
+// Zwraca { recipes, errors, problems }:
+//   recipes  — poprawne przepisy: { slug, data, body, image } (image: ścieżka względem recipes/ albo null),
+//   errors   — wszystkie komunikaty „plik → ścieżka: przyczyna" (npm run validate, testy),
+//   problems — te same błędy jako { file, path, where, reason, skipped } (dla strony: errors.json).
+// skipped = true: przepisu nie ma na stronie; false: jest, ale np. bez zdjęcia.
 export function loadRecipes(recipesDir) {
   const recipes = [];
   const errors = [];
+  const problems = [];
   const slugs = new Map();
+  const report = (lines, skipped) => lines.forEach((line) => {
+    errors.push(line);
+    const e = splitError(line);
+    problems.push({ file: e.file, path: e.path, where: describePath(e.path), reason: e.reason, skipped });
+  });
 
   const files = readdirSync(recipesDir, { withFileTypes: true })
     .filter((d) => d.isFile() && d.name !== '.gitkeep')
@@ -253,23 +354,35 @@ export function loadRecipes(recipesDir) {
 
   files.forEach((file) => {
     if (extname(file) !== '.md') {
-      errors.push(file + ' → (plik): w recipes/ mogą być tylko pliki .md (zdjęcia w recipes/img/)');
+      report([file + ' → (plik): w recipes/ mogą być tylko pliki .md (zdjęcia w recipes/img/)'], true);
       return;
     }
     const slug = basename(file, '.md');
     if (!SLUG_RE.test(slug)) {
-      errors.push(file + ' → (nazwa pliku): slug może mieć tylko małe litery a-z, cyfry i myślniki, np. udka-z-ziemniakami.md');
+      report([file + ' → (nazwa pliku): nazwa pliku może mieć tylko małe litery a-z, cyfry i myślniki (bez polskich znaków i spacji) — zmień na ' + suggestSlug(slug) + '.md'], true);
+      return;
     }
-    const key = slug.toLowerCase();
-    if (slugs.has(key)) errors.push(file + ' → (nazwa pliku): slug powtarza się z ' + slugs.get(key));
-    slugs.set(key, file);
+    if (slugs.has(slug)) {
+      report([file + ' → (nazwa pliku): slug powtarza się z ' + slugs.get(slug)], true);
+      return;
+    }
+    slugs.set(slug, file);
 
     const result = parseRecipeFile(readFileSync(join(recipesDir, file), 'utf8'));
-    if (result.error) { errors.push(file + ' → (YAML): ' + result.error); return; }
+    if (result.error) { report([file + ' → (YAML): ' + result.error], true); return; }
     const errs = validateRecipe(result.data, { file: file, recipesDir });
-    if (errs.length) { errors.push(...errs); return; }
-    recipes.push({ slug, data: result.data, body: result.body });
+    if (errs.length) { report(errs, true); return; }
+
+    // Bez pola image — zdjęcie po nazwie pliku. Zły plik nie ukrywa przepisu: publikujemy go bez zdjęcia.
+    let image = result.data.image || null;
+    if (!image) {
+      const auto = findImageBySlug(recipesDir, slug);
+      const problem = auto && checkImageFile(recipesDir, auto);
+      if (problem) report([file + ' → image: (zdjęcie po nazwie) ' + problem], false);
+      else image = auto;
+    }
+    recipes.push({ slug, data: result.data, body: result.body, image });
   });
 
-  return { recipes, errors };
+  return { recipes, errors, problems };
 }

@@ -27,8 +27,8 @@ Wszystko, co trafia do przeglądarki, musi działać na Safari 12. W razie wątp
 - Odstępy we flexboxie przez marginesy.
 
 ### Obrazy
-- Opcjonalne. Tylko **JPEG/PNG — WebP i AVIF nie działają na Safari 12.**
-- Maks. ~1200 px dłuższego boku, skompresowane.
+- Opcjonalne. Do przeglądarki trafia tylko **JPEG — WebP i AVIF nie działają na Safari 12.**
+- Maks. ~1200 px dłuższego boku, skompresowane. Źródła (JPEG/PNG/HEIC dowolnej wielkości) przerabia build.
 
 ### HTTPS
 - Certyfikat hostingu musi być akceptowany przez iOS 12 — sprawdzamy to na prawdziwym iPadzie w Etapie 1, zanim cokolwiek zbudujemy.
@@ -54,13 +54,14 @@ Wszystko, co trafia do przeglądarki, musi działać na Safari 12. W razie wątp
 J:\APP_DEV\kuchnia-ninjago\      ← kontener, poza repo: mockupy, robocze logi dev-*.txt
 └── app\                       ← repo git (GitHub: Jano-sqpDev/kuchnia-ninjago), tu npm i CC
     ├── CLAUDE.md              ← ten plik, wersjonowany razem z kodem
+    ├── AGENTS.md              ← instrukcja dla zewnętrznych agentów (Codex/ChatGPT): tylko przepisy
     ├── README.md
-    ├── docs\                  ← mockupy HTML, notatki projektowe
+    ├── docs\                  ← mockupy HTML, notatki projektowe, FORMAT-PRZEPISU.md (ściąga formatu)
     ├── recipes\               ← <slug>.md, jeden plik na przepis; zdjęcia w recipes\img\
     ├── src\                   ← szablony, client JS, CSS
     ├── public\                ← ikony ekranu początkowego, statyczne pliki
     ├── tools\                 ← skrypty buildu i walidacji (*.mjs)
-    ├── tests\                 ← testy node:test (*.test.mjs), bez frameworka
+    ├── tests\                 ← testy node:test (*.test.mjs), bez frameworka; fixtures\ — pliki testowe (HEIC)
     ├── package.json
     └── .gitignore             ← node_modules, katalog wyjściowy buildu, .env*
 ```
@@ -69,7 +70,7 @@ J:\APP_DEV\kuchnia-ninjago\      ← kontener, poza repo: mockupy, robocze logi 
   - **po angielsku:** nazwy plików i katalogów, polecenia npm, identyfikatory w kodzie (funkcje, zmienne, stałe, klasy i id w CSS/HTML, wartości `data-act`, klucze localStorage, zmienne środowiskowe, znaczniki w szablonach),
   - **po polsku:** interfejs aplikacji (teksty na ekranie), komunikaty walidatora i skryptów, komentarze w kodzie i w `.gitignore`, nazwy testów, CLAUDE.md, README, docs i raporty,
   - pola YAML przepisów (schemat v1) są po angielsku i się nie zmieniają; tagi i treść przepisów — jak w „Format przepisu”,
-  - wyjątki celowo po polsku: adres kroku `#krok-N` (część zasad widoku) i stare klucze localStorage (`kuchnia-*`), które aplikacja czyta tylko raz, żeby je przenieść.
+  - wyjątki celowo po polsku: adres kroku `#krok-N` (część zasad widoku), stare klucze localStorage (`kuchnia-*`), które aplikacja czyta tylko raz, żeby je przenieść, oraz `docs/FORMAT-PRZEPISU.md` (nazwa nadana przez Janusza — ściąga wklejana do ChatGPT).
 - Pliki w `tools\`: `build.mjs`, `validate.mjs` (walidator), `validate-cli.mjs` (`npm run validate`), `search.mjs`, `output.mjs` (kształt JSON-ów), `images.mjs`, `version.mjs`, `icons.mjs` (`npm run icons`), `deploy.mjs` (`npm run deploy`).
 - Testy jednostkowe w `tests\` dla walidatora i normalizacji wyszukiwania (np. „losos" → „łosoś", aliasy tagów).
 
@@ -78,6 +79,8 @@ J:\APP_DEV\kuchnia-ninjago\      ← kontener, poza repo: mockupy, robocze logi 
 ## Format przepisu (schemat v1)
 
 Jeden przepis = jeden plik `recipes/<slug>.md`. **Nazwa pliku to slug i trwałe ID przepisu** (małe litery a-z, cyfry, myślniki) — nie dodawaj pola `id`. Wszystkie dane w YAML front matter między `---`; treść Markdown pod spodem jest opcjonalna (luźne notatki, trafiają do JSON jako `notes`).
+
+**Ta sama specyfikacja dla ludzi i zewnętrznych agentów: `docs/FORMAT-PRZEPISU.md`.** Przy każdej zmianie schematu lub reguł walidacji aktualizuj ją razem z tą sekcją — test sprawdza, że jej przykład przechodzi walidator i że lista funkcji/trybów Ninja się zgadza.
 
 Safari 12 nigdy nie parsuje YAML — dostaje tylko JSON-y wygenerowane przy buildzie.
 
@@ -95,7 +98,7 @@ Safari 12 nigdy nie parsuje YAML — dostaje tylko JSON-y wygenerowane przy buil
 | `ingredients` | niepusta lista składników | wymagane |
 | `steps` | niepusta lista kroków | wymagane |
 | `ninja` | panel Ninja | wymagane ⇔ tag `ninja` |
-| `image` | `img/<plik>.jpg/.jpeg/.png` — plik w `recipes/img/`, prawdziwy JPEG/PNG | opcjonalne |
+| `image` | `img/<plik>.jpg/.jpeg/.png/.heic` — plik w `recipes/img/`, prawdziwy JPEG/PNG/HEIC. **Zwykle niepotrzebne:** bez tego pola build sam bierze `recipes/img/<slug>.jpg/.jpeg/.png/.heic` (wielkość liter rozszerzenia dowolna; kolejność: jpg, jpeg, png, heic) | opcjonalne |
 | `source` | tekst, np. `"ChatGPT"` | opcjonalne |
 
 Pole opcjonalne albo jest wypełnione, albo go nie ma — pusty tekst / `null` to błąd.
@@ -220,15 +223,20 @@ Pełne przykłady: `recipes/ziemniaczki-brokuly-sync.md` (Ninja SYNC), `recipes/
 
 ### Walidacja przy buildzie
 
-`npm run build` (i `npm run validate`) **kończy się błędem** (kod wyjścia 1, Cloudflare Pages nie publikuje), gdy cokolwiek łamie reguły powyżej, m.in.: zły YAML, brak wymaganego pola, zły typ, **nieznany klucz na dowolnym poziomie**, powtórzony slug, niezgodność tagów urządzeń z danymi, `match` z różnymi strefami, złe parametry TM6, zdjęcie nieistniejące / nie JPEG-PNG. Walidator niczego nie poprawia sam.
+Błędem jest wszystko, co łamie reguły powyżej, m.in.: zły YAML, brak wymaganego pola, zły typ, **nieznany klucz na dowolnym poziomie**, zła nazwa pliku (wielkie litery, spacje, polskie znaki — komunikat proponuje poprawną), powtórzony slug, niezgodność tagów urządzeń z danymi, `match` z różnymi strefami, złe parametry TM6, zdjęcie nieistniejące / nie JPEG-PNG-HEIC. Walidator niczego nie poprawia sam.
 
-Komunikat: `plik.md → ścieżka.pola: przyczyna`, np. `warzywa-varoma.md → steps[2].tm6.speed: niepoprawna wartość 11 …` (indeksy list od 0, czyli `steps[2]` = krok 3).
+Dwa poziomy (od v0.2.4):
+- **`npm run validate` i `npm test` — twardo:** każdy błąd w `recipes/` = kod wyjścia 1. `npm run deploy` wymaga zielonych testów, więc z mojej strony nic błędnego nie wychodzi.
+- **`npm run build` (Cloudflare Pages) — odpornie:** przepisy dodane z pominięciem testów (GitHub w przeglądarce, PR od Codexa) mogą mieć błędy. Build **pomija tylko błędny plik**, publikuje resztę i zapisuje listę błędów do `_site/errors.json`. Zdjęcie, którego nie da się użyć (zły format, HEIC nie do odczytania), nie ukrywa przepisu — przepis wychodzi bez zdjęcia, a błąd też trafia na listę. Aplikacja pokazuje na liście czerwoną plakietkę „N przepis(ów) z błędem”, po dotknięciu — listę: plik, pole po ludzku („krok 3 → TM6 → obroty”), przyczyna, i czy przepis jest ukryty, czy tylko bez zdjęcia. Kodem 1 kończą build tylko błędy aplikacji (brak znaczników w `src/*.html`, `src/app.js` niezgodny z Safari 12).
+
+Komunikat: `plik.md → ścieżka.pola: przyczyna`, np. `warzywa-varoma.md → steps[2].tm6.speed: niepoprawna wartość 11 …` (indeksy list od 0, czyli `steps[2]` = krok 3). Błędy składni YAML mają numer linii w pliku i polskie wyjaśnienie najczęstszych przyczyn (oryginał biblioteki w nawiasie kwadratowym).
 
 ### Wynik buildu
 
 - `_site/search.json` — lekki indeks (lista + wyszukiwanie): `id` (slug), `title`, `tags`, `ingredients` (nazwy), `ninja_functions`, `servings`, `prep_minutes`, `cook_minutes`, `thumb` (miniatura, tylko gdy jest zdjęcie), `text` (znormalizowany tekst do wyszukiwania, z aliasami tagów).
 - `_site/data/<slug>.json` — pełne dane przepisu (`id` + pola z YAML + `notes`), pobierane dopiero po wybraniu przepisu. `image` to tu adres dużej wersji zdjęcia, `thumb` — miniatury.
-- `_site/img/<nazwa>-300-<skrót>.jpg` i `-1200-` — miniatura i duża wersja zdjęcia (JPEG, dłuższy bok 300 / 1200 px, małych nie powiększa; `tools/images.mjs`). Skrót treści w nazwie: po podmianie zdjęcia Safari nie pokaże starego. Źródła z `recipes/img/` nie trafiają na stronę.
+- `_site/img/<nazwa>-300-<skrót>.jpg` i `-1200-` — miniatura i duża wersja zdjęcia (JPEG, dłuższy bok 300 / 1200 px, małych nie powiększa; `tools/images.mjs`). Skrót treści w nazwie: po podmianie zdjęcia Safari nie pokaże starego. Źródła z `recipes/img/` nie trafiają na stronę. HEIC (iPhone) dekoduje `heic-decode` (libheif w WASM) — `sharp` z npm nie ma dekodera HEVC.
+- `_site/errors.json` — przepisy z błędem: `[{ file, path, where, reason, skipped }]` (`where` — ścieżka pola po polsku, `skipped: true` — przepisu nie ma na stronie, `false` — jest, ale bez zdjęcia). Pusta lista `[]`, gdy wszystko w porządku. Pobierany z `?b=<id buildu>`.
 - `_site/p/<slug>/index.html` i `_site/404.html` — ta sama powłoka aplikacji co `index.html`; widok wybiera `app.js` po adresie.
 - `_site/app.js` — `src/app.js` po `esbuild --target=safari12` (błąd → build przerwany); `_site/app.css` bez zmian.
 - `_site/version.json` — `{ "build": "<id>", "version": "v…" }`. `<id>` to 8 znaków skrótu wszystkiego, co pobiera iPad (szablony stron, app.js, app.css, search.json, data/*.json); ten sam wynik → ten sam id.
@@ -285,6 +293,16 @@ Wklejam Ci przepis (często od Claude'a lub ChatGPT) z poleceniem „dodaj do pr
 2. Jeśli czegoś brakuje lub jest niejednoznaczne (np. brak temperatury), pytasz — nie zgadujesz ustawień urządzeń.
 3. Uruchamiasz build z walidacją, commit, push.
 4. Odpowiadasz zgodnie z „Format raportu" (w „Co zrobiłem": dodane + slug).
+
+### Dodawanie przepisów bez Claude (GitHub, ChatGPT, Codex)
+
+Przepisy mogą trafiać do repo także bez Ciebie:
+- **ChatGPT + GitHub w przeglądarce (także z telefonu):** wklejam ChatGPT treść `docs/FORMAT-PRZEPISU.md` i przepis → dostaję gotowy plik (pierwsza linia YAML to komentarz `# plik: recipes/<slug>.md`) → na GitHubie „Add file → Create new file” w `recipes/`, commit na `main`. Zdjęcie: „Upload files” do `recipes/img/` jako `<slug>.jpg` (albo HEIC z iPhone'a).
+- **Codex / inny agent:** pracuje według **`AGENTS.md`** (w katalogu głównym repo; instrukcja tylko dla zewnętrznych agentów — Ciebie obowiązuje ten plik): wyłącznie `recipes/` i `recipes/img/`, `npm run validate` + `npm test` muszą przejść, jeden przepis = jeden pull request „Przepis: <tytuł>”, bez zgadywania ustawień urządzeń.
+- Takie zmiany omijają `npm run deploy`, dlatego build jest odporny (patrz „Walidacja przy buildzie”): błędny przepis znika ze strony, a na iPadzie pojawia się czerwona plakietka z listą błędów.
+- Cloudflare Pages buduje też podglądy pull requestów — liczą się do limitu 500 buildów/mies.
+- Gdy na liście jest plakietka albo poproszę o poprawkę cudzego przepisu: poprawiasz plik według listy błędów, zwykłą drogą (`npm run deploy`).
+- `AGENTS.md` i `docs/FORMAT-PRZEPISU.md` aktualizujesz razem ze zmianami formatu lub poleceń.
 
 ---
 

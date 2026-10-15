@@ -1,13 +1,14 @@
 // Build: kopiuje src/ i public/ do _site/, waliduje przepisy z recipes/,
-// generuje _site/search.json, _site/data/<slug>.json, zdjęcia (_site/img/), strony /p/<slug>/
-// i _site/version.json z identyfikatorem buildu.
+// generuje _site/search.json, _site/data/<slug>.json, zdjęcia (_site/img/), strony /p/<slug>/,
+// _site/errors.json (przepisy z błędem) i _site/version.json z identyfikatorem buildu.
 // Kod kliencki (src/app.js) przechodzi przez esbuild z celem Safari 12.
-// Przy jakimkolwiek błędzie kończy się kodem 1 (Cloudflare Pages nie opublikuje wersji).
+// Kodem 1 (Cloudflare Pages nie opublikuje wersji) kończą się tylko błędy aplikacji: brak znaczników
+// w src/*.html albo src/app.js niezgodny z Safari 12. Błędne przepisy są pomijane (errors.json).
 import { cpSync, rmSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
 import { transformSync } from 'esbuild';
-import { loadRecipes } from './validate.mjs';
+import { loadRecipes, describePath } from './validate.mjs';
 import { recipeJson, searchEntry } from './output.mjs';
 import { VERSION_MARK, BUILD_MARK, versionFromPackageJson, buildId, injectVersion } from './version.mjs';
 import { makeImages } from './images.mjs';
@@ -34,13 +35,9 @@ if (missingMarks.length) {
   process.exit(1);
 }
 
-const { recipes, errors } = loadRecipes(recipesDir);
-if (errors.length) {
-  console.error('\nBłędy w przepisach (' + errors.length + '):\n');
-  errors.forEach((e) => console.error('  ✘ ' + e));
-  console.error('\nBuild przerwany — popraw przepisy i uruchom ponownie.\n');
-  process.exit(1);
-}
+// Błędny przepis NIE przerywa buildu: jest pomijany, reszta się publikuje, a lista błędów trafia
+// do _site/errors.json (aplikacja pokazuje czerwoną plakietkę). Twardo pilnują: npm run validate i npm test.
+const { recipes, problems } = loadRecipes(recipesDir);
 
 // Siatka bezpieczeństwa dla Safari 12: esbuild obniża składnię, a przy czymś,
 // czego nie da się obniżyć, przerywa build.
@@ -67,20 +64,31 @@ recipes.sort((a, b) => a.data.title.localeCompare(b.data.title, 'pl'));
 const recipeData = {};
 const index = [];
 for (const r of recipes) {
-  const images = r.data.image ? await makeImages(recipesDir, r.data.image, out) : null;
+  let images = null;
+  if (r.image) {
+    try {
+      images = await makeImages(recipesDir, r.image, out);
+    } catch (e) {
+      // Zdjęcia nie da się przetworzyć — przepis zostaje na stronie, bez zdjęcia.
+      const reason = 'nie udało się przetworzyć zdjęcia recipes/' + r.image + ': ' + e.message;
+      problems.push({ file: r.slug + '.md', path: 'image', where: describePath('image'), reason, skipped: false });
+    }
+  }
   recipeData[r.slug] = JSON.stringify(recipeJson(r, images));
   index.push(searchEntry(r, images));
 }
 const searchJson = JSON.stringify(index);
+const errorsJson = JSON.stringify(problems);
 
 // Identyfikator buildu: skrót wszystkiego, co pobiera iPad. Inny wynik → inny identyfikator,
 // a aplikacja po wykryciu nowego identyfikatora w /version.json przeładowuje się (src/app.js).
 const templates = Object.fromEntries(pages.map((p) => [p, readFileSync(join(root, 'src', p), 'utf8')]));
-const build = buildId([appVersion, appJs, readFileSync(join(root, 'src', 'app.css'), 'utf8'), searchJson]
+const build = buildId([appVersion, appJs, readFileSync(join(root, 'src', 'app.css'), 'utf8'), searchJson, errorsJson]
   .concat(Object.values(templates), Object.keys(recipeData).sort().map((s) => s + recipeData[s])));
 
 Object.keys(recipeData).forEach((slug) => writeFileSync(join(out, 'data', slug + '.json'), recipeData[slug]));
 writeFileSync(join(out, 'search.json'), searchJson);
+writeFileSync(join(out, 'errors.json'), errorsJson);
 writeFileSync(join(out, 'version.json'), JSON.stringify({ build, version: appVersion }));
 
 const html = {};
@@ -97,3 +105,9 @@ recipes.forEach((r) => {
 });
 
 console.log('Build OK → _site/ (' + appVersion + ' · ' + build.slice(0, 4) + ', przepisy: ' + recipes.length + ')');
+if (problems.length) {
+  const files = new Set(problems.map((p) => p.file));
+  console.warn('\nUwaga: przepisy z błędem: ' + files.size + ' (lista w _site/errors.json i na stronie):');
+  problems.forEach((p) => console.warn('  ✘ ' + p.file + ' → ' + p.path + ': ' + p.reason + (p.skipped ? '  [pominięty]' : '  [bez zdjęcia]')));
+  console.warn('');
+}

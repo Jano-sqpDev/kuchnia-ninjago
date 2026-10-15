@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, readdirSync } from
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateRecipe, parseRecipeFile, loadRecipes } from '../tools/validate.mjs';
+import { validateRecipe, parseRecipeFile, loadRecipes, describePath, suggestSlug, splitError, imageKind, findImageBySlug, NINJA_FUNCTIONS, NINJA_MODES } from '../tools/validate.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -294,6 +294,13 @@ test('front matter: brak, zły YAML, powtórzony klucz', () => {
   assert.match(parseRecipeFile('---\ntitle: a\ntitle: b\n---\n').error, /YAML/);
 });
 
+test('błędy składni YAML po polsku, z numerem linii w pliku', () => {
+  assert.equal(parseRecipeFile('---\nschema_version: 1\ntitle: Zupa: pomidorowa\n---\n').error,
+    'niepoprawny YAML (linia 3): dwukropek w tekście bez cudzysłowu — weź cały tekst w cudzysłów "…" [Nested mappings are not allowed in compact mappings]');
+  assert.match(parseRecipeFile('---\nservings: 2\nsteps:\n\t- text: a\n---\n').error, /^niepoprawny YAML \(linia 4\): wcięcie zrobione tabulatorem/);
+  assert.match(parseRecipeFile('---\ntitle: "Zupa\n---\n').error, /brakuje znaku zamykającego/);
+});
+
 test('front matter: CRLF, BOM, notatki pod spodem, --- w tekście', () => {
   const w = parseRecipeFile('﻿---\r\ntitle: "a---b"\r\n---\r\nNotatka.\r\n');
   assert.equal(w.error, undefined);
@@ -310,28 +317,108 @@ test('YAML: "Varoma" bez cudzysłowu to tekst, 1.5 to liczba', () => {
 
 function tempRecipesDir(files) {
   const dir = mkdtempSync(join(tmpdir(), 'kitchen-test-'));
-  for (const [nazwa, content] of Object.entries(files)) {
-    mkdirSync(dirname(join(dir, nazwa)), { recursive: true });
-    writeFileSync(join(dir, nazwa), content);
+  for (const [name, content] of Object.entries(files)) {
+    mkdirSync(dirname(join(dir, name)), { recursive: true });
+    writeFileSync(join(dir, name), content);
   }
   return dir;
 }
 
 // Bez linii image — testy dopisują własne zdjęcie.
 const DESSERT = readFileSync(join(root, 'recipes', 'deser-twarogowy.md'), 'utf8').replace(/^image: .*\r?\n/m, '');
-const withImage = (fieldPath) => DESSERT.replace('schema_version: 1', 'schema_version: 1\nimage: ' + fieldPath);
+const withImage = (imagePath) => DESSERT.replace('schema_version: 1', 'schema_version: 1\nimage: ' + imagePath);
 
 test('slug: niedozwolone znaki w nazwie pliku', () => {
   const { errors } = loadRecipes(tempRecipesDir({ 'Deser Twarogowy.md': DESSERT }));
   assert.ok(errors.some((e) => e.includes('(nazwa pliku)')), JSON.stringify(errors));
 });
 
-test('slug: powtórzony (różna wielkość liter)', () => {
+test('slug: wielkie litery w nazwie pliku nie przechodzą (więc nie ma duplikatów różniących się wielkością)', () => {
   const dir = tempRecipesDir({ 'deser.md': DESSERT, 'DESER.md': DESSERT });
-  const { errors } = loadRecipes(dir);
+  const { recipes, errors } = loadRecipes(dir);
   // Na Windows/macOS drugi plik nadpisze pierwszy — wtedy test nie ma czego sprawdzać.
-  if (loadRecipes(dir).recipes.length + errors.length < 2) return;
-  assert.ok(errors.some((e) => e.includes('powtarza się')), JSON.stringify(errors));
+  if (recipes.length + errors.length < 2) return;
+  assert.deepEqual(recipes.map((r) => r.slug), ['deser']);
+  assert.ok(errors.some((e) => e.startsWith('DESER.md → (nazwa pliku):')), JSON.stringify(errors));
+});
+
+test('loadRecipes: problems w formie dla strony (plik, ścieżka, opis po polsku, pominięty)', () => {
+  const { recipes, problems } = loadRecipes(tempRecipesDir({ 'ok.md': DESSERT, 'zle.md': DESSERT.replace('servings: 2', 'servings: 0') }));
+  assert.deepEqual(recipes.map((r) => r.slug), ['ok']);
+  assert.deepEqual(problems, [{ file: 'zle.md', path: 'servings', where: 'porcje', reason: 'musi być >= 1, jest 0', skipped: true }]);
+});
+
+test('describePath: ścieżka pola po ludzku', () => {
+  assert.equal(describePath('steps[2].tm6.speed'), 'krok 3 → TM6 → obroty');
+  assert.equal(describePath('ingredients[0].amount'), 'składnik 1 → ilość');
+  assert.equal(describePath('ninja.zone2.temp_c'), 'Ninja → strefa 2 → temperatura');
+  assert.equal(describePath('tags[1]'), 'tag 2');
+  assert.equal(describePath('(YAML)'), 'zapis pliku (YAML)');
+  assert.equal(describePath('(nazwa pliku)'), 'nazwa pliku');
+  assert.equal(describePath('kalorie'), '„kalorie”');
+});
+
+test('suggestSlug: propozycja nazwy pliku', () => {
+  assert.equal(suggestSlug('Pierogi Ruskie'), 'pierogi-ruskie');
+  assert.equal(suggestSlug('Łosoś z cukinią (Ninja)'), 'losos-z-cukinia-ninja');
+  assert.equal(suggestSlug('  ŻUREK  '), 'zurek');
+  assert.equal(suggestSlug('!!!'), 'nazwa-przepisu');
+});
+
+test('splitError: plik, ścieżka, przyczyna (dwukropek w przyczynie zostaje)', () => {
+  assert.deepEqual(splitError('a.md → (YAML): niepoprawny YAML (linia 3): Nested mappings'),
+    { file: 'a.md', path: '(YAML)', reason: 'niepoprawny YAML (linia 3): Nested mappings' });
+});
+
+test('imageKind: JPEG, PNG, HEIC, reszta odrzucona', () => {
+  assert.equal(imageKind(Buffer.from([0xff, 0xd8, 0xff, 0xe0])), 'jpeg');
+  assert.equal(imageKind(readFileSync(join(root, 'public', 'apple-touch-icon.png'))), 'png');
+  assert.equal(imageKind(readFileSync(join(root, 'tests', 'fixtures', 'zdjecie.heic'))), 'heic');
+  assert.equal(imageKind(Buffer.from('RIFF\0\0\0\0WEBPVP8 ')), null);
+  assert.equal(imageKind(Buffer.from([0, 0, 0, 28, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66])), null); // AVIF
+});
+
+test('findImageBySlug: rozszerzenie dowolną wielkością liter, JPEG przed PNG i HEIC', () => {
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
+  const dir = tempRecipesDir({ 'img/deser.PNG': jpeg, 'img/deser.jpeg': jpeg, 'img/zupa.HEIC': jpeg, 'img/deserowy.jpg': jpeg });
+  assert.equal(findImageBySlug(dir, 'deser'), 'img/deser.jpeg');
+  assert.equal(findImageBySlug(dir, 'zupa'), 'img/zupa.HEIC');
+  assert.equal(findImageBySlug(dir, 'udka'), null);
+  assert.equal(findImageBySlug(tempRecipesDir({ 'a.md': 'x' }), 'a'), null); // brak katalogu img/
+});
+
+test('zdjęcie po nazwie: przepis dostaje ścieżkę; zły plik → błąd, ale przepis zostaje', () => {
+  const dir = tempRecipesDir({
+    'deser.md': DESSERT, 'img/deser.JPG': Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
+    'zupa.md': DESSERT, 'img/zupa.png': Buffer.from('to nie jest png'),
+  });
+  const { recipes, problems } = loadRecipes(dir);
+  assert.deepEqual(recipes.map((r) => [r.slug, r.image]), [['deser', 'img/deser.JPG'], ['zupa', null]]);
+  assert.equal(problems.length, 1);
+  assert.equal(problems[0].file, 'zupa.md');
+  assert.equal(problems[0].skipped, false);
+  assert.match(problems[0].reason, /zdjęcie po nazwie/);
+});
+
+// docs/FORMAT-PRZEPISU.md to ściąga dla ChatGPT/Codex — nie może rozjechać się z walidatorem.
+test('docs/FORMAT-PRZEPISU.md: pierwsze zdanie, przykład przechodzi walidację, listy zgodne z walidatorem', () => {
+  const doc = readFileSync(join(root, 'docs', 'FORMAT-PRZEPISU.md'), 'utf8').replace(/\r\n/g, '\n');
+  assert.ok(doc.startsWith('Odpowiadaj samym plikiem .md gotowym do wklejenia, bez komentarzy.'));
+  const example = /```yaml\n([\s\S]*?)```/.exec(doc)[1];
+  const fileName = /^# plik: recipes\/([a-z0-9-]+\.md)$/m.exec(example)[1];
+  const { recipes, errors } = loadRecipes(tempRecipesDir({ [fileName]: example }));
+  assert.deepEqual(errors, []);
+  const r = recipes[0];
+  assert.ok(r.data.ninja && r.data.steps.some((s) => s.tm6) && r.data.steps.some((s) => s.internal_temp_c), 'przykład pokazuje Ninja, TM6 i temperaturę w środku');
+  assert.ok(r.data.ingredients.some((i) => i.group) && r.data.ingredients.some((i) => !('amount' in i)));
+  NINJA_FUNCTIONS.forEach((f) => assert.ok(doc.includes('`' + f + '`'), 'brak funkcji Ninja w ściądze: ' + f));
+  NINJA_MODES.forEach((m) => assert.ok(doc.includes('`' + m + '`'), 'brak trybu Ninja w ściądze: ' + m));
+});
+
+test('pole image może wskazywać HEIC', () => {
+  const heic = readFileSync(join(root, 'tests', 'fixtures', 'zdjecie.heic'));
+  const { errors } = loadRecipes(tempRecipesDir({ 'a.md': withImage('img/a.heic'), 'img/a.heic': heic }));
+  assert.deepEqual(errors, []);
 });
 
 test('w recipes/ tylko pliki .md', () => {

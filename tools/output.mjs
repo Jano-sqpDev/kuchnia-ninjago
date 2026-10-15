@@ -5,6 +5,8 @@ import { buildSearchText } from './search.mjs';
 // images = { thumb, large } z tools/images.mjs albo brak, gdy przepis nie ma zdjęcia.
 export function recipeJson({ slug, data, body }, images) {
   const result = Object.assign({ id: slug }, data);
+  // image w danych strony to zawsze przetworzona duża wersja; bez niej (brak zdjęcia albo błąd) — brak pola.
+  delete result.image;
   if (images) {
     result.image = images.large;
     result.thumb = images.thumb;
