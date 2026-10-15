@@ -129,6 +129,17 @@ body.real #device { border-radius: 0; box-shadow: none; }
 .mode { -webkit-flex: 0 0 96px; flex: 0 0 96px; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
 .mode .pill { font-size: 16px; font-weight: 800; letter-spacing: .1em; color: #111; background: #9FD0FF; padding: 8px 12px; border-radius: 8px; }
 .mode .hint { font-size: 12px; color: #8D99A5; text-align: center; margin-top: 8px; line-height: 1.2; }
+.pin { -webkit-flex: 0 0 auto; flex: 0 0 auto; background: var(--plate); border-bottom: 1px solid var(--well-edge); padding-bottom: 10px; }
+.pin .npanel { margin: 10px 20px 0; }
+.serv { display: inline-block; vertical-align: middle; margin-right: 6px; }
+.serv .sb { width: 52px; height: 52px; border-radius: 26px; border: 1px solid var(--well-edge); background: var(--well); color: var(--ink);
+  font-size: 28px; font-weight: 600; line-height: 48px; padding: 0; vertical-align: middle; }
+.serv .sn { display: inline-block; min-width: 118px; text-align: center; font-size: 20px; color: var(--ink2); vertical-align: middle; }
+.serv .sn b { font-size: 28px; color: var(--ink); }
+.serv .sn.chg b { color: var(--live); }
+.serv .orig { display: block; font-size: 14px; color: var(--live); text-decoration: underline; }
+.head .times { display: block; margin-top: 10px; }
+.scaled { margin: 8px 20px 0; padding: 8px 14px; border-radius: 10px; background: rgba(255,138,61,.12); color: var(--live); font-size: 16px; }
 .npanel.single .zone { -webkit-flex: 0 0 50%; flex: 0 0 50%; }
 
 .cols { display: -webkit-flex; display: flex; padding: 6px 10px 20px; -webkit-align-items: flex-start; align-items: flex-start; }
@@ -221,7 +232,7 @@ function photo(key, cls, size, cap) {
 }
 var REAL = (("ontouchstart" in window) && location.search.indexOf("ramka") < 0) || location.search.indexOf("pelny") >= 0;
 if (REAL) document.body.className = "real";
-var S = { photo: false, screen: "list", orient: "land", theme: "dark", cur: { udka: 3, varoma: 2, deser: 0 } };
+var S = { serv: {}, photo: false, screen: "list", orient: "land", theme: "dark", cur: { udka: 3, varoma: 2, deser: 0 } };
 
 function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
 function devBadges(d) { var h = ""; for (var i = 0; i < d.length; i++) h += '<span class="dev ' + d[i] + '">' + (d[i] === "ninja" ? "NINJA" : "TM6") + '</span>'; return h; }
@@ -239,10 +250,22 @@ function listView() {
     var t = (it.id ? r.prep + r.cook : it.prep + it.cook);
     h += '<div class="card' + (it.fake ? ' fake' : '') + '" style="width:' + w + '"' + (it.id ? ' data-open="' + it.id + '"' : '') + '>';
     h += photo(it.id || it.ph, 'thumb', 54, '');
-    h += '<div class="txt"><h3>' + esc(r.title) + '</h3><div class="meta">' + (t ? t + ' min' : 'bez gotowania') + (it.id ? ' · ' + r.servings + ' porcje' : ' · atrapa') + '</div>';
+    h += '<div class="txt"><h3>' + esc(r.title) + '</h3><div class="meta">' + (t ? t + ' min' : 'bez gotowania') + (it.id ? ' · ' + r.servings + ' ' + porcje(r.servings) : ' · atrapa') + '</div>';
     h += '<div class="devs">' + devBadges(it.devs) + '</div></div></div>';
   }
   return h + '</div></div>';
+}
+
+function porcje(n) { var d = n % 10, dd = n % 100;
+  return n === 1 ? "porcja" : (d >= 2 && d <= 4 && (dd < 12 || dd > 14) ? "porcje" : "porcji"); }
+// Ładne zaokrąglanie: sztuki i łyżki do połówek, gramy/ml do okrągłych wartości.
+function qty(a, f, u) {
+  var v = parseFloat(a) * f;
+  if (f === 1) return a;
+  if (/^(szt|łyż)/.test(u)) { var h = Math.round(v * 2) / 2; if (h < .5) h = .5; var w = Math.floor(h);
+    return (w ? w : "") + (h - w ? "½" : ""); }
+  if (u === "g" || u === "ml") { var st = v < 20 ? 1 : (v < 100 ? 5 : (v < 500 ? 10 : 25)); return String(Math.round(v / st) * st); }
+  return String(Math.round(v * 10) / 10).replace(".", ",");
 }
 
 function ninjaPanel(n) {
@@ -258,19 +281,22 @@ function ninjaPanel(n) {
 
 function recipeView(id) {
   var r = R[id], cur = S.cur[id], land = S.orient === "land";
-  var h = '<div class="bar"><button class="btn back" data-act="back">‹ Przepisy</button><h1>' + esc(r.title) + '</h1><button class="btn" data-act="photo">📷 Zdjęcie</button>' + themeBtn() + '</div><div class="scroll">';
-  h += '<div class="hero"><div class="info"><div class="head"><b>' + r.servings + '</b> porcje<span class="sep">·</span>przygotowanie <b>' + r.prep + ' min</b><span class="sep">·</span>' +
-       (r.cook ? 'gotowanie <b>' + r.cook + ' min</b>' : 'bez gotowania') + '</div>';
+  var sv = S.serv[id] || r.servings, f = sv / r.servings;
+  var h = '<div class="bar"><button class="btn back" data-act="back">‹ Przepisy</button><h1>' + esc(r.title) + '</h1><button class="btn" data-act="photo">📷 Zdjęcie</button>' + themeBtn() + '</div>' +
+    (r.ninja ? '<div class="pin">' + ninjaPanel(r.ninja) + (sv !== r.servings ? '<div class="scaled">Ustawienia Ninja są dla ' + r.servings + ' porcji. ' + (sv > r.servings ?
+      'Przy większej ilości sprawdź, czy jedzenie mieści się w szufladach.' : 'Przy mniejszej ilości sprawdzaj wcześniej — może być gotowe szybciej.') + '</div>' : '') + '</div>' : '') + '<div class="scroll">';
+  h += '<div class="hero"><div class="info"><div class="head"><span class="serv"><button class="sb" data-act="serv-">−</button><span class="sn' + (sv !== r.servings ? ' chg' : '') + '"><b>' + sv + '</b> ' + porcje(sv) +
+    (sv !== r.servings ? '<span class="orig" data-act="serv0">przepis: ' + r.servings + '</span>' : '') + '</span><button class="sb" data-act="serv+">+</button></span><span class="times">przygotowanie <b>' + r.prep + ' min</b><span class="sep">·</span>' +
+       (r.cook ? 'gotowanie <b>' + r.cook + ' min</b>' : 'bez gotowania') + '</span></div>';
   h += '<div class="tags">';
   for (var i = 0; i < r.tags.length; i++) h += '<span class="tag">#' + esc(r.tags[i]) + '</span>';
   h += '</div></div><div class="pic-wrap" data-act="photo">' + photo(id, 'pic', 96, '').replace('</div></div>', '</div><div class="zoom">⤢ Powiększ</div></div>') + '</div></div>';
-  if (r.ninja) h += ninjaPanel(r.ninja);
 
   var ing = '<h2>Składniki</h2><div class="ing">', g = null;
   for (i = 0; i < r.ing.length; i++) {
     var x = r.ing[i];
     if ((x.g || null) !== g) { g = x.g || null; if (g) ing += '<div class="g">' + esc(g) + '</div>'; }
-    ing += '<div class="row"><div class="q' + (x.a ? '' : ' none') + '">' + (x.a ? esc(x.a) + ' ' + esc(x.u) : '—') + '</div><div class="nm">' + esc(x.n) +
+    ing += '<div class="row"><div class="q' + (x.a ? '' : ' none') + '">' + (x.a ? esc(qty(x.a, f, x.u)) + ' ' + esc(x.u) : '—') + '</div><div class="nm">' + esc(x.n) +
            (x.note ? ' <span class="note">(' + esc(x.note) + ')</span>' : '') + '</div></div>';
   }
   ing += '</div>';
@@ -291,6 +317,16 @@ function recipeView(id) {
   return h + '</div>';
 }
 
+// Zmienia tylko klasy kroków — nie przerysowuje ekranu, więc przewinięcie zostaje na miejscu.
+function setStep(n) {
+  S.cur[S.screen] = n;
+  var els = document.querySelectorAll("#app .step");
+  for (var i = 0; i < els.length; i++) {
+    els[i].className = "step" + (i === n ? " cur" : (i < n ? " past" : ""));
+    els[i].firstChild.innerHTML = i < n ? "✓" : String(i + 1);
+  }
+}
+
 function render() {
   var app = document.getElementById("app"), h;
   if (S.screen === "list") h = listView();
@@ -301,7 +337,10 @@ function render() {
     h += '<div id="viewer" data-act="close"><div class="vbar"><h1>' + esc(R[S.screen].title) + '</h1><button class="close" data-act="close">✕ Zamknij</button></div>' +
       photo(S.screen, 'big', 220, 'zdjęcie potrawy — tu będzie prawdziwe zdjęcie') + '<div class="hint">Dotknij w dowolnym miejscu, żeby wrócić do przepisu</div></div>';
   }
+  var old = app.querySelector(".scroll"), keep = (old && render.last === S.screen) ? old.scrollTop : 0;
   app.innerHTML = h;
+  var sc = app.querySelector(".scroll"); if (sc) sc.scrollTop = keep;
+  render.last = S.screen;
   app.className = S.orient === "port" ? "portrait" : "";
   document.getElementById("device").className = S.theme === "light" ? "light" : "";
   fit();
@@ -339,11 +378,17 @@ document.addEventListener("click", function (e) {
       if (t.getAttribute("data-t")) { S.theme = t.getAttribute("data-t"); mark("data-t", S.theme); render(); return; }
       if (t.getAttribute("data-act") === "theme") { S.theme = S.theme === "dark" ? "light" : "dark"; mark("data-t", S.theme); render(); return; }
       if (t.getAttribute("data-act") === "gear") { var tl = document.getElementById("tools"); tl.className = tl.className ? "" : "open"; return; }
+      var a = t.getAttribute("data-act");
+      if (a === "serv-" || a === "serv+" || a === "serv0") {
+        var rr = R[S.screen], cv = S.serv[S.screen] || rr.servings;
+        cv = a === "serv0" ? rr.servings : Math.max(1, Math.min(12, cv + (a === "serv+" ? 1 : -1)));
+        S.serv[S.screen] = cv; render(); return;
+      }
       if (t.getAttribute("data-act") === "photo") { S.photo = true; render(); return; }
       if (t.getAttribute("data-act") === "close") { S.photo = false; render(); return; }
       if (t.getAttribute("data-act") === "back") { S.screen = "list"; mark("data-s", "list"); render(); return; }
       if (t.getAttribute("data-open")) { S.screen = t.getAttribute("data-open"); mark("data-s", S.screen); render(); return; }
-      if (t.getAttribute("data-step")) { S.cur[S.screen] = +t.getAttribute("data-step"); render(); return; }
+      if (t.getAttribute("data-step")) { setStep(+t.getAttribute("data-step")); return; }
     }
     t = t.parentNode;
   }

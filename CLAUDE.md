@@ -110,6 +110,8 @@ Składnik bez ilości jest OK (np. `- name: "sól"`).
 
 Numer kroku wynika z kolejności na liście — nie dodawaj numerów ani ID kroków.
 
+**Ilości tylko na liście składników** — w tekście kroków bez liczb ilości (np. „wlej wodę”, nie „wlej 500 ml wody”), żeby przeliczanie porcji działało.
+
 | Pole | Typ | |
 |---|---|---|
 | `text` | niepusty tekst | wymagane |
@@ -260,6 +262,7 @@ Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`.
 
 Wklejam Ci przepis (często od Claude'a lub ChatGPT) z poleceniem „dodaj do przepisów". Ty:
 1. Przerabiasz go na format powyżej (wyciągasz ustawienia Ninja do panelu, ustawienia TM6 do kroków, dodajesz sensowne tagi i `internal_temp_c` tam, gdzie pasuje).
+   Ilości tylko na liście składników — w tekście kroków bez liczb ilości („wlej wodę”, nie „wlej 500 ml wody”), żeby przeliczanie porcji działało.
 2. Jeśli czegoś brakuje lub jest niejednoznaczne (np. brak temperatury), pytasz — nie zgadujesz ustawień urządzeń.
 3. Uruchamiasz build z walidacją, commit, push.
 4. Odpowiadasz zgodnie z „Format raportu" (w „Co zrobiłem": dodane + slug).
@@ -317,8 +320,12 @@ Mam plan Pro z limitami — **jeden etap na sesję**. Po każdym etapie zatrzyma
      - przycisk „📷 Zdjęcie” w pasku otwiera zdjęcie na pełny ekran,
      - panel Ninja **zawsze ciemny** (także w jasnym motywie) — jak wyświetlacz frytkownicy,
      - bieżący krok wyróżniony świecącym pierścieniem.
-   - **Pułapka iOS 12 (dotyk):** dotknięcie elementu bez `cursor: pointer` nie wysyła zdarzenia `click` do nasłuchu na `document` (event delegation). Wszystko, co ma reagować na dotyk (karty, kroki, zdjęcie, przyciski), musi mieć `cursor: pointer` albo być `<button>` / `<a>`.
    - **Zdjęcia:** źródło JPEG/PNG w `recipes/img/`; build sam robi dwie wersje JPEG — miniaturę ~300 px i dużą ~1200 px (dłuższy bok).
+   - **Zasady Etapu 3 (dodatkowo):**
+     - Panel Ninja **przypięty pod paskiem** — przewija się tylko treść pod nim.
+     - Zmiana bieżącego kroku **nie przerysowuje ekranu** ani nie resetuje przewinięcia — aktualizuj tylko elementy kroków.
+     - **Pułapka iOS 12 (dotyk):** dotknięcie elementu bez `cursor: pointer` nie wysyła zdarzenia `click` do nasłuchu na `document` (event delegation). Wszystko, co reaguje na dotyk (karty, kroki, zdjęcie, przyciski), ma `cursor: pointer` albo jest `<button>` / `<a>`.
+     - **Przeliczanie porcji:** przyciski − / + przy liczbie porcji (zakres 1–12). Ilości przeliczane z zaokrąglaniem: `szt` i łyżki do połówek, `g`/`ml` do okrągłych wartości; składniki bez ilości bez zmian. Link „przepis: N” wraca do oryginalnej liczby porcji. Wybrana liczba porcji zapamiętywana razem z krokiem. Ustawienia Ninja i TM6 się **nie zmieniają**; przy zmienionej liczbie porcji pod panelem Ninja pojawia się uwaga.
 4. **Wyszukiwarka i filtry.**
 5. (Później, na moje życzenie) tryb gotowania krok po kroku, minutniki przy krokach, skalowanie porcji.
 
