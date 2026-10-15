@@ -225,6 +225,16 @@ Komunikat: `plik.md → ścieżka.pola: przyczyna`, np. `warzywa-varoma.md → s
 - `_site/img/<nazwa>-300-<skrót>.jpg` i `-1200-` — miniatura i duża wersja zdjęcia (JPEG, dłuższy bok 300 / 1200 px, małych nie powiększa; `tools/zdjecia.mjs`). Skrót treści w nazwie: po podmianie zdjęcia Safari nie pokaże starego. Źródła z `recipes/img/` nie trafiają na stronę.
 - `_site/p/<slug>/index.html` i `_site/404.html` — ta sama powłoka aplikacji co `index.html`; widok wybiera `app.js` po adresie.
 - `_site/app.js` — `src/app.js` po `esbuild --target=safari12` (błąd → build przerwany); `_site/app.css` bez zmian.
+- `_site/version.json` — `{ "build": "<id>", "version": "v…" }`. `<id>` to 8 znaków skrótu wszystkiego, co pobiera iPad (szablony stron, app.js, app.css, search.json, data/*.json); ten sam wynik → ten sam id.
+- `_site/_headers` (z `public/`) — `version.json` bez pamięci podręcznej, strony aplikacji zawsze sprawdzane na serwerze. Działa na Netlify i Cloudflare Pages.
+
+### Świeże dane na iPadzie (identyfikator buildu)
+
+iOS 12 w trybie z ekranu początkowego potrafi trzymać stare kopie stron i JSON-ów nawet po wyczyszczeniu danych Safari. Dlatego:
+- build wstawia id do HTML: `<html data-build="{{BUILD}}">`, `app.js?{{BUILD}}`, `app.css?{{BUILD}}`; strona bez `{{WERSJA}}` lub `{{BUILD}}` przerywa build,
+- wszystkie pobrania danych mają id w adresie: `/search.json?b=<id>`, `/data/<slug>.json?b=<id>` (zdjęcia mają skrót treści w nazwie),
+- przy starcie, `pageshow` i `visibilitychange` aplikacja pobiera `/version.json?t=<czas>`; inny id niż w stronie → przeładowanie pod adresem `…?b=<nowy id>#krok-N` (nowy adres = brak starej kopii); przepis, krok i porcje wracają z localStorage, a `?b=` znika z adresu,
+- bez pętli: do danego id przeładowuje się najwyżej raz (`kuchnia-przeladowanie` w localStorage).
 
 Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`.
 
@@ -274,7 +284,7 @@ Wklejam Ci przepis (często od Claude'a lub ChatGPT) z poleceniem „dodaj do pr
 ## Wersjonowanie
 
 - **Jedno źródło prawdy:** pole `version` w `package.json` (semver `X.Y.Z`, np. `0.1.0`). Build wstrzykuje je w miejsce znacznika `{{WERSJA}}` do każdej strony aplikacji (`src/*.html`); strona bez znacznika przerywa build.
-- Na stronie numer jest wyświetlany krótko: `0.1.0` → **v0.1**, `0.1.2` → **v0.1.2** — mały, szary, w prawym górnym rogu, nie zasłania przycisków i nie przechwytuje dotyku. Służy do sprawdzenia na iPadzie, czy Safari nie trzyma starej wersji z pamięci.
+- Na stronie numer jest wyświetlany krótko: `0.1.0` → **v0.1**, `0.1.2` → **v0.1.2**, a obok 4 pierwsze znaki identyfikatora buildu (np. **v0.2.2 · a1b2**) — mały, szary, w prawym górnym rogu, nie zasłania przycisków i nie przechwytuje dotyku. Służy do sprawdzenia na iPadzie, czy Safari nie trzyma starej wersji z pamięci.
 - **Kiedy podbijać:**
   - nowa funkcja lub etap → środkowa cyfra: `0.1` → `0.2` (`0.1.x` → `0.2.0`),
   - poprawki wizualne i drobne błędy, także zmiany jednoliniowe → łatka: `0.1` → `0.1.1` → `0.1.2`,

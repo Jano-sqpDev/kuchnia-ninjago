@@ -109,3 +109,9 @@ test('src/app.css: brak CSS, którego nie ma Safari 12', () => {
 test('elementy reagujące na dotyk mają cursor: pointer (pułapka iOS 12)', () => {
   assert.match(css, /\[data-act\], \[data-open\], \[data-step\], button \{ cursor: pointer; \}/);
 });
+
+test('dane pobierane z identyfikatorem buildu, version.json zawsze świeży', () => {
+  assert.match(js, /'\/search\.json\?b=' \+ BUILD/);
+  assert.match(js, /'\/data\/' \+ slug \+ '\.json\?b=' \+ BUILD/);
+  assert.match(js, /'\/version\.json\?t=' \+ Date\.now\(\)/);
+});

@@ -6,6 +6,7 @@
 
   var KLUCZ_STANU = 'kuchnia-stan';
   var KLUCZ_MOTYWU = 'kuchnia-motyw';
+  var KLUCZ_PRZELADOWANIA = 'kuchnia-przeladowanie'; // build, do którego już raz przeładowaliśmy
   var MAX_PAMIETANYCH = 30;   // ile przepisów pamięta krok i porcje
   var PORCJE_MIN = 1, PORCJE_MAX = 12;
 
@@ -108,6 +109,13 @@
 
   if (global.navigator.standalone) html.className += ' standalone';
 
+  // Identyfikator buildu wstawiony przez build do <html data-build>. Jest w adresach danych,
+  // więc po publikacji iPad (zwłaszcza w trybie z ekranu początkowego) nie użyje starej kopii.
+  var BUILD = html.getAttribute('data-build') || '';
+  var zapytanieStartowe = global.location.search;
+  // ?b=<build> zostaje po przeładowaniu do nowej wersji — sprzątamy adres.
+  if (/[?&]b=/.test(zapytanieStartowe)) global.history.replaceState(global.history.state, '', global.location.pathname + global.location.hash);
+
   // ── pamięć (localStorage zawsze w try/catch) ──
   function czytajStan() {
     try { return poprawStan(JSON.parse(global.localStorage.getItem(KLUCZ_STANU) || 'null')); } catch (e) { return poprawStan(null); }
@@ -186,7 +194,7 @@
     zapiszStan();
     if (!indeks) {
       pokaz(pasekListy() + '<div class="scroll"><div class="loading">Wczytywanie…</div></div>');
-      pobierz('/search.json', function (d) {
+      pobierz('/search.json?b=' + BUILD, function (d) {
         indeks = d;
         if (V.ekran === 'lista') rysujListe(0);
       }, function () {
@@ -242,7 +250,7 @@
     if (r) { rysujPrzepis(r, krokZAdresu); return; }
     pokaz('<div class="bar"><button class="btn back" data-act="wstecz">‹ Przepisy</button><h1></h1>' + przyciskMotywu() +
       '</div><div class="scroll"><div class="loading">Wczytywanie…</div></div>');
-    pobierz('/data/' + slug + '.json', function (d) {
+    pobierz('/data/' + slug + '.json?b=' + BUILD, function (d) {
       przepisy[slug] = d;
       if (V.slug === slug) rysujPrzepis(d, krokZAdresu);
     }, function (status) {
@@ -513,8 +521,30 @@
       pokazListe();
     }
   }
-  global.addEventListener('pageshow', function () { if (V.ekran !== 'start') przyPowrocie(); });
-  doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') przyPowrocie(); });
+
+  // Nowa publikacja? /version.json zawsze świeży (?t=czas). Inny build → przeładowanie pod adresem
+  // z ?b=<nowy build> (nowy adres = iOS nie poda starej strony z pamięci). Przepis, krok i porcje
+  // są już zapisane w localStorage, więc strona wraca w to samo miejsce.
+  var sprawdzanieBuildu = false;
+  function sprawdzBuild() {
+    if (sprawdzanieBuildu || !BUILD) return;
+    sprawdzanieBuildu = true;
+    pobierz('/version.json?t=' + Date.now(), function (d) {
+      sprawdzanieBuildu = false;
+      var nowy = d && typeof d.build === 'string' && /^[0-9a-f]+$/.test(d.build) ? d.build : null;
+      if (!nowy || nowy === BUILD) return;
+      // Bez pętli: jeśli już raz przeładowaliśmy do tego buildu, a serwer dalej daje starą stronę — czekamy.
+      var proba = null;
+      try { proba = global.localStorage.getItem(KLUCZ_PRZELADOWANIA); } catch (e) { /* brak pamięci */ }
+      if (proba === nowy || zapytanieStartowe.indexOf('b=' + nowy) !== -1) return;
+      try { global.localStorage.setItem(KLUCZ_PRZELADOWANIA, nowy); } catch (e) { /* brak pamięci */ }
+      if (V.ekran === 'przepis') zapamietajPrzepis();
+      global.location.replace(global.location.pathname + '?b=' + nowy + global.location.hash);
+    }, function () { sprawdzanieBuildu = false; });
+  }
+
+  global.addEventListener('pageshow', function () { if (V.ekran !== 'start') przyPowrocie(); sprawdzBuild(); });
+  doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') { przyPowrocie(); sprawdzBuild(); } });
 
   // ── start ──
   // Adres /p/<slug>/ wygrywa; na „/" wracamy do ostatniego ekranu z pamięci (np. po otwarciu z ekranu początkowego).
@@ -522,4 +552,5 @@
   if (startSlug) otworzPrzepis(startSlug, krokZAdresu());
   else if (stan.ekran !== 'lista') { global.history.replaceState(null, '', adresPrzepisu(stan.ekran, 0)); otworzPrzepis(stan.ekran, null); }
   else pokazListe();
+  sprawdzBuild();
 })(this);

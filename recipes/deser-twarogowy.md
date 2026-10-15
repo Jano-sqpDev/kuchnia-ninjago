@@ -5,7 +5,7 @@ description: "Szybki deser wysokobiałkowy bez gotowania."
 servings: 2
 prep_minutes: 5
 cook_minutes: 0
-tags: [deser, wysokobialkowy, bez-pieczenia]
+tags: [deser, wysokobiałkowe, bez-pieczenia]
 source: "ChatGPT"
 image: img/deser-twarogowy.png
 

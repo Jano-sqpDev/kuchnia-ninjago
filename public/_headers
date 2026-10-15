@@ -1,0 +1,11 @@
+# Nagłówki HTTP (Netlify i Cloudflare Pages czytają ten plik z katalogu publikacji).
+# version.json nigdy z pamięci podręcznej; strony aplikacji zawsze sprawdzane na serwerze.
+# Dane i skrypty mają identyfikator buildu w adresie, zdjęcia — skrót treści w nazwie.
+/version.json
+  Cache-Control: no-store
+
+/
+  Cache-Control: no-cache
+
+/p/*
+  Cache-Control: no-cache
