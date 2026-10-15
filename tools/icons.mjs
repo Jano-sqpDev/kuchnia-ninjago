@@ -1,5 +1,5 @@
 // Generuje ikony ekranu początkowego (PNG) bez zewnętrznych zależności.
-// Uruchom: npm run ikony  → zapisuje do public/
+// Uruchom: npm run icons  → zapisuje do public/
 import { writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
@@ -7,9 +7,9 @@ import { dirname, join } from 'node:path';
 
 const publicDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
 
-const TLO = [196, 74, 30];      // ceglasty pomarańcz
-const TALERZ = [255, 248, 240]; // kremowa biel
-const RANT = [232, 214, 196];
+const BACKGROUND = [196, 74, 30];      // ceglasty pomarańcz
+const PLATE = [255, 248, 240]; // kremowa biel
+const RIM = [232, 214, 196];
 
 const crcTable = new Uint32Array(256).map((_, n) => {
   let c = n;
@@ -30,18 +30,18 @@ function chunk(type, data) {
   return Buffer.concat([len, td, crc]);
 }
 
-function ikona(size) {
+function icon(size) {
   const c = size / 2;
-  const rTalerz = size * 0.36;
-  const rRant = size * 0.26;
+  const rPlate = size * 0.36;
+  const rRim = size * 0.26;
   const raw = Buffer.alloc((size * 3 + 1) * size);
   let i = 0;
   for (let y = 0; y < size; y++) {
     raw[i++] = 0; // filtr: brak
     for (let x = 0; x < size; x++) {
       const d = Math.hypot(x + 0.5 - c, y + 0.5 - c);
-      let col = TLO;
-      if (d < rTalerz) col = d > rRant && d < rRant + size * 0.02 ? RANT : TALERZ;
+      let col = BACKGROUND;
+      if (d < rPlate) col = d > rRim && d < rRim + size * 0.02 ? RIM : PLATE;
       raw[i++] = col[0]; raw[i++] = col[1]; raw[i++] = col[2];
     }
   }
@@ -62,6 +62,6 @@ for (const [name, size] of [
   ['apple-touch-icon-167.png', 167],
   ['apple-touch-icon.png', 180],
 ]) {
-  writeFileSync(join(publicDir, name), ikona(size));
+  writeFileSync(join(publicDir, name), icon(size));
   console.log('zapisano', name);
 }

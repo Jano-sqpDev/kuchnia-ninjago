@@ -2,15 +2,15 @@
 // Kod celowo w składni ES2017 — w Etapie 4 ta sama logika trafi do JS na iPadzie.
 
 // Aliasy dopisywane do tekstu wyszukiwania, żeby np. „thermomix" znajdował tag tm6.
-export const ALIASY_TAGOW = {
+export const TAG_ALIASES = {
   tm6: ['thermomix'],
   ninja: ['airfryer', 'air fryer', 'af'],
 };
 
 // Małe litery, bez znaków diakrytycznych (NFD nie rozkłada „ł", więc ł → l ręcznie),
 // pojedyncze spacje.
-export function normalize(tekst) {
-  return String(tekst)
+export function normalize(text) {
+  return String(text)
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
@@ -20,19 +20,19 @@ export function normalize(tekst) {
 }
 
 // Tekst, po którym szuka iPad: tytuł, tagi (+ aliasy), składniki, funkcje Ninja.
-export function buildSearchText(wpis) {
-  const czesci = [wpis.title];
-  wpis.tags.forEach(function (tag) {
-    czesci.push(tag);
-    (ALIASY_TAGOW[tag] || []).forEach(function (alias) { czesci.push(alias); });
+export function buildSearchText(entry) {
+  const parts = [entry.title];
+  entry.tags.forEach(function (tag) {
+    parts.push(tag);
+    (TAG_ALIASES[tag] || []).forEach(function (alias) { parts.push(alias); });
   });
-  wpis.ingredients.forEach(function (nazwa) { czesci.push(nazwa); });
-  wpis.ninja_functions.forEach(function (f) { czesci.push(f); });
-  return normalize(czesci.join(' '));
+  entry.ingredients.forEach(function (name) { parts.push(name); });
+  entry.ninja_functions.forEach(function (f) { parts.push(f); });
+  return normalize(parts.join(' '));
 }
 
 // Wiele słów = AND, każde słowo dopasowane po fragmencie.
-export function matchesQuery(wpis, zapytanie) {
-  const slowa = normalize(zapytanie).split(' ').filter(Boolean);
-  return slowa.every(function (slowo) { return wpis.text.indexOf(slowo) !== -1; });
+export function matchesQuery(entry, query) {
+  const words = normalize(query).split(' ').filter(Boolean);
+  return words.every(function (word) { return entry.text.indexOf(word) !== -1; });
 }

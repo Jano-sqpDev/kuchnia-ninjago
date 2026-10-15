@@ -1,5 +1,5 @@
 /* Widok kuchenny — według docs/mockup-ui-v1.html. Zgodny z Safari 12:
-   bez flex gap, aspect-ratio, clamp/min/max, :is/:where/:has, inset (sprawdza tests/klient.test.mjs).
+   bez flex gap, aspect-ratio, clamp/min/max, :is/:where/:has, inset (sprawdza tests/client.test.mjs).
    Zasada wizualna: PŁYTA (tło) + WGŁĘBIENIA (karty) + ŚWIECĄCY PIERŚCIEŃ (stan).
    Panele Ninja i TM6 zostają ciemne w obu motywach — wyglądają jak wyświetlacze urządzeń. */
 
@@ -31,9 +31,9 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: 
 button { font-family: inherit; }
 
 /* numer wersji: mały, szary, prawy górny róg, nad przyciskami paska, nie przechwytuje dotyku */
-.wersja { position: fixed; top: 3px; right: 10px; z-index: 100; font-size: 11px; line-height: 1; color: #8a8a8a; pointer-events: none; }
+.version { position: fixed; top: 3px; right: 10px; z-index: 100; font-size: 11px; line-height: 1; color: #8a8a8a; pointer-events: none; }
 /* tryb pełnoekranowy (ekran początkowy): pasek stanu iOS nachodzi na stronę — czarny pas pod nim */
-.standalone .wersja { top: 23px; }
+.standalone .version { top: 23px; }
 
 #app { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--plate); color: var(--ink); font-size: 20px; line-height: 1.35;
   display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; }

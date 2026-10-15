@@ -9,7 +9,8 @@ npm install         # raz, po sklonowaniu repo
 npm run validate    # sama walidacja przepisów z recipes/
 npm run build       # walidacja + budowa strony do _site/
 npm test            # testy walidatora, wyszukiwania i buildu
-npm run wypchnij    # testy + build, a git push tylko gdy wszystko przeszło
+npm run deploy      # testy + build, a git push tylko gdy wszystko przeszło
+npm run icons       # ikony ekranu początkowego do public/
 ```
 
 Przepisy: `recipes/<slug>.md` — format opisany w `CLAUDE.md` („Format przepisu”).

@@ -1,9 +1,9 @@
 // Sama walidacja przepisów, bez budowania strony: npm run validate
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { loadRecipes } from './walidacja.mjs';
+import { loadRecipes } from './validate.mjs';
 
-const recipesDir = process.env.KUCHNIA_RECIPES_DIR || join(dirname(fileURLToPath(import.meta.url)), '..', 'recipes');
+const recipesDir = process.env.KITCHEN_RECIPES_DIR || join(dirname(fileURLToPath(import.meta.url)), '..', 'recipes');
 const { recipes, errors } = loadRecipes(recipesDir);
 
 if (errors.length) {

@@ -42,7 +42,7 @@ Wszystko, co trafia do przeglądarki, musi działać na Safari 12. W razie wątp
 - **Adres produkcyjny:** https://kuchnia-ninjago.pages.dev
 - Hosting musi serwować stronę **publicznie, bez logowania** — Safari 12 nie renderuje stron logowania hostingów (widać tylko białą stronę). Przy białej stronie najpierw sprawdź dostęp do projektu.
 - **Commit i push robisz Ty, po każdej zakończonej pracy** (nie czekasz na moje słowo). Commit z opisem (pierwsza linia = krótkie podsumowanie, pusta linia, potem punkty).
-- **Push TYLKO przez `npm run wypchnij`** (`tools/wypchnij.mjs`): sprawdza, że wszystko jest zacommitowane, uruchamia wszystkie testy i build, i robi `git push` dopiero wtedy, gdy każdy krok zakończy się kodem 0. **Nigdy nie wywołuj `git push` bezpośrednio** i nie oceniaj testów po wypisanym tekście. Gdy testy albo build padają — nie pushuj, odpowiedź z nagłówkiem `## ❌ PRZERWANE` i opisem błędu.
+- **Push TYLKO przez `npm run deploy`** (`tools/deploy.mjs`): sprawdza, że wszystko jest zacommitowane, uruchamia wszystkie testy i build, i robi `git push` dopiero wtedy, gdy każdy krok zakończy się kodem 0. **Nigdy nie wywołuj `git push` bezpośrednio** i nie oceniaj testów po wypisanym tekście. Gdy testy albo build padają — nie pushuj, odpowiedź z nagłówkiem `## ❌ PRZERWANE` i opisem błędu.
 - Jeśli sam push się nie uda (np. brak uprawnień), nie kombinuj — napisz, co zwrócił git, a ja wypchnę przez GitHub Desktop.
 - **Generator:** Eleventy (11ty) albo prosty własny skrypt Node — wynik to czysty statyczny HTML + jeden mały plik JS + CSS.
 - **Wyszukiwanie po stronie klienta:** build generuje `search.json`, iPad pobiera go raz i filtruje lokalnie. Kolekcja nie przekroczy ~1000 przepisów.
@@ -65,7 +65,12 @@ J:\APP_DEV\kuchnia-ninjago\      ← kontener, poza repo: mockupy, robocze logi 
     └── .gitignore             ← node_modules, katalog wyjściowy buildu, .env*
 ```
 
-- Komentarze w `.gitignore` i dokumentacja po polsku.
+- **Konwencja językowa (od v0.2.3):**
+  - **po angielsku:** nazwy plików i katalogów, polecenia npm, identyfikatory w kodzie (funkcje, zmienne, stałe, klasy i id w CSS/HTML, wartości `data-act`, klucze localStorage, zmienne środowiskowe, znaczniki w szablonach),
+  - **po polsku:** interfejs aplikacji (teksty na ekranie), komunikaty walidatora i skryptów, komentarze w kodzie i w `.gitignore`, nazwy testów, CLAUDE.md, README, docs i raporty,
+  - pola YAML przepisów (schemat v1) są po angielsku i się nie zmieniają; tagi i treść przepisów — jak w „Format przepisu”,
+  - wyjątki celowo po polsku: adres kroku `#krok-N` (część zasad widoku) i stare klucze localStorage (`kuchnia-*`), które aplikacja czyta tylko raz, żeby je przenieść.
+- Pliki w `tools\`: `build.mjs`, `validate.mjs` (walidator), `validate-cli.mjs` (`npm run validate`), `search.mjs`, `output.mjs` (kształt JSON-ów), `images.mjs`, `version.mjs`, `icons.mjs` (`npm run icons`), `deploy.mjs` (`npm run deploy`).
 - Testy jednostkowe w `tests\` dla walidatora i normalizacji wyszukiwania (np. „losos" → „łosoś", aliasy tagów).
 
 ---
@@ -223,7 +228,7 @@ Komunikat: `plik.md → ścieżka.pola: przyczyna`, np. `warzywa-varoma.md → s
 
 - `_site/search.json` — lekki indeks (lista + wyszukiwanie): `id` (slug), `title`, `tags`, `ingredients` (nazwy), `ninja_functions`, `servings`, `prep_minutes`, `cook_minutes`, `thumb` (miniatura, tylko gdy jest zdjęcie), `text` (znormalizowany tekst do wyszukiwania, z aliasami tagów).
 - `_site/data/<slug>.json` — pełne dane przepisu (`id` + pola z YAML + `notes`), pobierane dopiero po wybraniu przepisu. `image` to tu adres dużej wersji zdjęcia, `thumb` — miniatury.
-- `_site/img/<nazwa>-300-<skrót>.jpg` i `-1200-` — miniatura i duża wersja zdjęcia (JPEG, dłuższy bok 300 / 1200 px, małych nie powiększa; `tools/zdjecia.mjs`). Skrót treści w nazwie: po podmianie zdjęcia Safari nie pokaże starego. Źródła z `recipes/img/` nie trafiają na stronę.
+- `_site/img/<nazwa>-300-<skrót>.jpg` i `-1200-` — miniatura i duża wersja zdjęcia (JPEG, dłuższy bok 300 / 1200 px, małych nie powiększa; `tools/images.mjs`). Skrót treści w nazwie: po podmianie zdjęcia Safari nie pokaże starego. Źródła z `recipes/img/` nie trafiają na stronę.
 - `_site/p/<slug>/index.html` i `_site/404.html` — ta sama powłoka aplikacji co `index.html`; widok wybiera `app.js` po adresie.
 - `_site/app.js` — `src/app.js` po `esbuild --target=safari12` (błąd → build przerwany); `_site/app.css` bez zmian.
 - `_site/version.json` — `{ "build": "<id>", "version": "v…" }`. `<id>` to 8 znaków skrótu wszystkiego, co pobiera iPad (szablony stron, app.js, app.css, search.json, data/*.json); ten sam wynik → ten sam id.
@@ -232,12 +237,12 @@ Komunikat: `plik.md → ścieżka.pola: przyczyna`, np. `warzywa-varoma.md → s
 ### Świeże dane na iPadzie (identyfikator buildu)
 
 iOS 12 w trybie z ekranu początkowego potrafi trzymać stare kopie stron i JSON-ów nawet po wyczyszczeniu danych Safari. Dlatego:
-- build wstawia id do HTML: `<html data-build="{{BUILD}}">`, `app.js?{{BUILD}}`, `app.css?{{BUILD}}`; strona bez `{{WERSJA}}` lub `{{BUILD}}` przerywa build,
+- build wstawia id do HTML: `<html data-build="{{BUILD}}">`, `app.js?{{BUILD}}`, `app.css?{{BUILD}}`; krótki id w napisie wersji: `{{BUILD_SHORT}}`; strona bez `{{VERSION}}` lub `{{BUILD}}` przerywa build,
 - wszystkie pobrania danych mają id w adresie: `/search.json?b=<id>`, `/data/<slug>.json?b=<id>` (zdjęcia mają skrót treści w nazwie),
 - przy starcie, `pageshow` i `visibilitychange` aplikacja pobiera `/version.json?t=<czas>`; inny id niż w stronie → przeładowanie pod adresem `…?b=<nowy id>#krok-N` (nowy adres = brak starej kopii); przepis, krok i porcje wracają z localStorage, a `?b=` znika z adresu,
-- bez pętli: do danego id przeładowuje się najwyżej raz (`kuchnia-przeladowanie` w localStorage).
+- bez pętli: do danego id przeładowuje się najwyżej raz (`kitchen-reload` w localStorage).
 
-Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`, `npm run wypchnij` (testy → build → push; jedyna droga publikacji).
+Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`, `npm run deploy` (testy → build → push; jedyna droga publikacji), `npm run icons` (ikony ekranu początkowego).
 
 ---
 
@@ -257,12 +262,13 @@ Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`, `np
   1. stan zapisywany **od razu** przy każdym dotknięciu kroku / zmianie przepisu (nie dopiero przy zamykaniu),
   2. stan odtwarzany przy załadowaniu strony,
   3. obsługa powrotu strony bez przeładowania: `pageshow` (także z `event.persisted`) i `visibilitychange` — przy powrocie odczytaj stan z localStorage i odśwież widok.
+- **Klucze localStorage:** `kitchen-state` (otwarty przepis + krok i porcje dla ostatnich 30 przepisów), `kitchen-theme` (`light`/`dark`), `kitchen-reload` (ochrona przed pętlą przeładowań). Zapisy sprzed v0.2.3 (`kuchnia-stan`, `kuchnia-motyw`, `kuchnia-przeladowanie`) są przy pierwszym uruchomieniu przenoszone do nowych kluczy, a stare usuwane. Przy każdej przyszłej zmianie nazw kluczy lub kształtu zapisu — ta sama zasada: migracja, żeby iPad nie zgubił stanu.
 - Tryb „aplikacji": `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, `apple-touch-icon` 152×152 i 167×167, poprawny `viewport`. Po „Dodaj do ekranu początkowego" ma się otwierać bez paska Safari.
 - Nawigacja wstecz musi być w interfejsie (w trybie pełnoekranowym nie ma przycisku Wstecz przeglądarki).
 
 ## Wyszukiwanie
 
-- Build generuje `search.json` (pola opisane w „Wynik buildu”). Logika normalizacji i dopasowania jest w `tools/szukaj.mjs` (ES2017, gotowa do przeniesienia do JS na iPadzie).
+- Build generuje `search.json` (pola opisane w „Wynik buildu”). Logika normalizacji i dopasowania jest w `tools/search.mjs` (ES2017, gotowa do przeniesienia do JS na iPadzie).
 - Normalizacja zapytania i danych: małe litery, usunięcie znaków diakrytycznych przez `normalize('NFD')` + usunięcie znaków łączących, **plus ręczne mapowanie `ł→l`** (NFD nie rozkłada „ł"). „losos" ma znaleźć „łosoś".
 - Rozwijanie aliasów tagów (patrz wyżej).
 - Wiele słów = AND. Dopasowanie po fragmencie słowa.
@@ -284,7 +290,7 @@ Wklejam Ci przepis (często od Claude'a lub ChatGPT) z poleceniem „dodaj do pr
 
 ## Wersjonowanie
 
-- **Jedno źródło prawdy:** pole `version` w `package.json` (semver `X.Y.Z`, np. `0.1.0`). Build wstrzykuje je w miejsce znacznika `{{WERSJA}}` do każdej strony aplikacji (`src/*.html`); strona bez znacznika przerywa build.
+- **Jedno źródło prawdy:** pole `version` w `package.json` (semver `X.Y.Z`, np. `0.1.0`). Build wstrzykuje je w miejsce znacznika `{{VERSION}}` do każdej strony aplikacji (`src/*.html`); strona bez znacznika przerywa build.
 - Na stronie numer jest wyświetlany krótko: `0.1.0` → **v0.1**, `0.1.2` → **v0.1.2**, a obok 4 pierwsze znaki identyfikatora buildu (np. **v0.2.2 · a1b2**) — mały, szary, w prawym górnym rogu, nie zasłania przycisków i nie przechwytuje dotyku. Służy do sprawdzenia na iPadzie, czy Safari nie trzyma starej wersji z pamięci.
 - **Kiedy podbijać:**
   - nowa funkcja lub etap → środkowa cyfra: `0.1` → `0.2` (`0.1.x` → `0.2.0`),

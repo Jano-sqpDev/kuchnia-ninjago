@@ -1,4 +1,4 @@
-// Jedyna droga publikacji: npm run wypchnij
+// Jedyna droga publikacji: npm run deploy
 // Kolejno: brak niezacommitowanych zmian → wszystkie testy → build → git push.
 // Pierwszy błąd przerywa całość (kod wyjścia 1) i NIC nie jest wypychane.
 // Każdy krok sprawdzany po kodzie wyjścia, nie po tekście na wyjściu.
@@ -8,11 +8,11 @@ import { dirname, join } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-function krok(nazwa, polecenie, args) {
-  console.log('\n▶ ' + nazwa);
-  const w = spawnSync(polecenie, args, { cwd: root, stdio: 'inherit', shell: process.platform === 'win32' });
-  if (w.status !== 0) {
-    console.error('\n✘ ' + nazwa + ' — nie udało się (kod ' + w.status + '). Push NIE został wykonany.\n');
+function runStep(label, command, args) {
+  console.log('\n▶ ' + label);
+  const result = spawnSync(command, args, { cwd: root, stdio: 'inherit', shell: process.platform === 'win32' });
+  if (result.status !== 0) {
+    console.error('\n✘ ' + label + ' — nie udało się (kod ' + result.status + '). Push NIE został wykonany.\n');
     process.exit(1);
   }
 }
@@ -23,7 +23,7 @@ if (status.status !== 0 || status.stdout.trim()) {
   process.exit(1);
 }
 
-krok('Testy (npm test)', 'npm', ['test']);
-krok('Build (npm run build)', 'npm', ['run', 'build']);
-krok('Push (git push)', 'git', ['push']);
+runStep('Testy (npm test)', 'npm', ['test']);
+runStep('Build (npm run build)', 'npm', ['run', 'build']);
+runStep('Push (git push)', 'git', ['push']);
 console.log('\n✔ Testy i build przeszły, push wykonany.\n');

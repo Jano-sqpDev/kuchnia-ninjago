@@ -7,30 +7,30 @@ import { cpSync, rmSync, mkdirSync, writeFileSync, readFileSync, readdirSync } f
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
 import { transformSync } from 'esbuild';
-import { loadRecipes } from './walidacja.mjs';
-import { recipeJson, searchEntry } from './wynik.mjs';
-import { ZNACZNIK, ZNACZNIK_BUILDU, wersjaZPackageJson, idBuildu, wstawWersje } from './wersja.mjs';
-import { zrobZdjecia } from './zdjecia.mjs';
+import { loadRecipes } from './validate.mjs';
+import { recipeJson, searchEntry } from './output.mjs';
+import { VERSION_MARK, BUILD_MARK, versionFromPackageJson, buildId, injectVersion } from './version.mjs';
+import { makeImages } from './images.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 // Zmienne środowiskowe tylko dla testów (katalog z przepisami testowymi, osobne wyjście).
-const out = process.env.KUCHNIA_OUT_DIR || join(root, '_site');
-const recipesDir = process.env.KUCHNIA_RECIPES_DIR || join(root, 'recipes');
+const out = process.env.KITCHEN_OUT_DIR || join(root, '_site');
+const recipesDir = process.env.KITCHEN_RECIPES_DIR || join(root, 'recipes');
 
 // Pliki, które nigdy nie mogą trafić na publiczną stronę.
-const WYKLUCZONE = new Set(['.gitkeep']);
-const filter = (src) => !WYKLUCZONE.has(basename(src));
+const EXCLUDED = new Set(['.gitkeep']);
+const filter = (src) => !EXCLUDED.has(basename(src));
 
-const wersja = wersjaZPackageJson(join(root, 'package.json'));
+const appVersion = versionFromPackageJson(join(root, 'package.json'));
 
 // Każda strona aplikacji (src/*.html) musi mieć znaczniki wersji i buildu — bez nich build się przerywa.
-const strony = readdirSync(join(root, 'src')).filter((p) => p.endsWith('.html'));
-const bezWersji = strony.filter((p) => {
+const pages = readdirSync(join(root, 'src')).filter((p) => p.endsWith('.html'));
+const missingMarks = pages.filter((p) => {
   const t = readFileSync(join(root, 'src', p), 'utf8');
-  return !t.includes(ZNACZNIK) || !t.includes(ZNACZNIK_BUILDU);
+  return !t.includes(VERSION_MARK) || !t.includes(BUILD_MARK);
 });
-if (bezWersji.length) {
-  console.error('\nBrak znacznika ' + ZNACZNIK + ' lub ' + ZNACZNIK_BUILDU + ' w: ' + bezWersji.map((p) => 'src/' + p).join(', ') + '\n');
+if (missingMarks.length) {
+  console.error('\nBrak znacznika ' + VERSION_MARK + ' lub ' + BUILD_MARK + ' w: ' + missingMarks.map((p) => 'src/' + p).join(', ') + '\n');
   process.exit(1);
 }
 
@@ -64,28 +64,28 @@ cpSync(join(root, 'docs', 'mockup-ui-v1.html'), join(out, 'mockup.html'));
 
 // Dane przepisów (zdjęcia zapisują się od razu, JSON-y trzymamy do policzenia identyfikatora buildu).
 recipes.sort((a, b) => a.data.title.localeCompare(b.data.title, 'pl'));
-const dane = {};
-const indeks = [];
+const recipeData = {};
+const index = [];
 for (const r of recipes) {
-  const zdjecia = r.data.image ? await zrobZdjecia(recipesDir, r.data.image, out) : null;
-  dane[r.slug] = JSON.stringify(recipeJson(r, zdjecia));
-  indeks.push(searchEntry(r, zdjecia));
+  const images = r.data.image ? await makeImages(recipesDir, r.data.image, out) : null;
+  recipeData[r.slug] = JSON.stringify(recipeJson(r, images));
+  index.push(searchEntry(r, images));
 }
-const searchJson = JSON.stringify(indeks);
+const searchJson = JSON.stringify(index);
 
 // Identyfikator buildu: skrót wszystkiego, co pobiera iPad. Inny wynik → inny identyfikator,
 // a aplikacja po wykryciu nowego identyfikatora w /version.json przeładowuje się (src/app.js).
-const szablony = Object.fromEntries(strony.map((p) => [p, readFileSync(join(root, 'src', p), 'utf8')]));
-const build = idBuildu([wersja, appJs, readFileSync(join(root, 'src', 'app.css'), 'utf8'), searchJson]
-  .concat(Object.values(szablony), Object.keys(dane).sort().map((s) => s + dane[s])));
+const templates = Object.fromEntries(pages.map((p) => [p, readFileSync(join(root, 'src', p), 'utf8')]));
+const build = buildId([appVersion, appJs, readFileSync(join(root, 'src', 'app.css'), 'utf8'), searchJson]
+  .concat(Object.values(templates), Object.keys(recipeData).sort().map((s) => s + recipeData[s])));
 
-Object.keys(dane).forEach((slug) => writeFileSync(join(out, 'data', slug + '.json'), dane[slug]));
+Object.keys(recipeData).forEach((slug) => writeFileSync(join(out, 'data', slug + '.json'), recipeData[slug]));
 writeFileSync(join(out, 'search.json'), searchJson);
-writeFileSync(join(out, 'version.json'), JSON.stringify({ build, version: wersja }));
+writeFileSync(join(out, 'version.json'), JSON.stringify({ build, version: appVersion }));
 
 const html = {};
-strony.forEach((p) => {
-  html[p] = wstawWersje(szablony[p], wersja, build);
+pages.forEach((p) => {
+  html[p] = injectVersion(templates[p], appVersion, build);
   writeFileSync(join(out, p), html[p]);
 });
 // Każdy przepis ma własny adres /p/<slug>/ — ta sama powłoka aplikacji, widok wybiera JS.
@@ -96,4 +96,4 @@ recipes.forEach((r) => {
   writeFileSync(join(out, 'p', r.slug, 'index.html'), html['index.html']);
 });
 
-console.log('Build OK → _site/ (' + wersja + ' · ' + build.slice(0, 4) + ', przepisy: ' + recipes.length + ')');
+console.log('Build OK → _site/ (' + appVersion + ' · ' + build.slice(0, 4) + ', przepisy: ' + recipes.length + ')');
