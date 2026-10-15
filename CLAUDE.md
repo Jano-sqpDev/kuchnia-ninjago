@@ -39,7 +39,8 @@ Wszystko, co trafia do przeglądarki, musi działać na Safari 12. W razie wątp
 
 - **Repo:** GitHub, przepisy jako pliki w repo. **Bez bazy danych.**
 - **Hosting:** **Cloudflare Pages**, projekt podpięty do `Jano-sqpDev/kuchnia-ninjago`, branch `main`. Cloudflare buduje i publikuje po każdym pushu na `main` (build: `npm run build`, katalog wyjściowy: `_site`, zmienna `NODE_VERSION=22` — ustawione w panelu Cloudflare, nie w repo). Limit darmowego planu: 500 buildów/mies., bez kredytów.
-- **Adres produkcyjny:** https://kuchnia-ninjago.pages.dev
+- **Adres produkcyjny:** https://kuchnia-ninjago.sqpdev.com (własna domena w Cloudflare Pages). Zapasowy, ten sam projekt: https://kuchnia-ninjago.pages.dev
+- **Nie zmieniać domeny bez potrzeby:** localStorage jest osobny dla każdego adresu, więc zmiana domeny zeruje na iPadzie zapamiętany przepis, krok, porcje i motyw (a ikonę na ekranie początkowym trzeba dodać od nowa). Tak było przy przejściu na sqpdev.com — kolejnej zmiany unikać.
 - Hosting musi serwować stronę **publicznie, bez logowania** — Safari 12 nie renderuje stron logowania hostingów (widać tylko białą stronę). Przy białej stronie najpierw sprawdź dostęp do projektu.
 - **Commit i push robisz Ty, po każdej zakończonej pracy** (nie czekasz na moje słowo). Commit z opisem (pierwsza linia = krótkie podsumowanie, pusta linia, potem punkty).
 - **Push TYLKO przez `npm run deploy`** (`tools/deploy.mjs`): sprawdza, że wszystko jest zacommitowane, uruchamia wszystkie testy i build, i robi `git push` dopiero wtedy, gdy każdy krok zakończy się kodem 0. **Nigdy nie wywołuj `git push` bezpośrednio** i nie oceniaj testów po wypisanym tekście. Gdy testy albo build padają — nie pushuj, odpowiedź z nagłówkiem `## ❌ PRZERWANE` i opisem błędu.
@@ -285,24 +286,25 @@ Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`, `np
 
 ---
 
-## Dodawanie przepisów (codzienny workflow)
+## Przepisy i podział ról
 
-Wklejam Ci przepis (często od Claude'a lub ChatGPT) z poleceniem „dodaj do przepisów". Ty:
-1. Przerabiasz go na format powyżej (wyciągasz ustawienia Ninja do panelu, ustawienia TM6 do kroków, dodajesz sensowne tagi i `internal_temp_c` tam, gdzie pasuje).
-   Ilości tylko na liście składników — w tekście kroków bez liczb ilości („wlej wodę”, nie „wlej 500 ml wody”), żeby przeliczanie porcji działało.
-2. Jeśli czegoś brakuje lub jest niejednoznaczne (np. brak temperatury), pytasz — nie zgadujesz ustawień urządzeń.
-3. Uruchamiasz build z walidacją, commit, push.
-4. Odpowiadasz zgodnie z „Format raportu" (w „Co zrobiłem": dodane + slug).
+- **Przepisy (treść, ustawienia urządzeń) dodaje ChatGPT** — przez pull request według `AGENTS.md` (albo ja ręcznie przez GitHub, plik od ChatGPT według `docs/FORMAT-PRZEPISU.md`).
+- **Claude Code zajmuje się wyłącznie kodem aplikacji** (build, walidator, widok, testy, dokumentacja techniczna). **Nie tworzysz ani nie zmieniasz przepisów w `recipes/` i zdjęć w `recipes/img/`, chyba że wprost o to poproszę** — także gdy na liście jest czerwona plakietka z błędami: najwyżej mi o niej napisz.
+- `AGENTS.md` (katalog główny repo) jest **tylko dla zewnętrznych agentów** (ChatGPT/Codex) — Ciebie obowiązuje ten plik. `AGENTS.md` i `docs/FORMAT-PRZEPISU.md` aktualizujesz razem ze zmianami formatu, walidacji lub poleceń (test pilnuje, że przykład ze ściągi przechodzi walidator).
 
-### Dodawanie przepisów bez Claude (GitHub, ChatGPT, Codex)
+### Jak przepisy trafiają do repo (bez Ciebie)
 
-Przepisy mogą trafiać do repo także bez Ciebie:
-- **ChatGPT + GitHub w przeglądarce (także z telefonu):** wklejam ChatGPT treść `docs/FORMAT-PRZEPISU.md` i przepis → dostaję gotowy plik (pierwsza linia YAML to komentarz `# plik: recipes/<slug>.md`) → na GitHubie „Add file → Create new file” w `recipes/`, commit na `main`. Zdjęcie: „Upload files” do `recipes/img/` jako `<slug>.jpg` (albo HEIC z iPhone'a).
-- **Codex / inny agent:** pracuje według **`AGENTS.md`** (w katalogu głównym repo; instrukcja tylko dla zewnętrznych agentów — Ciebie obowiązuje ten plik): wyłącznie `recipes/` i `recipes/img/`, `npm run validate` + `npm test` muszą przejść, jeden przepis = jeden pull request „Przepis: <tytuł>”, bez zgadywania ustawień urządzeń.
+- **ChatGPT / Codex przez pull request:** agent pracuje według `AGENTS.md`: wyłącznie `recipes/` i `recipes/img/`, `npm run validate` + `npm test` (a jeśli nie może ich uruchomić — pisze to wprost w opisie PR), jeden przepis = jeden PR „Przepis: <tytuł>”. Ustawienia urządzeń: przy gotowym przepisie pyta, gdy ich brakuje; przy nowym przepisie proponuje je sam z dopiskiem w `description` „Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu.”.
+- **Ręcznie przez GitHub w przeglądarce (także z telefonu):** wklejam ChatGPT treść `docs/FORMAT-PRZEPISU.md` i przepis → dostaję gotowy plik (pierwsza linia YAML to komentarz `# plik: recipes/<slug>.md`) → „Add file → Create new file” w `recipes/`, commit na `main`. Zdjęcie: „Upload files” do `recipes/img/` jako `<slug>.jpg` (albo HEIC z iPhone'a).
 - Takie zmiany omijają `npm run deploy`, dlatego build jest odporny (patrz „Walidacja przy buildzie”): błędny przepis znika ze strony, a na iPadzie pojawia się czerwona plakietka z listą błędów.
 - Cloudflare Pages buduje też podglądy pull requestów — liczą się do limitu 500 buildów/mies.
-- Gdy na liście jest plakietka albo poproszę o poprawkę cudzego przepisu: poprawiasz plik według listy błędów, zwykłą drogą (`npm run deploy`).
-- `AGENTS.md` i `docs/FORMAT-PRZEPISU.md` aktualizujesz razem ze zmianami formatu lub poleceń.
+
+### Gdy wprost poproszę Cię o przepis („dodaj do przepisów”, „popraw przepis X”)
+
+1. Przerabiasz go na format powyżej (ustawienia Ninja do panelu, TM6 do kroków, sensowne tagi, `internal_temp_c` tam, gdzie pasuje). Ilości tylko na liście składników — w tekście kroków bez liczb ilości („wlej wodę”, nie „wlej 500 ml wody”).
+2. Ustawienia urządzeń: jak w `AGENTS.md` — przy gotowym przepisie pytasz, gdy brakuje lub są niejednoznaczne; przy nowym proponujesz z dopiskiem w `description`.
+3. Commit i `npm run deploy`.
+4. Odpowiadasz zgodnie z „Format raportu" (w „Co zrobiłem": dodane/poprawione + slug).
 
 ---
 

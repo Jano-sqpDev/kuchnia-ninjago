@@ -1,6 +1,6 @@
 # kuchnia-ninjago
 
-Kuchenny wyświetlacz przepisów na starym iPadzie (Safari 12). Hosting: Cloudflare Pages — https://kuchnia-ninjago.pages.dev (publikacja po każdym pushu na `main`). Szczegóły w `CLAUDE.md`.
+Kuchenny wyświetlacz przepisów na starym iPadzie (Safari 12). Hosting: Cloudflare Pages — https://kuchnia-ninjago.sqpdev.com (zapasowo https://kuchnia-ninjago.pages.dev; publikacja po każdym pushu na `main`). Szczegóły w `CLAUDE.md`.
 
 ## Polecenia
 

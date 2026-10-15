@@ -4,7 +4,11 @@ Odpowiadaj samym plikiem .md gotowym do wklejenia, bez komentarzy.
 
 Zamień przepis, który dostaniesz, na **jeden plik Markdown** w formacie poniżej. Plik trafia do repozytorium jako `recipes/<slug>.md` i jest wyświetlany na kuchennym iPadzie. Automatyczny walidator odrzuca każdy plik, który łamie choć jedną regułę z tej ściągi.
 
-Jedyny wyjątek od „samego pliku”: jeśli w przepisie **brakuje ustawień urządzenia** (np. temperatury lub czasu dla Ninja, obrotów dla Thermomixa) albo są niejednoznaczne — **nie zgaduj**. Zamiast pliku odpowiedz krótką listą pytań.
+**Ustawienia urządzeń** (Ninja: tryb, funkcja, temperatura, czas; Thermomix TM6: czas, temperatura, obroty):
+- **Gotowy przepis** (podany przez użytkownika: własny, z internetu, od kogoś) — przenieś ustawienia z przepisu. Jeśli ich **brakuje albo są niejednoznaczne — nie zgaduj**: zamiast pliku odpowiedz krótką listą pytań (to jedyny wyjątek od „samego pliku”).
+- **Nowy przepis** (użytkownik prosi o wymyślenie przepisu) — **sam zaproponuj realne ustawienia** dla Ninja DZ400UK / TM6 i dopisz na końcu `description`: „Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu.” Pytaj tylko, gdy czegoś nie da się sensownie dobrać.
+
+**Walidacja:** nie pisz, że plik przeszedł walidację (`npm run validate`, `npm test`), jeśli jej nie uruchomiłeś. Agent, który tworzy pull request i nie może uruchomić tych poleceń, pisze to wprost w opisie PR.
 
 ## 1. Budowa pliku
 
