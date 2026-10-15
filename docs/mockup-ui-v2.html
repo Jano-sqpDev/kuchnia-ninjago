@@ -14,8 +14,8 @@
 
 :root {
   --ink: #F1F4FF; --ink2: #AEB8D6; --muted: #7380A6; --dim: #4A5478;
-  --blue: #4F8BFF; --violet: #9B5CFF; --cyan: #38BDF8; --pink: #F472B6;
-  --glow-b: rgba(70,130,255,.55); --glow-v: rgba(155,92,255,.55); --glow-c: rgba(56,189,248,.55);
+  --blue: #4A72B8; --violet: #8467C9; --cyan: #5AA2CF; --pink: #D58AA5;
+  --glow-b: rgba(60,140,255,.55); --glow-v: rgba(150,110,255,.55); --glow-c: rgba(90,190,255,.60);
   --line: rgba(120,150,255,.16);
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -37,37 +37,37 @@ body.real #device { border-radius: 0; box-shadow: none; }
 
 /* ── tło ── */
 #app { position: relative; width: 100%; height: 100%; font-size: 20px; line-height: 1.35; overflow: hidden;
-  background-color: #070A1A;
+  background-color: #070912;
   background-image:
     radial-gradient(circle at 18% 12%, rgba(255,255,255,.7) 0, rgba(255,255,255,0) 1.2px),
     radial-gradient(circle at 63% 7%, rgba(255,255,255,.6) 0, rgba(255,255,255,0) 1.2px),
     radial-gradient(circle at 82% 18%, rgba(255,255,255,.5) 0, rgba(255,255,255,0) 1.1px),
     radial-gradient(circle at 92% 6%, rgba(255,255,255,.6) 0, rgba(255,255,255,0) 1.2px),
-    radial-gradient(ellipse 75% 60% at 10% 0%, rgba(50,90,240,.45) 0%, rgba(50,90,240,0) 70%),
-    radial-gradient(ellipse 60% 55% at 100% 25%, rgba(30,120,255,.32) 0%, rgba(30,120,255,0) 70%);
+    radial-gradient(ellipse 75% 60% at 10% 0%, rgba(40,66,140,.38) 0%, rgba(40,66,140,0) 70%),
+    radial-gradient(ellipse 60% 55% at 100% 25%, rgba(30,74,150,.26) 0%, rgba(30,74,150,0) 70%);
   display: -webkit-flex; display: flex; }
 .mtn { position: absolute; left: 0; bottom: 0; width: 100%; height: 34%; opacity: .55; }
 
 /* ── panele ── */
-.pn { position: relative; background: rgba(13,19,42,.80); border: 1px solid rgba(110,150,255,.22); border-radius: 20px; box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
-.pn.lit { border-color: rgba(90,190,255,.70); box-shadow: 0 0 0 1px rgba(56,189,248,.14), 0 0 26px rgba(56,150,255,.32), inset 0 1px 0 rgba(255,255,255,.09); }
-.pn.lit-v { border-color: rgba(180,130,255,.70); box-shadow: 0 0 0 1px rgba(155,92,255,.14), 0 0 26px rgba(155,92,255,.32), inset 0 1px 0 rgba(255,255,255,.09); }
+.pn { position: relative; background: rgba(10,15,32,.84); border: 1px solid rgba(90,150,240,.55); border-radius: 20px; box-shadow: 0 0 14px rgba(50,110,230,.30), inset 0 0 16px rgba(50,110,230,.08), inset 0 1px 0 rgba(255,255,255,.06); }
+.pn.lit { border-color: rgba(130,195,255,.95); box-shadow: 0 0 0 1px rgba(80,160,255,.35), 0 0 30px rgba(60,140,255,.55), inset 0 0 24px rgba(60,140,255,.12), inset 0 1px 0 rgba(255,255,255,.09); }
+.pn.lit-v { border-color: rgba(185,155,255,.95); box-shadow: 0 0 0 1px rgba(150,110,255,.35), 0 0 30px rgba(140,100,255,.55), inset 0 0 24px rgba(140,100,255,.12), inset 0 1px 0 rgba(255,255,255,.09); }
 .ct { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: space-between; justify-content: space-between; padding: 12px 18px 0; min-height: 56px; }
 .ct .t { font-size: 13px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
 .ct .r { font-size: 14px; color: var(--muted); font-weight: 600; }
 .ico { display: inline-block; vertical-align: middle; }
-.icbtn { width: 44px; height: 44px; border-radius: 22px; border: 1px solid rgba(120,150,255,.35); background: rgba(24,32,70,.6); color: var(--ink2); padding: 0;
+.icbtn { width: 44px; height: 44px; border-radius: 22px; border: 1px solid rgba(100,160,250,.55); background: rgba(24,32,70,.6); color: var(--ink2); padding: 0;
   display: -webkit-inline-flex; display: inline-flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
-.icbtn.pr { color: #fff; border-color: rgba(170,210,255,.7); background: linear-gradient(135deg, #2F80FF 0%, #4F6BFF 100%); box-shadow: 0 0 16px var(--glow-b), inset 0 1px 0 rgba(255,255,255,.3); }
+.icbtn.pr { color: #fff; border-color: rgba(130,195,255,.95); background: linear-gradient(135deg, #2D5A9E 0%, #34508F 100%); box-shadow: 0 0 16px var(--glow-b), inset 0 1px 0 rgba(255,255,255,.3); }
 .icbtn + .icbtn { margin-left: 10px; }
 
 /* ── szyna boczna ── */
 .rail { position: relative; z-index: 2; -webkit-flex: 0 0 72px; flex: 0 0 72px; margin: 14px 0 14px 12px; padding: 12px 0; border-radius: 24px; text-align: center;
-  background: rgba(13,19,42,.80); border: 1px solid rgba(110,150,255,.22);
+  background: rgba(10,15,32,.84); border: 1px solid rgba(90,150,240,.55); box-shadow: 0 0 14px rgba(50,110,230,.30), inset 0 0 16px rgba(50,110,230,.08);
   display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; }
 .ri { width: 52px; height: 52px; border-radius: 16px; margin: 4px 0; color: var(--ink2); background: transparent; border: 0; padding: 0;
   display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
-.ri.on { color: #fff; background: linear-gradient(135deg, #2F80FF 0%, #4F6BFF 100%); box-shadow: 0 0 16px var(--glow-b), inset 0 1px 0 rgba(255,255,255,.3); }
+.ri.on { color: #fff; background: linear-gradient(135deg, #2D5A9E 0%, #34508F 100%); box-shadow: 0 0 16px var(--glow-b), inset 0 1px 0 rgba(255,255,255,.3); }
 .ri.lang { -webkit-flex-direction: column; flex-direction: column; font-size: 15px; font-weight: 800; line-height: 1.2; color: var(--dim); }
 .ri.lang b { color: #fff; text-shadow: 0 0 10px rgba(199,215,255,.8); }
 .rail .sp { -webkit-flex: 1 1 auto; flex: 1 1 auto; }
@@ -80,11 +80,11 @@ body.real #device { border-radius: 0; box-shadow: none; }
 .head .hl { -webkit-flex: 1 1 auto; flex: 1 1 auto; min-width: 0; }
 .head h1 { margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .head h1.big { font-size: 42px; }
-.head h1 em { font-style: normal; color: #7FB2FF; background: linear-gradient(90deg, #7FB2FF, #4FD1FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.head h1 em { font-style: normal; color: #8FAFD8; background: linear-gradient(90deg, #9AB4DA, #7DB0D4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .head .sub { margin-top: 6px; font-size: 17px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .photobtn { -webkit-flex: 0 0 auto; flex: 0 0 auto; height: 52px; padding: 0 18px; margin-left: 14px; border-radius: 26px; border: 1px solid rgba(120,150,255,.35); background: rgba(24,32,70,.7); color: #fff; font-size: 17px; font-weight: 600;
   display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
-.photobtn .ico { margin-right: 8px; color: #8EC5FF; }
+.photobtn .ico { margin-right: 8px; color: #9DB8D8; }
 .thumb { -webkit-flex: 0 0 84px; flex: 0 0 84px; width: 84px; height: 58px; margin-left: 14px; position: relative; border-radius: 12px; overflow: hidden; border: 1px solid rgba(150,180,255,.45); }
 .thumb .ph { width: 100%; height: 100%; border-radius: 0; }
 .thumb .ex { position: absolute; right: 4px; bottom: 4px; width: 22px; height: 22px; border-radius: 11px; background: rgba(5,8,20,.7); color: #fff; text-align: center; line-height: 22px; }
@@ -103,12 +103,12 @@ body.real #device { border-radius: 0; box-shadow: none; }
 .zrow { display: grid; grid-template-columns: minmax(0,1fr) 104px minmax(0,1fr); }
 .zone { padding: 14px 20px 16px; }
 .zh { font-size: 13px; letter-spacing: .16em; font-weight: 800; color: var(--muted); text-transform: uppercase; }
-.zh .no { display: inline-block; width: 24px; height: 24px; line-height: 24px; text-align: center; border-radius: 12px; margin-right: 10px; font-size: 13px; letter-spacing: 0; color: #04131F; background: var(--cyan); box-shadow: 0 0 10px var(--glow-c); }
+.zh .no { display: inline-block; background: #5AB4F0; width: 24px; height: 24px; line-height: 24px; text-align: center; border-radius: 12px; margin-right: 10px; font-size: 13px; letter-spacing: 0; color: #04131F; background: var(--cyan); box-shadow: 0 0 10px var(--glow-c); }
 .zone .lbl { font-size: 23px; font-weight: 650; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.zone .lbl .fn { font-size: 14px; font-weight: 800; letter-spacing: .14em; color: #8EDBFF; margin-left: 10px; text-transform: uppercase; }
+.zone .lbl .fn { font-size: 14px; font-weight: 800; letter-spacing: .14em; color: #9EC3E0; margin-left: 10px; text-transform: uppercase; }
 .digits { white-space: nowrap; margin-top: 2px; }
 .dg { font-size: 60px; font-weight: 200; letter-spacing: -.02em; color: #fff; font-variant-numeric: tabular-nums; text-shadow: 0 0 18px var(--glow-c); line-height: 1.05; }
-.du { font-size: 19px; color: #8EDBFF; margin: 0 16px 0 3px; }
+.du { font-size: 19px; color: #9EC3E0; margin: 0 16px 0 3px; }
 .portrait .dg { font-size: 48px; }
 .portrait .du { margin-right: 10px; }
 .portrait .zone { padding: 14px 14px 14px; }
@@ -118,19 +118,19 @@ body.real #device { border-radius: 0; box-shadow: none; }
 .portrait .photobtn .lb { display: none; }
 .portrait .clock b { font-size: 36px; }
 .portrait .clock span { display: none; }
-.turn { margin-top: 6px; font-size: 14px; font-weight: 800; letter-spacing: .08em; color: #C7D7FF; text-transform: uppercase; }
+.turn { margin-top: 6px; font-size: 14px; font-weight: 800; letter-spacing: .08em; color: #C3CEE4; text-transform: uppercase; }
 .turn.ok { color: var(--dim); }
 .mode { border-left: 1px solid var(--line); border-right: 1px solid var(--line); margin: 16px 0;
   display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
 .pill { display: block; width: 76px; text-align: center; height: 32px; line-height: 30px; border-radius: 16px; font-size: 12px; font-weight: 800; letter-spacing: .12em; border: 1px solid rgba(120,150,255,.28); color: var(--dim); margin: 5px 0; }
-.pill.on { color: #fff; border-color: rgba(170,210,255,.7); background: linear-gradient(135deg, #2F80FF 0%, #4F6BFF 100%); box-shadow: 0 0 14px var(--glow-b); }
+.pill.on { color: #fff; border-color: rgba(130,195,255,.95); background: linear-gradient(135deg, #2D5A9E 0%, #34508F 100%); box-shadow: 0 0 14px var(--glow-b); }
 
 /* ── pasek timera ── */
 .strip { border-top: 1px solid var(--line); padding: 10px 20px 12px; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
 .strip .sr { -webkit-flex: 0 0 60px; flex: 0 0 60px; height: 60px; margin-right: 16px; }
 .strip .sc { -webkit-flex: 0 0 auto; flex: 0 0 auto; margin-right: 22px; min-width: 120px; }
-.strip .act { font-size: 12px; font-weight: 800; letter-spacing: .16em; color: #8EC5FF; text-transform: uppercase; }
-.strip .big { font-size: 40px; font-weight: 200; font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 0 16px rgba(90,160,255,.8); line-height: 1.05; }
+.strip .act { font-size: 12px; font-weight: 800; letter-spacing: .16em; color: #9DB8D8; text-transform: uppercase; }
+.strip .big { font-size: 40px; font-weight: 200; font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 0 16px rgba(90,170,255,.85); line-height: 1.05; }
 .strip .big.dash { color: var(--dim); text-shadow: none; }
 .strip .si { -webkit-flex: 1 1 auto; flex: 1 1 auto; min-width: 0; }
 .strip .w { font-size: 19px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -143,14 +143,14 @@ body.real #device { border-radius: 0; box-shadow: none; }
 .tm6h .tag { font-size: 12px; font-weight: 800; letter-spacing: .14em; padding: 5px 10px; border-radius: 8px; color: #fff; background: var(--violet); box-shadow: 0 0 12px var(--glow-v); margin-right: 12px; }
 .tm6h .st { -webkit-flex: 1 1 auto; flex: 1 1 auto; font-size: 16px; color: var(--ink2); }
 .tm6h .st b { color: #fff; }
-.tm6h .md { font-size: 15px; font-weight: 700; color: #D8C2FF; }
+.tm6h .md { font-size: 15px; font-weight: 700; color: #CDBFEA; }
 .dials { text-align: center; white-space: nowrap; padding: 8px 10px 14px; }
 .dial { display: inline-block; width: 32%; vertical-align: top; position: relative; }
 .dial svg { display: block; margin: 0 auto; }
 .dial .c { position: absolute; left: 0; right: 0; top: 0; height: 124px; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
 .dial .v { font-size: 30px; font-weight: 200; color: #fff; font-variant-numeric: tabular-nums; text-shadow: 0 0 14px var(--glow-v); line-height: 1; }
 .dial .v.sm { font-size: 22px; font-weight: 600; }
-.dial .u { font-size: 12px; color: #D8C2FF; margin-top: 5px; letter-spacing: .06em; }
+.dial .u { font-size: 12px; color: #CDBFEA; margin-top: 5px; letter-spacing: .06em; }
 .dial .dl { font-size: 13px; color: var(--muted); letter-spacing: .14em; text-transform: uppercase; margin-top: 4px; }
 .dial.off .v { color: var(--dim); text-shadow: none; }
 
@@ -161,10 +161,10 @@ body.real #device { border-radius: 0; box-shadow: none; }
 .stepper .n span { font-size: 11px; letter-spacing: .14em; color: var(--muted); text-transform: uppercase; }
 .stepper .icbtn { color: #fff; font-size: 24px; font-weight: 300; }
 .ingb { padding: 4px 18px 12px; }
-.ingb .g { font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: #6FA8FF; margin: 12px 0 2px; }
+.ingb .g { font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: #7F9FCC; margin: 12px 0 2px; }
 .irow { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(120,150,255,.10); }
 .irow:last-child { border-bottom: 0; }
-.irow .dot { -webkit-flex: 0 0 8px; flex: 0 0 8px; height: 8px; border-radius: 4px; margin-right: 14px; background: #6FA8FF; box-shadow: 0 0 6px rgba(80,150,255,.6); }
+.irow .dot { -webkit-flex: 0 0 8px; flex: 0 0 8px; height: 8px; border-radius: 4px; margin-right: 14px; background: #7F9FCC; box-shadow: 0 0 6px rgba(80,150,255,.6); }
 .irow .nm { -webkit-flex: 1 1 auto; flex: 1 1 auto; }
 .irow .q { -webkit-flex: 0 0 auto; flex: 0 0 auto; padding-left: 12px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .irow .q .u { color: var(--muted); font-weight: 500; font-size: 15px; margin-left: 3px; }
@@ -177,16 +177,16 @@ body.real #device { border-radius: 0; box-shadow: none; }
 .srow .bar { -webkit-flex: 0 0 4px; flex: 0 0 4px; border-radius: 2px; margin-right: 14px; background: #4F8BFF; }
 .srow .bar.cy { background: var(--cyan); box-shadow: 0 0 8px var(--glow-c); }
 .srow .bar.vi { background: var(--violet); box-shadow: 0 0 8px var(--glow-v); }
-.srow .bar.pk { background: var(--pink); box-shadow: 0 0 8px rgba(244,114,182,.6); }
+.srow .bar.pk { background: var(--pink); box-shadow: 0 0 8px rgba(213,138,165,.45); }
 .srow .bar.bl { background: var(--blue); box-shadow: 0 0 8px var(--glow-b); }
 .srow .tx { -webkit-flex: 1 1 auto; flex: 1 1 auto; font-size: 20px; line-height: 1.4; color: var(--ink2); }
-.srow.cur { background: rgba(40,56,130,.45); border-color: rgba(150,175,255,.75); box-shadow: 0 0 0 1px rgba(91,140,255,.3), 0 0 26px var(--glow-b), inset 0 1px 0 rgba(255,255,255,.1); }
+.srow.cur { background: rgba(26,38,78,.6); border-color: rgba(130,195,255,.95); box-shadow: 0 0 0 1px rgba(80,160,255,.35), 0 0 26px rgba(60,140,255,.5), inset 0 0 18px rgba(60,140,255,.12), 0 0 26px var(--glow-b), inset 0 1px 0 rgba(255,255,255,.1); }
 .srow.cur .sn { color: #fff; text-shadow: 0 0 10px rgba(199,215,255,.8); }
 .srow.cur .tx { color: #fff; }
 .srow.past { opacity: .45; }
 .chipsm { display: inline-block; margin: 8px 8px 0 0; height: 32px; line-height: 30px; padding: 0 12px; border-radius: 16px; font-size: 15px; font-weight: 700; border: 1px solid; font-variant-numeric: tabular-nums; }
-.chipsm.tm { color: #E9D5FF; border-color: rgba(155,92,255,.65); background: rgba(155,92,255,.12); }
-.chipsm.tin { color: #FBCFE8; border-color: rgba(244,114,182,.65); background: rgba(244,114,182,.12); }
+.chipsm.tm { color: #DDD0F2; border-color: rgba(132,103,201,.6); background: rgba(132,103,201,.12); }
+.chipsm.tin { color: #F0D3DD; border-color: rgba(213,138,165,.6); background: rgba(213,138,165,.12); }
 
 /* ── zdjęcia (atrapy) ── */
 .ph { position: relative; overflow: hidden; text-align: center; border-radius: 14px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
@@ -196,10 +196,10 @@ body.real #device { border-radius: 0; box-shadow: none; }
 
 /* ── lista ── */
 .search { margin-bottom: 14px; height: 60px; padding: 0 22px; border-radius: 30px; font-size: 19px; color: var(--muted); display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
-.search .ico { margin-right: 14px; color: #C7D7FF; }
+.search .ico { margin-right: 14px; color: #C3CEE4; }
 .chips { white-space: nowrap; overflow: hidden; margin-bottom: 14px; }
-.chip { display: inline-block; height: 44px; line-height: 42px; padding: 0 18px; margin-right: 10px; border-radius: 22px; font-size: 17px; color: var(--ink2); background: rgba(13,19,42,.80); border: 1px solid rgba(110,150,255,.25); }
-.chip.on { color: #fff; border-color: rgba(170,210,255,.7); background: linear-gradient(135deg, #2F80FF 0%, #4F6BFF 100%); box-shadow: 0 0 16px var(--glow-b); }
+.chip { display: inline-block; height: 44px; line-height: 42px; padding: 0 18px; margin-right: 10px; border-radius: 22px; font-size: 17px; color: var(--ink2); background: rgba(10,15,32,.84); border: 1px solid rgba(90,150,240,.50); box-shadow: 0 0 10px rgba(50,110,230,.22); }
+.chip.on { color: #fff; border-color: rgba(130,195,255,.95); background: linear-gradient(135deg, #2D5A9E 0%, #34508F 100%); box-shadow: 0 0 16px var(--glow-b); }
 .led { display: inline-block; width: 9px; height: 9px; border-radius: 5px; vertical-align: middle; position: relative; top: -1px; margin-right: 8px; }
 .led.ninja { background: var(--cyan); box-shadow: 0 0 8px var(--glow-c); }
 .led.tm6 { background: var(--violet); box-shadow: 0 0 8px var(--glow-v); }
@@ -207,7 +207,7 @@ body.real #device { border-radius: 0; box-shadow: none; }
 .resume .rm { -webkit-flex: 0 0 64px; flex: 0 0 64px; height: 64px; margin-right: 18px; position: relative; }
 .resume .rm .ic { position: absolute; left: 0; top: 0; width: 64px; line-height: 64px; text-align: center; font-size: 15px; font-weight: 700; color: #fff; }
 .resume .t { -webkit-flex: 1 1 auto; flex: 1 1 auto; }
-.resume .k { font-size: 12px; letter-spacing: .16em; font-weight: 800; color: #8EDBFF; text-transform: uppercase; }
+.resume .k { font-size: 12px; letter-spacing: .16em; font-weight: 800; color: #9EC3E0; text-transform: uppercase; }
 .resume .n { font-size: 22px; font-weight: 650; }
 .resume .s { font-size: 16px; color: var(--ink2); }
 .resume .s b { color: #fff; font-weight: 600; font-variant-numeric: tabular-nums; text-shadow: 0 0 10px var(--glow-c); }
@@ -222,18 +222,19 @@ body.real #device { border-radius: 0; box-shadow: none; }
 
 /* ── alarm ── */
 #alarm { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 20; background-color: rgba(5,6,18,.96);
-  background-image: radial-gradient(ellipse 60% 50% at 50% 42%, rgba(40,120,255,.35) 0%, rgba(40,120,255,0) 70%);
+  background-image: radial-gradient(ellipse 60% 50% at 50% 42%, rgba(40,80,150,.35) 0%, rgba(40,80,150,0) 70%);
   display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; text-align: center; }
 #alarm .halo { position: relative; width: 320px; height: 320px; -webkit-animation: pulse 1.2s ease-in-out infinite; animation: pulse 1.2s ease-in-out infinite; }
 #alarm .halo .c { position: absolute; left: 0; top: 0; width: 320px; height: 320px; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
 @-webkit-keyframes pulse { 0%,100% { -webkit-transform: scale(1); } 50% { -webkit-transform: scale(1.04); } }
 @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
 #alarm .a1 { font-size: 50px; font-weight: 800; color: #fff; text-shadow: 0 0 24px var(--glow-b); line-height: 1.05; }
-#alarm .a2 { font-size: 15px; letter-spacing: .18em; color: #C7D7FF; text-transform: uppercase; margin-top: 12px; }
+#alarm .a2 { font-size: 15px; letter-spacing: .18em; color: #C3CEE4; text-transform: uppercase; margin-top: 12px; }
 #alarm .zn { margin-top: 26px; font-size: 26px; font-weight: 650; padding: 12px 24px; display: inline-block; }
+#alarm .zn .no + .no { margin-left: -4px; }
 #alarm .zn .no { display: inline-block; width: 32px; height: 32px; line-height: 32px; border-radius: 16px; background: var(--cyan); color: #04131F; font-size: 18px; margin-right: 10px; box-shadow: 0 0 12px var(--glow-c); }
 #alarm .done { margin-top: 26px; height: 74px; padding: 0 64px; border-radius: 37px; border: 1px solid rgba(220,210,255,.7); font-size: 26px; font-weight: 800; color: #fff;
-  background: linear-gradient(135deg, #2F80FF 0%, #4F6BFF 100%); box-shadow: 0 0 30px var(--glow-b), inset 0 1px 0 rgba(255,255,255,.35); }
+  background: linear-gradient(135deg, #2D5A9E 0%, #34508F 100%); box-shadow: 0 0 30px var(--glow-b), inset 0 1px 0 rgba(255,255,255,.35); }
 
 /* ── podgląd zdjęcia ── */
 #viewer { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: #05060F; z-index: 15; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; }
@@ -257,7 +258,7 @@ var T = {
   pl: { hello: "Co dziś <em>gotujemy?</em>", count: "6 przepisów · 3 z Ninja · 2 z TM6", search: "Szukaj: nazwa, składnik, tag…", all: "Wszystkie",
         resume: "Wróć do gotowania", step: "krok", of: "z", ing: "Składniki", steps: "Kroki", photo: "Zdjęcie", zone: "Strefa",
         prep: "przygotowanie", cook: "pieczenie", close: "Zamknij",
-        flipIn: "Obróć za", flipAt: "Obróć po", flipNow: "Obróć teraz", done: "Zrobione", flip: "obróć po", shake: "potrząśnij po", afterW: "Dalej według wyświetlacza Ninja",
+        flipIn: "Obróć za", flipAt: "Obróć po", flipNow: "Obróć teraz", done: "Zrobione", flip: "obróć po", shake: "potrząśnij po", zones12: "Strefy 1 i 2 · Kotlety", afterW: "Dalej według wyświetlacza Ninja",
         nextFlip: "potem: potrząśnij strefę 2 za 07:00", startHint: "Naciśnij ▶ razem ze START na Ninja",
         inside: "w środku", speed: "obroty", temp: "temp.", time: "czas", noTm: "Ten krok bez TM6",
         days: ["niedziela","poniedziałek","wtorek","środa","czwartek","piątek","sobota"], months: ["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"],
@@ -265,7 +266,7 @@ var T = {
   en: { hello: "What are we <em>cooking?</em>", count: "6 recipes · 3 Ninja · 2 TM6", search: "Search: name, ingredient, tag…", all: "All",
         resume: "Continue cooking", step: "step", of: "of", ing: "Ingredients", steps: "Steps", photo: "Photo", zone: "Zone",
         prep: "prep", cook: "cook", close: "Close",
-        flipIn: "Flip in", flipAt: "Flip at", flipNow: "Flip now", done: "Done", flip: "flip at", shake: "shake at", afterW: "Follow the Ninja display",
+        flipIn: "Flip in", flipAt: "Flip at", flipNow: "Flip now", done: "Done", flip: "flip at", shake: "shake at", zones12: "Zones 1 and 2 · Patties", afterW: "Follow the Ninja display",
         nextFlip: "then: shake zone 2 in 07:00", startHint: "Press ▶ together with START on the Ninja",
         inside: "inside", speed: "speed", temp: "temp", time: "time", noTm: "No TM6 in this step",
         days: ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"], months: ["January","February","March","April","May","June","July","August","September","October","November","December"],
@@ -283,11 +284,12 @@ var R = {
              { pl: "Udka do strefy 1, ziemniaki do strefy 2. Ustaw według panelu, włącz SYNC, START.", en: "Thighs in zone 1, potatoes in zone 2. Set as shown, press SYNC, START.", dev: "ninja" },
              { pl: "Sprawdź udka termometrem w najgrubszym miejscu.", en: "Check the thickest thigh with a thermometer.", tin: 75 } ] },
   burgery: { pl: "Burgery wołowe z Ninji", en: "Beef burgers (Ninja)", serv: 4, prep: 10, cook: 11, ph: ["#5a2a14","#c9783f","🍔"], photoUi: "thumb",
-    ninja: { mode: "match", z: [ { pl: "Kotlety (2 szt.)", en: "Patties (2 pcs)", fn: "Air Fry", t: 190, m: 11 }, { pl: "Kotlety (2 szt.)", en: "Patties (2 pcs)", fn: "Air Fry", t: 190, m: 11 } ] },
+    ninja: { mode: "match", z: [ { pl: "Kotlety (2 szt.)", en: "Patties (2 pcs)", fn: "Air Fry", t: 190, m: 11, act: "flip", at: 6, el: [0, 3.5, 6, 9] }, { pl: "Kotlety (2 szt.)", en: "Patties (2 pcs)", fn: "Air Fry", t: 190, m: 11, act: "flip", at: 6, el: [0, 3.5, 6, 9] } ] },
     ing: [ { g: ["Kotlety","Patties"], a: "500", u: "g", pl: "wołowina mielona 5%", en: "lean beef mince 5%" }, { g: ["Kotlety","Patties"], a: "3", u: "g", pl: "sól", en: "salt" },
            { g: ["Dodatki","Toppings"], a: "4", u: "pcs", pl: "bułki", en: "burger buns" }, { g: ["Dodatki","Toppings"], a: "80", u: "g", pl: "cheddar", en: "cheddar" } ],
-    steps: [ { pl: "Uformuj 4 płaskie kotlety, bez wgłębienia.", en: "Shape 4 flat patties, no dimple." },
+    steps: [ { pl: "Uformuj 4 płaskie kotlety i zrób kciukiem wgłębienie na środku każdego.", en: "Shape 4 flat patties and press a dimple into the centre of each with your thumb." },
              { pl: "Po dwa kotlety na ruszcie w każdej szufladzie. MATCH, START.", en: "Two patties on the rack in each drawer. MATCH, START.", dev: "ninja" },
+             { pl: "Obróć kotlety w obu szufladach.", en: "Flip the patties in both drawers.", dev: "ninja" },
              { pl: "Sprawdź burgera z tyłu szuflady termometrem.", en: "Check the burger at the back of the drawer.", tin: 75 } ] },
   warzywa: { pl: "Warzywa na parze z sosem jogurtowym", en: "Steamed vegetables with yoghurt sauce", serv: 2, prep: 10, cook: 23, ph: ["#245a30","#8fc46a","🥦"], photoUi: "button",
     ing: [ { a: "300", u: "g", pl: "brokuł", en: "broccoli" }, { a: "200", u: "g", pl: "marchew", en: "carrot" }, { a: "500", u: "ml", pl: "woda", en: "water" },
@@ -349,8 +351,8 @@ function ring(size, frac, c1, c2, glow, width, knob) {
 
 function mountains() {
   return '<svg class="mtn" viewBox="0 0 1000 300" preserveAspectRatio="none">' +
-    '<defs><linearGradient id="m1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1F3A8A"/><stop offset="1" stop-color="#081028"/></linearGradient>' +
-    '<linearGradient id="m2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0F1D4D"/><stop offset="1" stop-color="#050A18"/></linearGradient></defs>' +
+    '<defs><linearGradient id="m1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1A2B55"/><stop offset="1" stop-color="#081028"/></linearGradient>' +
+    '<linearGradient id="m2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0E1834"/><stop offset="1" stop-color="#050A18"/></linearGradient></defs>' +
     '<path d="M0 170 L90 120 L160 150 L270 60 L360 135 L440 95 L520 150 L610 70 L700 140 L790 85 L880 130 L1000 90 L1000 300 L0 300Z" fill="url(#m1)" opacity=".75" stroke="rgba(150,190,255,.3)" stroke-width="1.5"/>' +
     '<path d="M0 230 L130 175 L240 220 L360 160 L500 235 L640 180 L760 225 L880 190 L1000 215 L1000 300 L0 300Z" fill="url(#m2)" opacity=".95"/></svg>';
 }
@@ -374,7 +376,7 @@ function listView() {
   h += '<div class="search pn">' + ic("search", 24) + L().search + '</div>';
   h += '<div class="chips"><span class="chip on">' + L().all + '</span><span class="chip"><span class="led ninja"></span>Ninja</span><span class="chip"><span class="led tm6"></span>TM6</span>' +
        '<span class="chip">Air Fry</span><span class="chip">Roast</span><span class="chip">Bake</span><span class="chip">Dehydrate</span></div>';
-  h += '<div class="resume pn lit" data-open="udka"><div class="rm">' + ring(64, .55, "#7DD3FC", "#4F8BFF", "rgba(56,189,248,.85)", 6, true) + '<div class="ic">3/4</div></div><div class="t"><div class="k">' + L().resume + '</div>' +
+  h += '<div class="resume pn lit" data-open="udka"><div class="rm">' + ring(64, .55, "#8FD4FF", "#3B7BFF", "rgba(70,150,255,.95)", 6, true) + '<div class="ic">3/4</div></div><div class="t"><div class="k">' + L().resume + '</div>' +
        '<div class="n">' + esc(tx(R.udka)) + '</div><div class="s">' + L().flipIn + ' <b>04:12</b> · ' + L().zone + ' 1</div></div><span class="icbtn">' + ic("fwd", 22) + '</span></div>';
   h += '<div class="tiles">';
   for (var i = 0; i < LIST.length; i++) {
@@ -398,13 +400,18 @@ function zone(n, i) {
   return h + '</div>';
 }
 
-function strip() {
-  var st = S.timer, who1 = L().zone + " 1 · " + (S.lang === "pl" ? "Udka" : "Thighs"), act, big, w, nx, frac, btns;
+function timerInfo(r) {
+  var z = r.ninja.z, both = z[1].act && z[1].at === z[0].at;
+  return { who: both ? L().zones12 : L().zone + " 1 · " + tx(z[0]), next: both ? "" : L().nextFlip,
+           at: z[0].at, run: both ? "02:30" : "04:12", alarmZone: both ? L().zones12 : L().zone + " 1 · " + tx(z[0]), both: both };
+}
+function strip(r) {
+  var st = S.timer, ti = timerInfo(r), act, big, w, nx, frac, btns;
   var rst = '<button class="icbtn" data-act="t-reset">' + ic("reset", 22) + '</button>';
-  if (st === "idle") { act = L().flipAt; big = "14:00"; w = who1; nx = L().startHint; frac = 0; btns = '<button class="icbtn pr" data-act="t-run">' + ic("play", 24) + '</button>'; }
+  if (st === "idle") { act = L().flipAt; big = pad(ti.at) + ":00"; w = ti.who; nx = L().startHint; frac = 0; btns = '<button class="icbtn pr" data-act="t-run">' + ic("play", 24) + '</button>'; }
   else if (st === "after") { act = "&nbsp;"; big = "—"; w = L().afterW; nx = ""; frac = 0; btns = rst; }
-  else { act = L().flipIn; big = st === "alarm" ? "00:00" : "04:12"; w = who1; nx = L().nextFlip; frac = st === "alarm" ? 1 : .7; btns = '<button class="icbtn pr" data-act="t-reset">' + ic("pause", 22) + '</button>' + rst; }
-  return '<div class="strip"><div class="sr">' + ring(60, frac, "#7DD3FC", "#2F6BFF", "rgba(60,140,255,.9)", 5, true) + '</div>' +
+  else { act = L().flipIn; big = st === "alarm" ? "00:00" : ti.run; w = ti.who; nx = ti.next; frac = st === "alarm" ? 1 : .6; btns = '<button class="icbtn pr" data-act="t-reset">' + ic("pause", 22) + '</button>' + rst; }
+  return '<div class="strip"><div class="sr">' + ring(60, frac, "#8FD4FF", "#3B7BFF", "rgba(70,150,255,.95)", 5, true) + '</div>' +
     '<div class="sc" data-act="t-skip"><div class="act">' + act + '</div><div class="big' + (big === "—" ? ' dash' : '') + '">' + big + '</div></div>' +
     '<div class="si"><div class="w">' + w + '</div><div class="nx">' + nx + '</div></div><div class="sb">' + btns + '</div></div>';
 }
@@ -413,14 +420,14 @@ function ninjaPanel(r) {
   var n = r.ninja;
   return '<div class="pn lit"><div class="zrow">' + zone(n, 0) +
     '<div class="mode"><span class="pill' + (n.mode === "sync" ? ' on' : '') + '">SYNC</span><span class="pill' + (n.mode === "match" ? ' on' : '') + '">MATCH</span></div>' +
-    zone(n, 1) + '</div>' + (n.z[0].act ? strip() : '') + '</div>';
+    zone(n, 1) + '</div>' + (n.z[0].act ? strip(r) : '') + '</div>';
 }
 
 /* ── panel TM6 ── */
 function tm6Panel(r, cur) {
   var s = r.steps[cur], t = s && s.tm;
   function dial(v, u, lbl, off, sm) {
-    return '<div class="dial' + (off ? ' off' : '') + '">' + ring(124, off ? 0 : 1, "#E9A8FF", "#6D3AED", "rgba(155,92,255,.8)", 6) +
+    return '<div class="dial' + (off ? ' off' : '') + '">' + ring(124, off ? 0 : 1, "#D7C2FF", "#7A52F0", "rgba(150,110,255,.9)", 6) +
       '<div class="c"><div class="v' + (sm ? ' sm' : '') + '">' + v + '</div>' + (u ? '<div class="u">' + u + '</div>' : '') + '</div><div class="dl">' + lbl + '</div></div>';
   }
   var d = t ? dial(t.d, "min:s", L().time) + (t.t === "Varoma" ? dial("Varoma", "", L().temp, false, true) : dial(t.t, "°C", L().temp)) + dial(t.s, "", L().speed)
@@ -434,7 +441,7 @@ function stepRows(r, cur) {
   var h = "";
   for (var i = 0; i < r.steps.length; i++) {
     var s = r.steps[i], cls = i === cur ? ' cur' : (i < cur ? ' past' : ''), bar = s.tm ? "vi" : (s.dev === "ninja" ? "cy" : (s.tin ? "pk" : "bl"));
-    h += '<div class="srow' + cls + '" data-step="' + i + '"><div class="sn">' + (i < cur ? '<span style="color:#6FA8FF">' + ic("check", 20) + '</span>' : pad(i + 1)) + '</div><div class="bar ' + bar + '"></div><div class="tx">' + esc(tx(s));
+    h += '<div class="srow' + cls + '" data-step="' + i + '"><div class="sn">' + (i < cur ? '<span style="color:#7F9FCC">' + ic("check", 20) + '</span>' : pad(i + 1)) + '</div><div class="bar ' + bar + '"></div><div class="tx">' + esc(tx(s));
     if (s.tm) h += '<div><span class="chipsm tm">⏱ ' + s.tm.d + '</span><span class="chipsm tm">' + (s.tm.t === "Varoma" ? "Varoma" : s.tm.t + "°C") + '</span><span class="chipsm tm">⟳ ' + s.tm.s + '</span></div>';
     if (s.tin) h += '<div><span class="chipsm tin">🌡 ' + s.tin + '°C ' + L().inside + '</span></div>';
     h += '</div></div>';
@@ -464,17 +471,18 @@ function recipeView(id) {
   return h;
 }
 
-function alarmView() {
-  return '<div id="alarm"><div class="halo">' + ring(320, 1, "#7DD3FC", "#2F6BFF", "rgba(60,140,255,.95)", 12) +
+function alarmView(r) {
+  var ti = timerInfo(r);
+  return '<div id="alarm"><div class="halo">' + ring(320, 1, "#8FD4FF", "#3B7BFF", "rgba(70,150,255,1)", 12) +
     '<div class="c"><div class="a1">' + L().flipNow.toUpperCase().replace(" ", "<br>") + '</div><div class="a2">Ninja</div></div></div>' +
-    '<div><div class="zn pn lit"><span class="no">1</span>' + L().zone + ' 1 · ' + (S.lang === "pl" ? "Udka" : "Thighs") + '</div></div><button class="done" data-act="t-done">' + L().done + '</button></div>';
+    '<div><div class="zn pn lit">' + (ti.both ? '<span class="no">1</span><span class="no">2</span>' : '<span class="no">1</span>') + ti.alarmZone + '</div></div><button class="done" data-act="t-done">' + L().done + '</button></div>';
 }
 
 function render() {
   var app = document.getElementById("app");
   var main = S.screen === "list" ? listView() : recipeView(S.screen);
   var h = mountains() + rail() + '<div class="main">' + main + '</div>';
-  if (S.screen === "udka" && S.timer === "alarm") h += alarmView();
+  if (R[S.screen] && R[S.screen].ninja && R[S.screen].ninja.z[0].act && S.timer === "alarm") h += alarmView(R[S.screen]);
   if (S.photo && R[S.screen]) h += '<div id="viewer" data-act="close"><div class="vbar"><h1>' + esc(tx(R[S.screen])) + '</h1><button class="icbtn" style="width:auto;padding:0 18px;color:#fff">✕ ' + L().close + '</button></div>' + photo(R[S.screen].ph, "big", 220) + '</div>';
   var old = app.querySelector(".scroll"), keep = (old && render.last === S.screen) ? old.scrollTop : 0;
   app.innerHTML = h;
@@ -522,7 +530,7 @@ document.addEventListener("click", function (e) {
     if (t.getAttribute) {
       var a = t.getAttribute("data-act");
       if (t.getAttribute("data-s")) { S.photo = false; S.screen = t.getAttribute("data-s"); mark("data-s", S.screen); render(); return; }
-      if (t.getAttribute("data-t")) { if (S.screen !== "udka") { S.screen = "udka"; mark("data-s", "udka"); } setTimer(t.getAttribute("data-t")); return; }
+      if (t.getAttribute("data-t")) { if (!R[S.screen] || !R[S.screen].ninja) { S.screen = "udka"; mark("data-s", "udka"); } setTimer(t.getAttribute("data-t")); return; }
       if (t.getAttribute("data-l")) { S.lang = t.getAttribute("data-l"); mark("data-l", S.lang); render(); return; }
       if (t.getAttribute("data-o")) { S.orient = t.getAttribute("data-o"); mark("data-o", S.orient); render(); return; }
       /* timer w mockupie: ▶ start, tapnięcie licznika = „czas minął” (alarm), Zrobione, ↺ reset */
