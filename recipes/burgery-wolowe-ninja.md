@@ -69,7 +69,7 @@ ninja:
 
 steps:
   - text: "Przełóż mieloną wołowinę do miski. Dodaj sól, pieprz i czosnek. Delikatnie wymieszaj, nie ugniatając mięsa zbyt długo."
-  - text: "⚠️ KONIECZNIE: podziel mięso na równe porcje, uformuj płaskie kotlety o grubości około 1 cm i zrób wgłębienie (dołek) na środku każdego kotleta. Nie pomijaj dołka."
+  - text: "Podziel mięso na równe porcje. Uformuj płaskie kotlety o grubości około 1 cm i zrób wgłębienie na środku każdego kotleta. ⚠️ UWAGA: Nie pomijaj dołka."
   - text: "Ułóż kotlety na dodatkowych rusztach PETHREE, po dwa w każdej szufladzie, z odstępami. Ustaw strefy według panelu Ninja (bez wstępnego nagrzewania), włącz MATCH, potem START. Nie obracaj kotletów."
   - text: "Wbij termometr poziomo z boku w środek burgera znajdującego się z tyłu szuflady, ponieważ zwykle jest o 2–3°C chłodniejszy niż burger z przodu. Upewnij się, że temperatura w środku utrzymuje się na wymaganym poziomie przez 30 sekund. Jeśli nie, dopiecz i sprawdź ponownie."
     internal_temp_c: 75
@@ -97,7 +97,7 @@ translations:
       Sos: "Sauce"
     steps:
       - text: "Place the minced beef in a bowl with salt, pepper and garlic. Mix gently without overworking the meat."
-      - text: "⚠️ IMPORTANT: divide the meat evenly and shape flat patties about 1 cm thick. Make a dimple in the centre of every patty. Do not skip this step."
+      - text: "Divide the meat evenly. Shape flat patties about 1 cm thick and make a dimple in the centre of every patty. ⚠️ WARNING: Do not skip the dimple."
       - text: "Place the patties on the additional PETHREE racks, two per drawer with space between them. Use the settings on the Ninja panel (no preheat), press MATCH, then START. Do not flip the patties."
       - text: "Insert the thermometer horizontally from the side into the centre of the patty at the back of a drawer, as it tends to be 2–3°C cooler than the one near the handle. Ensure the internal temperature stays at the target for 30 seconds. If it does not, cook a little longer and check again."
       - text: "Put cheddar on the hot patties and leave briefly to melt."
