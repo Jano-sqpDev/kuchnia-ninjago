@@ -25,6 +25,10 @@ Aplikacja ma interfejs po polsku i po angielsku (przełącznik „PL | EN”). D
 - Nie instaluj ani nie aktualizuj zależności.
 - Nie zmieniaj nazwy (slugu) istniejących przepisów — to ich trwały adres.
 
+## Jak przepis wygląda w aplikacji (od v0.7)
+
+Pasek: tytuł i czasy (`prep_minutes`, `cook_minutes`). Pod nim przypięte wyświetlacze Ninja i TM6, potem karta składników z licznikiem porcji i kroki; `description` i notatki pod spodem są na samym dole. Tagi nie są widoczne na ekranie przepisu — służą wyszukiwarce i filtrom. Dlatego ważne informacje dla gotującego pisz w krokach, nie w opisie.
+
 ## Wyszukiwarka w aplikacji
 
 Lista przepisów ma wyszukiwarkę (tytuł, składniki, tagi — po polsku i po angielsku) i filtry: Ninja, TM6, funkcje Ninja. Dlatego trafne tytuły, nazwy składników, tagi (z wpisem w `recipes/tags.yml`) i kompletne `translations.en` sprawiają, że przepis da się znaleźć w obu językach. Tagi urządzeń `ninja` / `tm6` i funkcje w panelu `ninja` decydują o filtrach.

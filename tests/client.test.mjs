@@ -79,7 +79,8 @@ test('słownik: tr / trn — wstawianie wartości, odmiana PL tylko w PL, EN 1 /
   assert.equal(K.warningsLabel(2, 'en'), '2 recipes without English translation');
   assert.equal(K.tr('en', 'ninjaFor', { n: 1, servings: K.servingsWord(1, 'en') }), 'Ninja settings are for 1 serving.');
   assert.equal(K.tr('pl', 'ninjaFor', { n: 4, servings: 'x' }), 'Ustawienia Ninja są dla 4 porcji.');
-  assert.equal(K.tr('en', 'turnRequired', { action: 'FLIP', n: 14 }), 'FLIP AT 14 MIN');
+  assert.equal(K.tr('en', 'turnRequired', { action: 'Flip', n: 14 }), 'Flip at 14 min');
+  assert.equal(K.tr('pl', 'turnRequired', { action: 'Obróć', n: 14 }), 'Obróć po 14 min');
   assert.equal(K.tr('pl', 'turnOptional', { action: 'można obrócić', n: 14 }), 'można obrócić po 14 min');
   assert.equal(K.decimal(75.5, 'en'), '75.5');
   assert.equal(K.decimal(75.5), '75,5');
@@ -248,7 +249,11 @@ test('migracja zapisu sprzed v0.2.3: przepis, krok i porcje zostają', () => {
 
 test('klucze localStorage: nowe angielskie, stare polskie tylko do migracji', () => {
   assert.ok(js.includes("STATE_KEY = 'kitchen-state'"));
-  assert.ok(js.includes("THEME_KEY = 'kitchen-theme'"));
+  // Jasny motyw usunięty w v0.7: klucz motywu tylko kasowany przy starcie, nigdzie nie zapisywany.
+  assert.ok(js.includes("OLD_THEME_KEY = 'kitchen-theme'"));
+  assert.ok(js.includes('store.removeItem(OLD_THEME_KEY)'));
+  assert.ok(!/setItem\([^)]*THEME/.test(js), 'motyw nie może być zapisywany');
+  assert.ok(!js.includes('data-act="theme"'), 'bez przycisku motywu');
   assert.ok(js.includes("RELOAD_KEY = 'kitchen-reload'"));
   assert.ok(js.includes("LANG_KEY = 'kitchen-lang'"));
   assert.ok(js.includes("LEGACY_KEYS = { state: 'kuchnia-stan', theme: 'kuchnia-motyw', reload: 'kuchnia-przeladowanie' }"));
@@ -658,4 +663,21 @@ test('lista: pole wyszukiwania z atrybutami dla iOS, chipy jako przyciski, odśw
   // Przy wpisywaniu tylko #results (setTimeout ~150 ms), nie drawList.
   const onInput = js.slice(js.indexOf('function onSearchInput'), js.indexOf('function setSearch'));
   assert.ok(onInput.includes('150') && onInput.includes('updateResults') && !onInput.includes('drawList'));
+});
+
+// ── wygląd v0.7 (mockup v3): trzy poziomy, tylko ciemny motyw ──
+test('wygląd v0.7: tokeny kolorów z mockupu v3, bez jasnego motywu i bez pomarańczu poza plakietkami', () => {
+  for (const [name, value] of [['--plate', '#121519'], ['--plate2', '#0E1114'], ['--well', '#0A0C0F'], ['--edge', '#1F252C'], ['--ink', '#ECEFF3'],
+    ['--ink2', '#A2ACB7'], ['--muted', '#6F7A86'], ['--accent', '#5B9BE6'], ['--ninja', '#7CC4FF'], ['--tm6', '#B49CFA'], ['--hot', '#FF7A66']]) {
+    assert.ok(css.includes(name + ': ' + value), name);
+  }
+  assert.ok(!css.includes('html.light'), 'jasny motyw usunięty');
+  // Pomarańcz (#FF8A3D) tylko jako token plakietki braków tłumaczenia.
+  assert.deepEqual(css.match(/#FF8A3D/gi), ['#FF8A3D']);
+  // Poświata (text-shadow / box-shadow z kolorem) tylko w wyświetlaczach, bieżącym kroku i alarmie.
+  const glow = [];
+  css.replace(/\/\*[\s\S]*?\*\//g, '').split('}').forEach((rule) => {
+    if (/(text|box)-shadow:/.test(rule)) glow.push(rule.split('{')[0].trim());
+  });
+  glow.forEach((sel) => assert.ok(/^(\.npanel|\.zone \.big|\.mode \.m|\.tstrip \.tclock|\.tstrip\.|\.tpanel|\.dial|\.step\.cur|#alarm)/.test(sel), 'poświata poza wyświetlaczem: ' + sel));
 });

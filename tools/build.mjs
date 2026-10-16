@@ -57,12 +57,11 @@ mkdirSync(join(out, 'data'), { recursive: true });
 cpSync(join(root, 'public'), out, { recursive: true, filter });
 cpSync(join(root, 'src'), out, { recursive: true, filter });
 writeFileSync(join(out, 'app.js'), appJs);
-// Zaakceptowany projekt UI do podglądu na iPadzie: /mockup.html
-cpSync(join(root, 'docs', 'mockup-ui-v1.html'), join(out, 'mockup.html'));
-// Drugi projekt UI (do obejrzenia, jeszcze niezaakceptowany): /mockup2.html
-cpSync(join(root, 'docs', 'mockup-ui-v2.html'), join(out, 'mockup2.html'));
-// Trzeci projekt UI (do obejrzenia, jeszcze niezaakceptowany): /mockup3.html
+// Projekty UI do podglądu na iPadzie. Zaakceptowany wygląd aplikacji (od v0.7): /mockup3.html.
+// /mockup.html (wygląd do v0.6) i /mockup2.html (odrzucony projekt) zostają do porównania.
 cpSync(join(root, 'docs', 'mockup-ui-v3.html'), join(out, 'mockup3.html'));
+cpSync(join(root, 'docs', 'mockup-ui-v1.html'), join(out, 'mockup.html'));
+cpSync(join(root, 'docs', 'mockup-ui-v2.html'), join(out, 'mockup2.html'));
 
 // Dane przepisów (zdjęcia zapisują się od razu, JSON-y trzymamy do policzenia identyfikatora buildu).
 recipes.sort((a, b) => a.data.title.localeCompare(b.data.title, 'pl'));

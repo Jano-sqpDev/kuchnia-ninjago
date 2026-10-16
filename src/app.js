@@ -1,11 +1,11 @@
-// Widok kuchenny (lista + strona przepisu) — według docs/mockup-ui-v1.html (z poprawkami opisanymi w CLAUDE.md).
+// Widok kuchenny (lista + strona przepisu) — według docs/mockup-ui-v3.html („spokojny wyświetlacz”, od v0.7; zasady w CLAUDE.md).
 // Safari 12 (iOS 12): świadomie ES5 + to, co Safari 12 ma na pewno; bez modułów, frameworków i npm.
 // Zakazana składnia sprawdzana w tests/client.test.mjs, a build przepuszcza plik przez esbuild --target=safari12.
 (function (global) {
   'use strict';
 
   var STATE_KEY = 'kitchen-state';
-  var THEME_KEY = 'kitchen-theme';
+  var OLD_THEME_KEY = 'kitchen-theme'; // jasny motyw usunięty w v0.7 — klucz kasowany przy starcie
   var RELOAD_KEY = 'kitchen-reload'; // build, do którego już raz przeładowaliśmy
   var LANG_KEY = 'kitchen-lang';     // język interfejsu: 'pl' (domyślnie) | 'en' — od v0.4, bez starszego odpowiednika
   // Klucze sprzed v0.2.3 — przenoszone raz do nowych (migrateStorage), potem usuwane.
@@ -20,7 +20,7 @@
   // Wartości mogą zawierać HTML (<b>, <br>) — to stałe teksty, nie dane z przepisów.
   var I18N = {
     pl: {
-      recipes: 'Przepisy', back: '‹ Przepisy', themeLabel: 'Jasny / ciemny', langLabel: 'Język / Language',
+      recipes: 'Przepisy', back: '‹ Przepisy', langLabel: 'Język / Language', photo: 'Zdjęcie',
       loading: 'Wczytywanie…', retryHint: 'Sprawdź Wi-Fi i dotknij, żeby spróbować ponownie.',
       listFailed: 'Nie udało się wczytać przepisów.', recipeFailed: 'Nie udało się wczytać przepisu.',
       recipeMissing: 'Nie ma takiego przepisu.', recipeMissingHint: 'Mógł zostać usunięty albo zmienić nazwę. Wróć do listy.',
@@ -29,7 +29,7 @@
       resultsCount: ['{shown} z {n} przepisu', '{shown} z {n} przepisów', '{shown} z {n} przepisów'],
       showingFor: 'Pokazuję wyniki dla: {q}', noMatches: 'Nic nie pasuje.', noMatchesHint: 'Spróbuj innego słowa albo wyłącz filtry.', clearAll: 'Wyczyść',
       minutes: '{n} min', noCooking: 'bez gotowania', servings: ['porcja', 'porcje', 'porcji'],
-      resumeTitle: 'Wróć do gotowania', resumeStep: '{title} — krok {n} z {total}', open: 'Otwórz ›', show: 'Pokaż ›', close: '✕ Zamknij',
+      resumeTitle: 'Wróć do gotowania', stepOf: 'krok {n} z {total}', open: 'Otwórz ›', show: 'Pokaż ›', close: '✕ Zamknij',
       problemsCount: ['{n} przepis z błędem', '{n} przepisy z błędem', '{n} przepisów z błędem'],
       problemsIntro: 'Te pliki w repo mają błędy. Popraw je na GitHubie (albo poproś o to Claude / Codex) — po publikacji plakietka zniknie.',
       problemSkipped: 'Przepisu nie ma na liście, dopóki błąd nie zostanie poprawiony.', problemNoPhoto: 'Przepis jest na liście, ale bez zdjęcia.',
@@ -37,9 +37,9 @@
       warningsIntro: 'Tym przepisom brakuje tłumaczenia EN — w trybie EN wyświetlają się po polsku (znaczek PL). Poproś ChatGPT o uzupełnienie bloku translations.en (docs/FORMAT-PRZEPISU.md) i tagów w recipes/tags.yml.',
       warningFallback: 'W trybie EN przepis wyświetla się po polsku.', warningTagsOnly: 'Tagi bez tłumaczenia — w trybie EN wyświetlane bez zmian.',
       plOnly: 'brak tłumaczenia EN',
-      prep: 'przygotowanie', cook: 'gotowanie', fewer: 'Mniej porcji', more: 'Więcej porcji', original: 'przepis: {n}',
+      prep: 'przygotowanie', cook: 'pieczenie', noBake: 'bez pieczenia', fewer: 'Mniej porcji', more: 'Więcej porcji', original: 'przepis: {n}',
       ingredients: 'Składniki', steps: 'Kroki', notes: 'Notatki',
-      enlarge: '⤢ Powiększ', noPhoto: 'brak zdjęcia', photoHint: 'Dotknij w dowolnym miejscu, żeby wrócić do przepisu',
+      photoHint: 'Dotknij w dowolnym miejscu, żeby wrócić do przepisu',
       inside: '{t}°C w środku',
       zone: 'Strefa',
       modeSync: 'SYNC', modeSyncHint: 'kończą<br>razem', modeMatch: 'MATCH', modeMatchHint: 'te same<br>ustawienia',
@@ -48,19 +48,19 @@
       ninjaMore: 'Przy większej ilości sprawdź, czy jedzenie mieści się w szufladach.',
       ninjaLess: 'Przy mniejszej ilości sprawdzaj wcześniej — może być gotowe szybciej.',
       tm6None: 'Ten krok bez TM6', tm6Step: 'Krok <b>{n}</b> z {total}',
-      time: 'Czas', temperature: 'Temperatura', speed: 'Obroty', noHeat: 'bez grzania', reverse: '↺ wsteczne', spoon: 'łyżka',
+      time: 'Czas', temperature: 'Temp.', speed: 'Obroty', speedShort: 'obroty', noHeat: 'bez grzania', reverse: '↺ wsteczne', spoon: 'łyżka',
       timerNote: 'Alarm tylko przy włączonym ekranie i otwartej aplikacji.',
       start: 'START', pause: 'PAUZA', resume: 'WZNÓW', reset: 'RESET', sure: 'NA PEWNO?',
       statusIdle: 'Dotknij START razem z Ninja', statusRunning: 'Odliczanie', statusPaused: 'Pauza',
       alarmHint: 'Timer czeka na „Zrobione” (szuflada wysunięta = Ninja stoi), najdłużej 2 min.', done: 'Zrobione',
       noSound: 'Bez dźwięku — w Safari dźwięk włącza dotknięcie START albo WZNÓW.',
       whenIn: 'za', whenAt: 'po', whenNow: 'teraz',
-      flipUp: 'OBRÓĆ', flipSoft: 'można obrócić', flipLower: 'obróć',
-      shakeUp: 'POTRZĄŚNIJ', shakeSoft: 'można potrząsnąć', shakeLower: 'potrząśnij',
-      turnRequired: '{action} PO {n} MIN', turnOptional: '{action} po {n} min',
+      flipUp: 'OBRÓĆ', flipSoft: 'można obrócić', flipLower: 'obróć', flipCap: 'Obróć',
+      shakeUp: 'POTRZĄŚNIJ', shakeSoft: 'można potrząsnąć', shakeLower: 'potrząśnij', shakeCap: 'Potrząśnij',
+      turnRequired: '{action} po {n} min', turnOptional: '{action} po {n} min',
     },
     en: {
-      recipes: 'Recipes', back: '‹ Recipes', themeLabel: 'Light / dark', langLabel: 'Język / Language',
+      recipes: 'Recipes', back: '‹ Recipes', langLabel: 'Język / Language', photo: 'Photo',
       loading: 'Loading…', retryHint: 'Check the Wi-Fi and tap to try again.',
       listFailed: 'Could not load the recipes.', recipeFailed: 'Could not load the recipe.',
       recipeMissing: 'There is no such recipe.', recipeMissingHint: 'It may have been removed or renamed. Go back to the list.',
@@ -69,7 +69,7 @@
       resultsCount: ['{shown} of {n} recipe', '{shown} of {n} recipes'],
       showingFor: 'Showing results for: {q}', noMatches: 'No matches.', noMatchesHint: 'Try another word or turn off the filters.', clearAll: 'Clear',
       minutes: '{n} min', noCooking: 'no cooking', servings: ['serving', 'servings'],
-      resumeTitle: 'Back to cooking', resumeStep: '{title} — step {n} of {total}', open: 'Open ›', show: 'Show ›', close: '✕ Close',
+      resumeTitle: 'Back to cooking', stepOf: 'step {n} of {total}', open: 'Open ›', show: 'Show ›', close: '✕ Close',
       problemsCount: ['{n} recipe with an error', '{n} recipes with errors'],
       problemsIntro: 'These files in the repo have errors. Fix them on GitHub (or ask Claude / Codex to do it) — the badge disappears after publishing.',
       problemSkipped: 'The recipe is not on the list until the error is fixed.', problemNoPhoto: 'The recipe is on the list, but without a photo.',
@@ -77,9 +77,9 @@
       warningsIntro: 'These recipes are missing the English translation — in EN mode they are shown in Polish (PL badge). Ask ChatGPT to complete translations.en (docs/FORMAT-PRZEPISU.md) and the tags in recipes/tags.yml.',
       warningFallback: 'In EN mode the recipe is shown in Polish.', warningTagsOnly: 'Tags without translation — shown unchanged in EN mode.',
       plOnly: 'no English translation',
-      prep: 'prep', cook: 'cooking', fewer: 'Fewer servings', more: 'More servings', original: 'recipe: {n}',
+      prep: 'prep', cook: 'cooking', noBake: 'no cooking', fewer: 'Fewer servings', more: 'More servings', original: 'recipe: {n}',
       ingredients: 'Ingredients', steps: 'Steps', notes: 'Notes',
-      enlarge: '⤢ Enlarge', noPhoto: 'no photo', photoHint: 'Tap anywhere to go back to the recipe',
+      photoHint: 'Tap anywhere to go back to the recipe',
       inside: '{t}°C inside',
       zone: 'Zone',
       modeSync: 'SYNC', modeSyncHint: 'finish<br>together', modeMatch: 'MATCH', modeMatchHint: 'same<br>settings',
@@ -88,16 +88,16 @@
       ninjaMore: 'With more food, check that it fits in the drawers.',
       ninjaLess: 'With less food, check earlier — it may be ready sooner.',
       tm6None: 'No TM6 in this step', tm6Step: 'Step <b>{n}</b> of {total}',
-      time: 'Time', temperature: 'Temperature', speed: 'Speed', noHeat: 'no heat', reverse: '↺ reverse', spoon: 'spoon',
+      time: 'Time', temperature: 'Temp.', speed: 'Speed', speedShort: 'speed', noHeat: 'no heat', reverse: '↺ reverse', spoon: 'spoon',
       timerNote: 'Alarm only with the screen on and the app open.',
       start: 'START', pause: 'PAUSE', resume: 'RESUME', reset: 'RESET', sure: 'SURE?',
       statusIdle: 'Tap START together with the Ninja', statusRunning: 'Counting down', statusPaused: 'Paused',
       alarmHint: 'The timer waits for “Done” (drawer out = Ninja paused), up to 2 min.', done: 'Done',
       noSound: 'No sound — in Safari, tapping START or RESUME turns the sound on.',
       whenIn: 'in', whenAt: 'at', whenNow: 'now',
-      flipUp: 'FLIP', flipSoft: 'optional flip', flipLower: 'flip',
-      shakeUp: 'SHAKE', shakeSoft: 'optional shake', shakeLower: 'shake',
-      turnRequired: '{action} AT {n} MIN', turnOptional: '{action} at {n} min',
+      flipUp: 'FLIP', flipSoft: 'optional flip', flipLower: 'flip', flipCap: 'Flip',
+      shakeUp: 'SHAKE', shakeSoft: 'optional shake', shakeLower: 'shake', shakeCap: 'Shake',
+      turnRequired: '{action} at {n} min', turnOptional: '{action} at {n} min',
     },
   };
   var LANGS = ['pl', 'en'];
@@ -456,12 +456,12 @@
 
   // Kody czynności z YAML (turn.action) → klucze słownika (napisy w I18N).
   var ACTIONS = {
-    flip: { up: 'flipUp', soft: 'flipSoft', lower: 'flipLower' },
-    shake: { up: 'shakeUp', soft: 'shakeSoft', lower: 'shakeLower' },
+    flip: { up: 'flipUp', soft: 'flipSoft', lower: 'flipLower', cap: 'flipCap' },
+    shake: { up: 'shakeUp', soft: 'shakeSoft', lower: 'shakeLower', cap: 'shakeCap' },
   };
   function actionText(code, lang) {
     var a = ACTIONS[code] || ACTIONS.flip;
-    return { up: tr(lang, a.up), soft: tr(lang, a.soft), lower: tr(lang, a.lower) };
+    return { up: tr(lang, a.up), soft: tr(lang, a.soft), lower: tr(lang, a.lower), cap: tr(lang, a.cap) };
   }
   // Kiedy: 'in' (za) | 'at' (po) | 'now' (teraz).
   var WHEN = { 'in': 'whenIn', at: 'whenAt', now: 'whenNow' };
@@ -688,7 +688,8 @@
 
   // ── pamięć (localStorage zawsze w try/catch) ──
   // Jednorazowe przeniesienie zapisów sprzed v0.2.3 (polskie klucze), żeby iPad nie zgubił
-  // otwartego przepisu, kroku, porcji i motywu. Stare klucze usuwane dopiero po udanym zapisie nowych.
+  // otwartego przepisu, kroku i porcji. Stare klucze usuwane dopiero po udanym zapisie nowych.
+  // Motyw (jasny/ciemny) usunięty w v0.7 — stare klucze motywu tylko kasujemy.
   function migrateStorage() {
     try {
       var store = global.localStorage;
@@ -696,13 +697,12 @@
       if (oldState !== null && store.getItem(STATE_KEY) === null) {
         store.setItem(STATE_KEY, JSON.stringify(migrateLegacyState(JSON.parse(oldState))));
       }
-      var oldTheme = store.getItem(LEGACY_KEYS.theme);
-      if (oldTheme !== null && store.getItem(THEME_KEY) === null) store.setItem(THEME_KEY, oldTheme);
       var oldReload = store.getItem(LEGACY_KEYS.reload);
       if (oldReload !== null && store.getItem(RELOAD_KEY) === null) store.setItem(RELOAD_KEY, oldReload);
       store.removeItem(LEGACY_KEYS.state);
       store.removeItem(LEGACY_KEYS.theme);
       store.removeItem(LEGACY_KEYS.reload);
+      store.removeItem(OLD_THEME_KEY);
     } catch (e) { /* brak pamięci / zepsuty stary zapis — zaczynamy od czystego stanu */ }
   }
   migrateStorage();
@@ -720,20 +720,6 @@
   }
   var state = readState();
 
-  // ── motyw jasny/ciemny ──
-  var theme = 'dark';
-  try { if (global.localStorage.getItem(THEME_KEY) === 'light') theme = 'light'; } catch (e) { /* domyślnie ciemny */ }
-  function setTheme(m) {
-    theme = m;
-    html.className = html.className.replace(/(^|\s)light(\s|$)/g, ' ').replace(/^\s+|\s+$/g, '') + (m === 'light' ? ' light' : '');
-    var b = doc.querySelectorAll('[data-act="theme"]');
-    for (var i = 0; i < b.length; i++) b[i].innerHTML = themeGlyph();
-    try { global.localStorage.setItem(THEME_KEY, m); } catch (e) { /* nie szkodzi */ }
-  }
-  function themeGlyph() { return theme === 'dark' ? '☀︎' : '☾'; }
-  function themeButton() { return '<button class="btn" data-act="theme" aria-label="' + T('themeLabel') + '">' + themeGlyph() + '</button>'; }
-  setTheme(theme);
-
   // ── język interfejsu (PL domyślnie; wybór w localStorage) ──
   var lang = 'pl';
   try { lang = normalizeLang(global.localStorage.getItem(LANG_KEY)); } catch (e) { /* domyślnie PL */ }
@@ -749,7 +735,12 @@
     return '<button class="btn lang" data-act="lang" aria-label="' + T('langLabel') + '"><span' + (lang === 'pl' ? ' class="on"' : '') +
       '>PL</span><span class="sep">|</span><span' + (lang === 'en' ? ' class="on"' : '') + '>EN</span></button>';
   }
-  function barButtons() { return langButton() + themeButton(); }
+  // Ikony (inline SVG, kolor z currentColor).
+  function icon(path) {
+    return '<svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + path + '</svg>';
+  }
+  var ICON_PHOTO = '<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 8"/>';
+  var ICON_SEARCH = '<circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/>';
   function setLang(l) {
     lang = normalizeLang(l);
     try { global.localStorage.setItem(LANG_KEY, lang); } catch (e) { /* nie szkodzi */ }
@@ -794,14 +785,19 @@
   }
 
   function listBar() {
-    return '<div class="bar"><h1>' + T('recipes') + '</h1>' + barButtons() + '</div>';
+    return '<div class="bar"><h1>' + T('recipes') + '</h1>' + langButton() + '</div>';
   }
-  function recipeBar(title) {
-    return '<div class="bar"><button class="btn back" data-act="back">' + T('back') + '</button><h1>' + (title ? esc(title) : '') + '</h1>' + barButtons() + '</div>';
+  // Przepis: „‹ Przepisy", tytuł (+ znaczek PL bez tłumaczenia), pod nim czasy; „Zdjęcie" tylko gdy przepis ma zdjęcie.
+  // o = { sub, photo, pl } — na ekranach ładowania i błędu pusty.
+  function recipeBar(title, o) {
+    o = o || {};
+    return '<div class="bar"><button class="btn back" data-act="back">' + T('back') + '</button><div class="ttl"><h1><span class="tt">' + (title ? esc(title) : '') + '</span>' +
+      (o.pl ? ' <span class="dev pl" title="' + T('plOnly') + '">PL</span>' : '') + '</h1>' + (o.sub ? '<div class="sub">' + o.sub + '</div>' : '') + '</div>' +
+      (o.photo ? '<button class="btn" data-act="photo">' + icon(ICON_PHOTO) + T('photo') + '</button>' : '') + langButton() + '</div>';
   }
 
-  function photo(src, cls, caption) {
-    if (!src) return '<div class="ph none ' + cls + '"><div class="em">🍽</div>' + (caption ? '<div class="cap">' + T('noPhoto') + '</div>' : '') + '</div>';
+  function photo(src, cls) {
+    if (!src) return '<div class="ph none ' + cls + '"><div class="em">🍽</div></div>';
     return '<div class="ph ' + cls + '"><img src="' + esc(src) + '" alt=""></div>';
   }
 
@@ -880,7 +876,7 @@
       return;
     }
     var q = state.list.query;
-    h += '<div class="search' + (q ? ' has' : '') + '" id="search"><input id="search-input" class="box" type="text" value="' + esc(q) +
+    h += '<div class="search' + (q ? ' has' : '') + '" id="search">' + icon(ICON_SEARCH) + '<input id="search-input" class="box" type="text" value="' + esc(q) +
       '" placeholder="' + T('searchPlaceholder') + '" maxlength="' + QUERY_MAX + '" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">' +
       '<button class="sclear" data-act="search-clear" aria-label="' + T('searchClear') + '">✕</button></div>';
     h += '<div class="chips" id="chips">' + chipsHtml() + '</div><div id="results">' + resultsHtml() + '</div>';
@@ -912,7 +908,7 @@
     h += '<div class="grid">';
     for (var i = 0; i < list.length; i++) {
       var it = list[i], ev = entryView(it, lang), min = it.prep_minutes + it.cook_minutes;
-      h += '<div class="card" data-open="' + esc(it.id) + '">' + photo(it.thumb, 'thumb', false) +
+      h += '<div class="lcard" data-open="' + esc(it.id) + '">' + photo(it.thumb, 'thumb') +
         '<div class="txt"><h3>' + esc(ev.title) + '</h3><div class="meta">' + (min ? T('minutes', { n: min }) : T('noCooking')) +
         ' · ' + it.servings + ' ' + servingsWord(it.servings, lang) + '</div><div class="devs">' + deviceBadges(it.tags) +
         (ev.fallback ? '<span class="dev pl">PL</span>' : '') + '</div></div></div>';
@@ -963,7 +959,7 @@
     var inIndex = index.some(function (it) { return it.id === latest; });
     if (!inIndex || (p.step === 0 && !p.servings)) return '';
     return '<div class="resume" data-open="' + esc(latest) + '"><div class="t"><div class="k">' + T('resumeTitle') + '</div><div class="n">' +
-      esc(T('resumeStep', { title: recipeTitle(latest), n: p.step + 1, total: p.steps })) + '</div></div><span class="btn">' + T('open') + '</span></div>';
+      esc(recipeTitle(latest)) + '</div><div class="s">' + esc(T('stepOf', { n: p.step + 1, total: p.steps })) + '</div></div><span class="btn">' + T('open') + '</span></div>';
   }
 
   // ═════ przepis ═════
@@ -1005,34 +1001,29 @@
     rememberRecipe();
     global.history.replaceState(global.history.state, '', recipeUrl(r.id, step));
 
-    var h = recipeBar(L.title);
+    var sub = T('prep') + ' ' + T('minutes', { n: r.prep_minutes }) + ' · ' + (r.cook_minutes ? T('cook') + ' ' + T('minutes', { n: r.cook_minutes }) : T('noBake'));
+    var h = recipeBar(L.title, { sub: esc(sub), photo: !!r.image, pl: L.fallback });
 
+    // Przypięte wyświetlacze urządzeń (jedyne miejsce z poświatą); timer obracania wewnątrz panelu Ninja.
     var tm6 = hasTm6(r);
     if (r.ninja || tm6) {
       h += '<div class="pin">';
-      if (r.ninja) h += ninjaPanel(r.ninja) + (hasTurns(r.ninja) ? timerBarHtml() : '') + '<div id="servings-note">' + servingsNote() + '</div>';
+      if (r.ninja) h += ninjaPanel(r.ninja) + '<div id="servings-note">' + servingsNote() + '</div>';
       if (tm6) h += '<div id="tm6-panel">' + tm6Panel(step) + '</div>';
       h += '</div>';
     }
 
-    h += '<div class="scroll"><div class="hero"><div class="info"><div class="head"><span class="serv" id="servings">' + servingsHtml() + '</span>' +
-      '<span class="times">' + T('prep') + ' <b>' + T('minutes', { n: r.prep_minutes }) + '</b><span class="sep">·</span>' +
-      (r.cook_minutes ? T('cook') + ' <b>' + T('minutes', { n: r.cook_minutes }) + '</b>' : T('noCooking')) + '</span></div>';
-    if (L.fallback) h += '<div class="pl-only"><span class="dev pl">PL</span>' + T('plOnly') + '</div>';
-    h += '<div class="tags">';
-    for (var i = 0; i < L.tags.length; i++) h += '<span class="tag">#' + esc(L.tags[i]) + '</span>';
-    h += '</div>' + (L.description ? '<div class="desc">' + esc(L.description) + '</div>' : '') + '</div>';
-    h += r.image
-      ? '<div class="pic-wrap" data-act="photo"><div class="ph pic"><img src="' + esc(r.image) + '" alt=""><div class="zoom">' + T('enlarge') + '</div></div></div>'
-      : '<div class="pic-wrap">' + photo(null, 'pic', true) + '</div>';
-    h += '</div>';
-
-    h += '<div class="cols"><div class="col c-ing"><h2>' + T('ingredients') + '</h2><div class="ing" id="ingredients">' + ingredientsHtml() + '</div></div>';
-    h += '<div class="col c-steps"><h2>' + T('steps') + '</h2>';
-    for (i = 0; i < L.steps.length; i++) h += stepHtml(L.steps[i], i, step);
+    // Składniki (karta z licznikiem porcji) | kroki; w pionie jedno pod drugim. Opis i notatki na dole.
+    h += '<div class="scroll"><div class="cols"><div class="c1"><div class="icard"><div class="ch"><h2>' + T('ingredients') + '</h2>' +
+      '<div class="stepper" id="servings">' + servingsHtml() + '</div></div><div class="ing" id="ingredients">' + ingredientsHtml() + '</div></div></div>';
+    h += '<div class="c2">';
+    for (var i = 0; i < L.steps.length; i++) h += stepHtml(L.steps[i], i, step);
     h += '</div></div>';
+    var about = '';
+    if (L.description) about += '<p class="desc">' + esc(L.description) + '</p>';
     // Notatki (treść pod YAML) nie mają tłumaczenia — w trybie EN ze znaczkiem PL.
-    if (r.notes) h += '<div class="notes"><h2>' + T('notes') + (lang === 'en' ? ' <span class="dev pl">PL</span>' : '') + '</h2><div class="txt">' + esc(r.notes) + '</div></div>';
+    if (r.notes) about += '<div class="notes"><div class="nh">' + T('notes') + (lang === 'en' ? ' <span class="dev pl">PL</span>' : '') + '</div><div class="txt">' + esc(r.notes) + '</div></div>';
+    if (about) h += '<div class="about">' + about + '</div>';
     h += '</div>';
 
     render(h, keepScroll || 0);
@@ -1058,10 +1049,15 @@
     saveState();
   }
 
-  // Napis o obracaniu przy strefie: „OBRÓĆ PO 10 MIN" / „FLIP AT 10 MIN" (z alarmem) albo „można obrócić po 10 min" (informacja).
+  // Napis o obracaniu przy strefie: „Obróć po 10 min" / „Flip at 10 min" (z alarmem) albo „można obrócić po 10 min" (informacja).
   function turnText(turn) {
     var a = actionText(turn.action, lang);
-    return turn.required === false ? T('turnOptional', { action: a.soft, n: turn.after_min }) : T('turnRequired', { action: a.up, n: turn.after_min });
+    return turn.required === false ? T('turnOptional', { action: a.soft, n: turn.after_min }) : T('turnRequired', { action: a.cap, n: turn.after_min });
+  }
+  // Plakietka przy strefie: obowiązkowe — niebieska „↻ …", po czasie szara z „✓"; opcjonalne — szary tekst.
+  function turnHtml(turn, no, past) {
+    var req = turn.required !== false;
+    return '<div class="turn' + (req ? '' : ' info') + (past ? ' ok' : '') + '" id="turn' + no + '">' + (past ? '✓ ' : (req ? '↻ ' : '')) + esc(turnText(turn)) + '</div>';
   }
 
   function ninjaPanel(n) {
@@ -1069,13 +1065,13 @@
       var label = V.L.labels['zone' + no];
       return '<div class="zone"><div class="zh"><b>' + no + '</b>' + T('zone') + ' ' + no + '</div>' + (label ? '<div class="lbl">' + esc(label) + '</div>' : '') +
         '<div class="fn">' + esc(z['function']) + '</div><div class="vals"><span class="big">' + z.temp_c + '</span><span class="unit">°C</span>' +
-        '<span class="big">' + z.minutes + '</span><span class="unit">min</span></div>' +
-        (z.turn ? '<div class="turn ' + (z.turn.required === false ? 'info' : 'req') + '" id="turn' + no + '">' + esc(turnText(z.turn)) + '</div>' : '') + '</div>';
+        '<span class="big">' + z.minutes + '</span><span class="unit">min</span></div>' + (z.turn ? turnHtml(z.turn, no, false) : '') + '</div>';
     }
-    if (n.mode === 'single') return '<div class="npanel single">' + zone(1, n.zone1) + '</div>';
+    var strip = hasTurns(n) ? timerBarHtml() : '';
+    if (n.mode === 'single') return '<div class="npanel single"><div class="zrow">' + zone(1, n.zone1) + '</div>' + strip + '</div>';
     var label = { sync: ['modeSync', 'modeSyncHint'], match: ['modeMatch', 'modeMatchHint'], independent: ['modeIndependent', 'modeIndependentHint'] }[n.mode];
-    return '<div class="npanel">' + zone(1, n.zone1) + '<div class="mode"><span class="pill">' + T(label[0]) + '</span><div class="hint">' + T(label[1]) + '</div></div>' +
-      zone(2, n.zone2) + '</div>';
+    return '<div class="npanel"><div class="zrow">' + zone(1, n.zone1) + '<div class="mode"><span class="m">' + T(label[0]) + '</span><span class="cap">' + T(label[1]) + '</span></div>' +
+      zone(2, n.zone2) + '</div>' + strip + '</div>';
   }
 
   function servingsNote() {
@@ -1088,29 +1084,29 @@
   // Panel TM6: ustawienia BIEŻĄCEGO kroku. Krok bez TM6 → puste, wyszarzone tarcze (ta sama wysokość, ekran nie skacze).
   function tm6Panel(cur) {
     function dial(v, u, label, off, small) {
-      return '<div class="dial' + (off ? ' off' : '') + '"><div class="ring"><div class="v' + (small ? ' sm' : '') + '">' + v + '</div>' +
+      return '<div class="dial' + (off ? ' off' : '') + '"><div class="r"><div class="v' + (small ? ' sm' : '') + '">' + v + '</div>' +
         (u ? '<div class="u">' + u + '</div>' : '') + '</div><div class="dl">' + label + '</div></div>';
     }
     var s = V.L.steps[cur], t = s && s.tm6;
     if (!t) {
-      return '<div class="tpanel"><div class="th"><span class="tk">TM6</span>' + T('tm6None') + '</div><div class="dials">' +
+      return '<div class="tpanel off"><div class="th"><span class="tk">TM6</span><span class="s">' + T('tm6None') + '</span></div><div class="dials">' +
         dial('—', '', T('time'), true) + dial('—', '', T('temperature'), true) + dial('—', '', T('speed'), true) + '</div></div>';
     }
     var temp = t.temperature === undefined ? dial('—', T('noHeat'), T('temperature'), true)
       : (t.temperature === 'Varoma' ? dial('Varoma', '', T('temperature'), false, true) : dial(t.temperature, '°C', T('temperature')));
     var speed = t.speed === undefined ? dial('—', '', T('speed'), true)
       : dial(esc(tm6Speed(t.speed, lang)), t.reverse ? T('reverse') : '', T('speed'), false, typeof t.speed !== 'number');
-    return '<div class="tpanel"><div class="th"><span class="tk">TM6</span>' + T('tm6Step', { n: cur + 1, total: V.L.steps.length }) +
+    return '<div class="tpanel"><div class="th"><span class="tk">TM6</span><span class="s">' + T('tm6Step', { n: cur + 1, total: V.L.steps.length }) + '</span>' +
       (s.tm6Mode ? '<span class="tmode">' + esc(s.tm6Mode) + '</span>' : '') + '</div><div class="dials">' +
       dial(tm6Time(t.duration_seconds), 'min:s', T('time')) + temp + speed + '</div></div>';
   }
 
   function servingsHtml() {
     var r = V.r, sv = V.servings, changed = sv !== r.servings;
-    return '<button class="sb" data-act="servings-"' + (sv <= SERVINGS_MIN ? ' disabled' : '') + ' aria-label="' + T('fewer') + '">−</button>' +
-      '<span class="sn' + (changed ? ' chg' : '') + '"><b>' + sv + '</b> ' + servingsWord(sv, lang) +
-      (changed ? '<span class="orig" data-act="servings0">' + T('original', { n: r.servings }) + '</span>' : '') + '</span>' +
-      '<button class="sb" data-act="servings+"' + (sv >= SERVINGS_MAX ? ' disabled' : '') + ' aria-label="' + T('more') + '">+</button>';
+    return '<button class="b" data-act="servings-"' + (sv <= SERVINGS_MIN ? ' disabled' : '') + ' aria-label="' + T('fewer') + '">−</button>' +
+      '<div class="n' + (changed ? ' chg' : '') + '"><b>' + sv + '</b><span>' + servingsWord(sv, lang) + '</span>' +
+      (changed ? '<span class="orig" data-act="servings0">' + T('original', { n: r.servings }) + '</span>' : '') + '</div>' +
+      '<button class="b" data-act="servings+"' + (sv >= SERVINGS_MAX ? ' disabled' : '') + ' aria-label="' + T('more') + '">+</button>';
   }
 
   // Składniki: ilości przeliczone z oryginału, jednostki zawsze angielskie skróty (g, pcs, tbsp…), nazwy w bieżącym języku.
@@ -1119,7 +1115,7 @@
     for (var i = 0; i < list.length; i++) {
       var x = list[i];
       if ((x.groupKey || null) !== group) { group = x.groupKey || null; if (group) h += '<div class="g">' + esc(x.group) + '</div>'; }
-      h += '<div class="row"><div class="q' + (x.amount ? '' : ' none') + '">' + (x.amount ? esc(scaledAmount(x.amount, x.unit, f, lang)) + ' ' + esc(x.unit) : '—') +
+      h += '<div class="row"><div class="q' + (x.amount ? '' : ' none') + '">' + (x.amount ? esc(scaledAmount(x.amount, x.unit, f, lang)) + '<span class="u">' + esc(x.unit) + '</span>' : '—') +
         '</div><div class="nm">' + esc(x.name) + (x.note ? ' <span class="note">(' + esc(x.note) + ')</span>' : '') + '</div></div>';
     }
     return h;
@@ -1128,14 +1124,16 @@
   function stepHtml(s, i, cur) {
     var h = '<div class="step' + (i === cur ? ' cur' : (i < cur ? ' past' : '')) + '" data-step="' + i + '"><div class="num">' + (i < cur ? '✓' : (i + 1)) +
       '</div><div class="body">' + esc(s.text);
+    // Ustawienia TM6 jako jeden fioletowy chip („18:00 · Varoma · obroty 1"), temperatura w środku — łososiowy.
     if (s.tm6) {
-      var t = s.tm6;
-      h += '<div class="tm6row"><span class="tm k">TM6</span><span class="tm">⏱ ' + tm6Time(t.duration_seconds) + '</span>' +
-        (t.temperature !== undefined ? '<span class="tm">🌡 ' + (t.temperature === 'Varoma' ? 'Varoma' : t.temperature + '°C') + '</span>' : '') +
-        (t.speed !== undefined ? '<span class="tm">⟳ ' + esc(tm6Speed(t.speed, lang)) + '</span>' : '') + (t.reverse ? '<span class="tm">' + T('reverse') + '</span>' : '') +
-        (s.tm6Mode ? '<span class="tm">' + esc(s.tm6Mode) + '</span>' : '') + '</div>';
+      var t = s.tm6, parts = [tm6Time(t.duration_seconds)];
+      if (t.temperature !== undefined) parts.push(t.temperature === 'Varoma' ? 'Varoma' : t.temperature + '°C');
+      if (t.speed !== undefined) parts.push(T('speedShort') + ' ' + tm6Speed(t.speed, lang));
+      if (t.reverse) parts.push(T('reverse'));
+      if (s.tm6Mode) parts.push(s.tm6Mode);
+      h += '<div><span class="schip tm">' + esc(parts.join(' · ')) + '</span></div>';
     }
-    if (s.internal_temp_c !== undefined) h += '<div class="temp-in">🌡 ' + T('inside', { t: decimal(s.internal_temp_c, lang) }) + '</div>';
+    if (s.internal_temp_c !== undefined) h += '<div><span class="schip tin">🌡 ' + T('inside', { t: decimal(s.internal_temp_c, lang) }) + '</span></div>';
     return h + '</div></div>';
   }
 
@@ -1171,7 +1169,7 @@
     var d = doc.createElement('div');
     d.id = 'viewer';
     d.setAttribute('data-act', 'close');
-    d.innerHTML = '<div class="vbar"><h1>' + esc(V.L.title) + '</h1><button class="close" data-act="close">' + T('close') + '</button></div>' +
+    d.innerHTML = '<div class="vbar"><h1>' + esc(V.L.title) + '</h1><button class="btn close" data-act="close">' + T('close') + '</button></div>' +
       '<div class="big"><img src="' + esc(V.r.image) + '" alt=""></div><div class="hint">' + T('photoHint') + '</div>';
     app.appendChild(d);
   }
@@ -1235,19 +1233,17 @@
     });
   }
 
-  // Pasek: [co i gdzie / DUŻY licznik do najbliższej czynności / do końca]   [stan, przyciski, uwaga o alarmie]
+  // Pasek w panelu Ninja pod strefami: [czynność / DUŻY licznik do najbliższej czynności] [strefa, stan, uwaga o alarmie] [przyciski]
   function timerBarHtml() {
-    return '<div class="ntimer" id="ninja-timer"><div class="tmain">' +
-      '<div class="ttitle"><span class="tact" id="timer-act"></span><span class="tzone" id="timer-zone"></span></div>' +
-      '<div class="tclock" id="timer-clock"></div></div>' +
-      '<div class="tside"><div class="tstate" id="timer-state"></div><div class="tbtns" id="timer-btns"></div>' +
-      '<div class="tnote">' + T('timerNote') + '</div></div></div>';
+    return '<div class="tstrip" id="ninja-timer"><div class="tl"><div class="act" id="timer-act"></div><div class="tclock" id="timer-clock"></div></div>' +
+      '<div class="ti"><div class="w" id="timer-zone"></div><div class="nx" id="timer-state"></div><div class="nn">' + T('timerNote') + '</div></div>' +
+      '<div class="tbtns" id="timer-btns"></div></div>';
   }
 
   var resetArmedUntil = 0;   // RESET wymaga drugiego dotknięcia w ciągu 3 s (przypadkowe dotknięcie w kuchni)
 
   function timerButtons(status) {
-    var b = function (act, label, cls) { return '<button class="tbtn ' + cls + '" data-act="' + act + '">' + label + '</button>'; };
+    var b = function (act, label, cls) { return '<button class="btn tbtn ' + cls + '" data-act="' + act + '">' + label + '</button>'; };
     var reset = b('timer-reset', Date.now() < resetArmedUntil ? T('sure') : T('reset'), 'reset' + (Date.now() < resetArmedUntil ? ' armed' : ''));
     if (status === 'idle') return b('timer-start', T('start'), 'go');
     if (status === 'running') return b('timer-pause', T('pause'), 'pause') + reset;
@@ -1274,10 +1270,10 @@
       soft = !target.events.some(function (e) { return e.required; });
     }
     clockEl.innerHTML = target ? clock(target.at - elapsed) : '—';
-    doc.getElementById('timer-act').innerHTML = esc(title);
+    doc.getElementById('timer-act').innerHTML = title ? esc(title) : '&nbsp;';
     doc.getElementById('timer-zone').innerHTML = zones.length ? esc(zones.join(' + ')) : '';
     var bar = doc.getElementById('ninja-timer');
-    bar.className = 'ntimer ' + status + (soft ? ' soft' : '');
+    bar.className = 'tstrip ' + status + (soft ? ' soft' : '');
     doc.getElementById('timer-state').innerHTML = STATUS_LABELS[status] ? T(STATUS_LABELS[status]) : '';
     var btns = doc.getElementById('timer-btns'), key = lang + status + (now < resetArmedUntil ? '!' : '');
     if (btns.getAttribute('data-key') !== key) { btns.innerHTML = timerButtons(status); btns.setAttribute('data-key', key); }
@@ -1287,9 +1283,10 @@
       if (!el || !z || !z.turn) return;
       var e = null;
       plan.events.forEach(function (x) { if (x.id === 'turn' + no) e = x; });
-      var past = t && e && (t.acked.indexOf(e.id) !== -1 || timerElapsed(t, now) >= e.at);
-      el.className = 'turn ' + (z.turn.required === false ? 'info' : 'req') + (past ? ' done' : '');
-      el.innerHTML = (past ? '✓ ' : '') + esc(turnText(z.turn));
+      var past = !!(t && e && (t.acked.indexOf(e.id) !== -1 || timerElapsed(t, now) >= e.at));
+      var req = z.turn.required !== false;
+      el.className = 'turn' + (req ? '' : ' info') + (past ? ' ok' : '');
+      el.innerHTML = (past ? '✓ ' : (req ? '↻ ' : '')) + esc(turnText(z.turn));
     });
   }
 
@@ -1367,11 +1364,13 @@
     d.className = 'turn';
     d.setAttribute('data-slug', slug);
     d.setAttribute('data-events', events.map(function (e) { return e.id; }).join(','));
-    d.innerHTML = '<div class="abox"><div class="atitle">' + esc(groupTitle(group, 'now', lang)) + '</div>' +
+    // „OBRÓĆ / TERAZ" w pulsującym niebieskim kole; ostatnie słowo (teraz / now) w drugiej linii.
+    var title = groupTitle(group, 'now', lang), cut = title.lastIndexOf(' ');
+    d.innerHTML = '<div class="abox"><div class="halo"><div class="atitle' + (cut > 12 ? ' long' : '') + '">' + esc(title.slice(0, cut)) + '<br>' + esc(title.slice(cut + 1)) + '</div></div>' +
       groupZones(group, lang).map(function (z) { return '<div class="azone">' + esc(z) + '</div>'; }).join('') +
       '<div class="arecipe">' + esc(recipeTitle(slug)) + '</div>' +
-      '<div class="ahint">' + T('alarmHint') + '</div>' +
       '<button class="aok" data-act="alarm-ok">' + T('done') + '</button>' +
+      '<div class="ahint">' + T('alarmHint') + '</div>' +
       (sound ? '' : '<div class="asound">' + T('noSound') + '</div>') + '</div>';
     doc.body.appendChild(d);
     alarmShownAt = alarmBeepAt = Date.now();
@@ -1459,8 +1458,7 @@
           if (t.disabled) return;
           if (a.indexOf('timer-') === 0) { timerAction(a); return; }
           if (a === 'alarm-ok') { ackAlarm(); return; }
-          if (a === 'theme') setTheme(theme === 'dark' ? 'light' : 'dark');
-          else if (a === 'lang') setLang(lang === 'pl' ? 'en' : 'pl');
+          if (a === 'lang') setLang(lang === 'pl' ? 'en' : 'pl');
           else if (a === 'back') goBack();
           else if (a === 'photo') showPhoto();
           else if (a === 'close') closePhoto();

@@ -20,4 +20,4 @@ Wyszukiwarka i filtry na liście (Etap 4 / 4.1): szuka po polu `text` z `search.
 Przykłady wzorcowe i testy buildu: `tests/fixtures/recipes/` — testy nie zależą od zawartości `recipes/`.
 Zdjęcia: `recipes/img/<slug>.jpg` (JPEG/PNG/HEIC, znajdowane po nazwie) — build sam robi miniaturę 300 px i dużą wersję 1200 px.
 
-Kod na iPada: `src/app.js` + `src/app.css` (Safari 12 — zasady w `CLAUDE.md`). Podgląd zaakceptowanego projektu: `/mockup.html`, kolejne projekty do obejrzenia: `/mockup2.html`, `/mockup3.html`.
+Kod na iPada: `src/app.js` + `src/app.css` (Safari 12 — zasady w `CLAUDE.md`). Wygląd (od v0.7) według zaakceptowanego `docs/mockup-ui-v3.html` (podgląd: `/mockup3.html`): tylko ciemny motyw, poświata wyłącznie na wyświetlaczach Ninja / TM6, bieżący krok w niebieskiej ramce, reszta spokojna. Starsze projekty do porównania: `/mockup.html`, `/mockup2.html`.

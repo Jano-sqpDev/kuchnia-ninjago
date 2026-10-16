@@ -1,6 +1,6 @@
 {
   "name": "kuchnia-ninjago",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Kuchenny wyświetlacz przepisów na iPadzie (Safari 12)",
   "type": "module",
