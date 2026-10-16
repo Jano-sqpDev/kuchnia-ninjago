@@ -25,6 +25,10 @@ Aplikacja ma interfejs po polsku i po angielsku (przełącznik „PL | EN”). D
 - Nie instaluj ani nie aktualizuj zależności.
 - Nie zmieniaj nazwy (slugu) istniejących przepisów — to ich trwały adres.
 
+## Wyszukiwarka w aplikacji
+
+Lista przepisów ma wyszukiwarkę (tytuł, składniki, tagi — po polsku i po angielsku) i filtry: Ninja, TM6, funkcje Ninja. Dlatego trafne tytuły, nazwy składników, tagi (z wpisem w `recipes/tags.yml`) i kompletne `translations.en` sprawiają, że przepis da się znaleźć w obu językach. Tagi urządzeń `ninja` / `tm6` i funkcje w panelu `ninja` decydują o filtrach.
+
 ## Ustawienia urządzeń (Ninja DZ400UK, Thermomix TM6)
 
 Ustawienia to: Ninja — tryb, funkcja, temperatura, czas każdej strefy oraz obracanie/potrząsanie (`turn`); TM6 — czas, temperatura, obroty (i obroty wsteczne).

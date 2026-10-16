@@ -5,6 +5,9 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import * as search from '../tools/search.mjs';
+import { searchEntry } from '../tools/output.mjs';
+import { NINJA_FUNCTIONS } from '../tools/validate.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const js = readFileSync(join(root, 'src', 'app.js'), 'utf8');
@@ -16,6 +19,8 @@ runInNewContext(js, context);
 // Obiekty z innego kontekstu vm mają inne prototypy — porównujemy po JSON.
 const plain = (v) => JSON.parse(JSON.stringify(v));
 const K = context.kitchenTest;
+// Domyślny stan listy (wyszukiwanie, chipy, przewinięcie) — od v0.5 w każdym znormalizowanym stanie.
+const LIST0 = { query: '', chips: [], scroll: 0 };
 
 // ── słownik pl / en ──
 
@@ -217,8 +222,8 @@ test('czas i obroty TM6', () => {
 });
 
 test('stan z localStorage: śmieci i niepoprawne zapisy nie psują aplikacji', () => {
-  assert.deepEqual(plain(K.normalizeState(null)), { openRecipe: null, recipes: {} });
-  assert.deepEqual(plain(K.normalizeState('x')), { openRecipe: null, recipes: {} });
+  assert.deepEqual(plain(K.normalizeState(null)), { openRecipe: null, recipes: {}, list: LIST0 });
+  assert.deepEqual(plain(K.normalizeState('x')), { openRecipe: null, recipes: {}, list: LIST0 });
   const s = K.normalizeState({ openRecipe: '../zle', recipes: { 'udka': { step: 3, servings: 99 }, 'Z!': { step: 1 } } });
   assert.equal(s.openRecipe, null);
   assert.deepEqual(Object.keys(s.recipes), ['udka']);
@@ -231,14 +236,14 @@ test('migracja zapisu sprzed v0.2.3: przepis, krok i porcje zostają', () => {
     'udka-z-ziemniakami': { krok: 3, porcje: 6, tytul: 'Udka z ziemniakami', krokow: 5, t: 1700 },
     'deser-twarogowy': { krok: 0, porcje: null, tytul: 'Deser', krokow: 4, t: 1600 },
   } };
-  assert.deepEqual(plain(K.migrateLegacyState(old)), { openRecipe: 'udka-z-ziemniakami', recipes: {
+  assert.deepEqual(plain(K.migrateLegacyState(old)), { openRecipe: 'udka-z-ziemniakami', list: LIST0, recipes: {
     'udka-z-ziemniakami': { step: 3, servings: 6, title: 'Udka z ziemniakami', steps: 5, t: 1700 },
     'deser-twarogowy': { step: 0, servings: null, title: 'Deser', steps: 4, t: 1600 },
   } });
   // Lista (ekran 'lista') → brak otwartego przepisu; śmieci → pusty stan.
   assert.equal(K.migrateLegacyState({ ekran: 'lista', przepisy: {} }).openRecipe, null);
-  assert.deepEqual(plain(K.migrateLegacyState(null)), { openRecipe: null, recipes: {} });
-  assert.deepEqual(plain(K.migrateLegacyState({ ekran: 5, przepisy: 'x' })), { openRecipe: null, recipes: {} });
+  assert.deepEqual(plain(K.migrateLegacyState(null)), { openRecipe: null, recipes: {}, list: LIST0 });
+  assert.deepEqual(plain(K.migrateLegacyState({ ekran: 5, przepisy: 'x' })), { openRecipe: null, recipes: {}, list: LIST0 });
 });
 
 test('klucze localStorage: nowe angielskie, stare polskie tylko do migracji', () => {
@@ -508,4 +513,117 @@ test('dane pobierane z identyfikatorem buildu, version.json zawsze świeży', ()
   assert.match(js, /'\/search\.json\?b=' \+ BUILD/);
   assert.match(js, /'\/data\/' \+ slug \+ '\.json\?b=' \+ BUILD/);
   assert.match(js, /'\/version\.json\?t=' \+ Date\.now\(\)/);
+});
+
+// ── wyszukiwarka i filtry listy (Etap 4) ──
+
+// Wpisy jak w search.json — zbudowane tym samym kodem co w buildzie (tools/output.mjs).
+const ENTRIES = [
+  searchEntry({ slug: 'losos', translated: true, data: {
+    title: 'Łosoś z cukinią', tags: ['ninja', 'ryby'], ingredients: [{ name: 'Filet z łososia' }, { name: 'cukinia' }],
+    ninja: { mode: 'single', zone1: { function: 'Air Fry', temp_c: 180, minutes: 12 } },
+    translations: { en: { title: 'Salmon with courgette', ingredients: [{ name: 'Salmon fillet' }, { name: 'courgette' }], steps: [] } },
+  } }, null, { ryby: 'fish' }),
+  searchEntry({ slug: 'zupa', data: { title: 'Zupa krem z dyni', tags: ['tm6', 'zupa'], ingredients: [{ name: 'dynia' }, { name: 'śmietanka' }] } }, null, { zupa: 'soup' }),
+  searchEntry({ slug: 'udka', data: {
+    title: 'Udka z ziemniakami', tags: ['ninja', 'tm6', 'kurczak'], ingredients: [{ name: 'udka z kurczaka' }, { name: 'ziemniaki' }],
+    ninja: { mode: 'sync', zone1: { function: 'Roast', temp_c: 200, minutes: 28 }, zone2: { function: 'Air Fry', temp_c: 200, minutes: 22 } },
+  } }, null, {}),
+  searchEntry({ slug: 'deser', data: { title: 'Deser twarogowy', tags: ['deser'], ingredients: [{ name: 'twaróg' }] } }, null, {}),
+].map(plain);
+const ids = (list) => plain(list).map((e) => e.id);
+const find = (q, chips) => ids(K.filterEntries(ENTRIES, q, chips || []));
+
+test('wyszukiwarka: „losos" → „łosoś", thermomix → tm6, af / airfryer → ninja', () => {
+  assert.deepEqual(find('losos'), ['losos']);
+  assert.deepEqual(find('ŁOSOŚ'), ['losos']);
+  assert.deepEqual(find('thermomix'), ['zupa', 'udka']);
+  assert.deepEqual(find('af'), ['losos', 'udka']);
+  assert.deepEqual(find('airfryer'), ['losos', 'udka']);
+  assert.deepEqual(find('smietanka'), ['zupa']);
+});
+
+test('wyszukiwarka: wiele słów = AND, fragment słowa, angielskie nazwy (niezależnie od języka interfejsu)', () => {
+  assert.deepEqual(find('udka ziem'), ['udka']);
+  assert.deepEqual(find('losos dynia'), []);
+  assert.deepEqual(find('salmon fillet'), ['losos']);
+  assert.deepEqual(find('courg'), ['losos']);
+  assert.deepEqual(find('fish'), ['losos']);
+  assert.deepEqual(find('soup'), ['zupa']);
+  assert.deepEqual(find('roast'), ['udka']);
+  assert.deepEqual(find('   '), ['losos', 'zupa', 'udka', 'deser']);
+});
+
+test('chipy: LUB w grupie, I między grupami, I z tekstem; brak chipów = wszystko', () => {
+  assert.deepEqual(find('', ['ninja']), ['losos', 'udka']);
+  assert.deepEqual(find('', ['tm6']), ['zupa', 'udka']);
+  assert.deepEqual(find('', ['ninja', 'tm6']), ['losos', 'zupa', 'udka']);            // LUB w grupie urządzeń
+  assert.deepEqual(find('', ['Roast']), ['udka']);
+  assert.deepEqual(find('', ['Roast', 'Air Fry']), ['losos', 'udka']);                // LUB w grupie funkcji
+  assert.deepEqual(find('', ['tm6', 'Air Fry']), ['udka']);                           // I między grupami
+  assert.deepEqual(find('losos', ['tm6']), []);                                       // I z tekstem
+  assert.deepEqual(find('ziemniaki', ['ninja', 'tm6']), ['udka']);
+  assert.deepEqual(find('', ['Bake']), []);
+  assert.deepEqual(find('', []), ['losos', 'zupa', 'udka', 'deser']);
+});
+
+test('chipy: włączanie / wyłączanie, „Wszystkie" czyści, stała kolejność', () => {
+  assert.deepEqual(plain(K.toggleChip([], 'tm6')), ['tm6']);
+  assert.deepEqual(plain(K.toggleChip(['tm6'], 'Roast')), ['tm6', 'Roast']);
+  assert.deepEqual(plain(K.toggleChip(['Roast'], 'ninja')), ['ninja', 'Roast']);
+  assert.deepEqual(plain(K.toggleChip(['ninja', 'Roast'], 'ninja')), ['Roast']);
+  assert.deepEqual(plain(K.toggleChip(['ninja', 'Roast'], null)), []);
+  assert.deepEqual(plain(K.toggleChip([], 'Grill')), []);                             // nieznany chip ignorowany
+});
+
+test('chipy: Ninja i TM6 zawsze, funkcje Ninja tylko występujące w przepisach, w kolejności z walidatora', () => {
+  assert.deepEqual(plain(K.NINJA_FUNCTIONS), NINJA_FUNCTIONS);
+  assert.deepEqual(plain(K.availableChips(ENTRIES)), ['ninja', 'tm6', 'Air Fry', 'Roast']);
+  assert.deepEqual(plain(K.availableChips([])), ['ninja', 'tm6']);
+});
+
+test('stan listy w localStorage: wyszukiwanie, chipy, przewinięcie; stare zapisy i śmieci → domyślne', () => {
+  assert.deepEqual(plain(K.normalizeListState({ query: 'losos', chips: ['Roast', 'x', 'tm6', 5], scroll: 812.6 })),
+    { query: 'losos', chips: ['tm6', 'Roast'], scroll: 812 });
+  assert.deepEqual(plain(K.normalizeListState(undefined)), LIST0);
+  assert.deepEqual(plain(K.normalizeListState({ query: 5, chips: 'tm6', scroll: -3 })), LIST0);
+  assert.equal(K.normalizeListState({ query: 'x'.repeat(500) }).query.length, 100);
+  // Zapis z v0.4 (bez list) działa i dostaje pusty stan listy; recipes bez zmian.
+  const s = plain(K.normalizeState({ openRecipe: null, recipes: { udka: { step: 2, servings: null, title: 'Udka', steps: 4, t: 1 } } }));
+  assert.deepEqual(s.list, LIST0);
+  assert.equal(s.recipes.udka.step, 2);
+  assert.deepEqual(plain(K.normalizeState({ recipes: {}, list: { query: 'zupa', chips: ['tm6'], scroll: 40 } })).list, { query: 'zupa', chips: ['tm6'], scroll: 40 });
+});
+
+test('licznik wyników: polska odmiana po „z", angielska 1 / wiele', () => {
+  assert.equal(K.trn('pl', 'resultsCount', 12, { shown: 3 }), '3 z 12 przepisów');
+  assert.equal(K.trn('pl', 'resultsCount', 22, { shown: 0 }), '0 z 22 przepisów');
+  assert.equal(K.trn('pl', 'resultsCount', 1, { shown: 1 }), '1 z 1 przepisu');
+  assert.equal(K.trn('en', 'resultsCount', 12, { shown: 3 }), '3 of 12 recipes');
+  assert.equal(K.trn('en', 'resultsCount', 1, { shown: 1 }), '1 of 1 recipe');
+});
+
+// Jedno źródło prawdy: tools/search.mjs. Kopie normalize i matchesQuery w src/app.js muszą być dosłownie takie same
+// (porównanie tekstu funkcji bez wcięć) i dawać te same wyniki.
+test('wyszukiwarka: kopia w app.js jest identyczna z tools/search.mjs (tekst i wyniki)', () => {
+  const srcSearch = readFileSync(join(root, 'tools', 'search.mjs'), 'utf8');
+  const body = (code, name) => {
+    const m = new RegExp('function ' + name + '\\([^)]*\\) \\{[\\s\\S]*?\\n\\s*\\}\\r?\\n').exec(code);
+    assert.ok(m, 'brak funkcji ' + name);
+    return m[0].split(/\r?\n/).map((l) => l.trim()).filter(Boolean).join('\n');
+  };
+  for (const name of ['normalize', 'matchesQuery']) assert.equal(body(js, name), body(srcSearch, name), name + ': app.js ≠ tools/search.mjs');
+  const texts = ['Łosoś', 'ZAŻÓŁĆ GĘŚLĄ JAŹŃ', '  dwa   słowa\t', 'Crème brûlée', 'Śmietanka 18%', ''];
+  texts.forEach((t) => assert.equal(K.normalize(t), search.normalize(t), t));
+  const queries = ['losos', 'thermomix', 'af', 'air fry', 'udka ziem', 'salmon', 'fish', 'roast', 'losos dynia', '', 'ZUPA krem', 'twarog'];
+  ENTRIES.forEach((e) => queries.forEach((q) => assert.equal(K.matchesQuery(e, q), search.matchesQuery(e, q), e.id + ' / ' + q)));
+});
+
+test('lista: pole wyszukiwania z atrybutami dla iOS, chipy jako przyciski, odświeżanie bez przerysowania pola', () => {
+  ['autocomplete="off"', 'autocorrect="off"', 'autocapitalize="off"', 'spellcheck="false"'].forEach((a) => assert.ok(js.includes(a), a));
+  assert.match(css, /\.search \.box \{[^}]*font-size: 2\dpx/);
+  assert.ok(js.includes('<button class="chip'), 'chip musi być <button> (cursor: pointer)');
+  // Przy wpisywaniu tylko #results (setTimeout ~150 ms), nie drawList.
+  const onInput = js.slice(js.indexOf('function onSearchInput'), js.indexOf('function setSearch'));
+  assert.ok(onInput.includes('150') && onInput.includes('updateResults') && !onInput.includes('drawList'));
 });

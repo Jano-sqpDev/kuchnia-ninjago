@@ -463,7 +463,7 @@ export function findImageBySlug(recipesDir, slug) {
 
 // Propozycja poprawnej nazwy pliku: „Pierogi Ruskie.md" → „pierogi-ruskie.md".
 export function suggestSlug(name) {
-  return name.toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[̀-ͯ]/g, '')
+  return name.toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'nazwa-przepisu';
 }
 

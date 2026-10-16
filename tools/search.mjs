@@ -1,5 +1,6 @@
 // Normalizacja i dopasowanie wyszukiwania.
-// Kod celowo w składni ES2017 — w Etapie 4 ta sama logika trafi do JS na iPadzie.
+// Kod celowo w składni ES2017. normalize i matchesQuery mają dosłowne kopie w src/app.js (wyszukiwarka na iPadzie);
+// tests/client.test.mjs pilnuje, że tekst i wyniki obu wersji są takie same — zmieniaj oba miejsca razem.
 
 // Aliasy dopisywane do tekstu wyszukiwania, żeby np. „thermomix" znajdował tag tm6.
 export const TAG_ALIASES = {
@@ -13,7 +14,7 @@ export function normalize(text) {
   return String(text)
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/ł/g, 'l')
     .replace(/\s+/g, ' ')
     .trim();

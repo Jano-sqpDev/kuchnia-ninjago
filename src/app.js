@@ -25,7 +25,9 @@
       listFailed: 'Nie udało się wczytać przepisów.', recipeFailed: 'Nie udało się wczytać przepisu.',
       recipeMissing: 'Nie ma takiego przepisu.', recipeMissingHint: 'Mógł zostać usunięty albo zmienić nazwę. Wróć do listy.',
       empty: 'Nie ma jeszcze przepisów.', emptyHint: 'Dodaj pierwszy: plik w recipes/ na GitHubie albo przez Claude Code („dodaj do przepisów”).',
-      searchSoon: 'Szukaj: nazwa, składnik, tag… (wkrótce)',
+      searchPlaceholder: 'Szukaj: nazwa, składnik, tag…', searchClear: 'Wyczyść pole', chipAll: 'Wszystkie',
+      resultsCount: ['{shown} z {n} przepisu', '{shown} z {n} przepisów', '{shown} z {n} przepisów'],
+      noMatches: 'Nic nie pasuje.', noMatchesHint: 'Spróbuj innego słowa albo wyłącz filtry.', clearAll: 'Wyczyść',
       minutes: '{n} min', noCooking: 'bez gotowania', servings: ['porcja', 'porcje', 'porcji'],
       resumeTitle: 'Wróć do gotowania', resumeStep: '{title} — krok {n} z {total}', open: 'Otwórz ›', show: 'Pokaż ›', close: '✕ Zamknij',
       problemsCount: ['{n} przepis z błędem', '{n} przepisy z błędem', '{n} przepisów z błędem'],
@@ -63,7 +65,9 @@
       listFailed: 'Could not load the recipes.', recipeFailed: 'Could not load the recipe.',
       recipeMissing: 'There is no such recipe.', recipeMissingHint: 'It may have been removed or renamed. Go back to the list.',
       empty: 'No recipes yet.', emptyHint: 'Add the first one: a file in recipes/ on GitHub or via Claude Code.',
-      searchSoon: 'Search: name, ingredient, tag… (coming soon)',
+      searchPlaceholder: 'Search: name, ingredient, tag…', searchClear: 'Clear the field', chipAll: 'All',
+      resultsCount: ['{shown} of {n} recipe', '{shown} of {n} recipes'],
+      noMatches: 'No matches.', noMatchesHint: 'Try another word or turn off the filters.', clearAll: 'Clear',
       minutes: '{n} min', noCooking: 'no cooking', servings: ['serving', 'servings'],
       resumeTitle: 'Back to cooking', resumeStep: '{title} — step {n} of {total}', open: 'Open ›', show: 'Show ›', close: '✕ Close',
       problemsCount: ['{n} recipe with an error', '{n} recipes with errors'],
@@ -249,11 +253,74 @@
 
   function clampServings(n) { return Math.max(SERVINGS_MIN, Math.min(SERVINGS_MAX, n)); }
 
+  // ───────── wyszukiwanie i filtry listy (czyste funkcje) ─────────
+  // normalize i matchesQuery to DOSŁOWNE kopie z tools/search.mjs (jedno źródło prawdy: tam; build robi z nich pole
+  // text w search.json). tests/client.test.mjs porównuje tekst obu funkcji i wyniki na tych samych przypadkach —
+  // zmiana w jednym miejscu bez drugiego wywala testy.
+
+  // Małe litery, bez znaków diakrytycznych (NFD nie rozkłada „ł", więc ł → l ręcznie),
+  // pojedyncze spacje.
+  function normalize(text) {
+    return String(text)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/ł/g, 'l')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // Wiele słów = AND, każde słowo dopasowane po fragmencie.
+  function matchesQuery(entry, query) {
+    const words = normalize(query).split(' ').filter(Boolean);
+    return words.every(function (word) { return entry.text.indexOf(word) !== -1; });
+  }
+
+  // Chipy filtrów: urządzenia (po tagach) i funkcje Ninja (po ninja_functions z search.json).
+  var DEVICE_CHIPS = ['ninja', 'tm6'];
+  var NINJA_FUNCTIONS = ['Air Fry', 'Max Crisp', 'Roast', 'Bake', 'Reheat', 'Dehydrate'];
+  var QUERY_MAX = 100;
+
+  // Wewnątrz grupy LUB (Ninja + TM6 = jedno albo drugie), między grupami I. Brak zaznaczonych = wszystko.
+  function matchesChips(entry, chips) {
+    var devices = chips.filter(function (c) { return DEVICE_CHIPS.indexOf(c) !== -1; });
+    var functions = chips.filter(function (c) { return NINJA_FUNCTIONS.indexOf(c) !== -1; });
+    var tags = entry.tags || [], fns = entry.ninja_functions || [];
+    return (!devices.length || devices.some(function (d) { return tags.indexOf(d) !== -1; })) &&
+      (!functions.length || functions.some(function (f) { return fns.indexOf(f) !== -1; }));
+  }
+  // Lista po wyszukiwaniu (tekst I chipy), w kolejności z search.json.
+  function filterEntries(index, query, chips) {
+    return index.filter(function (e) { return matchesChips(e, chips) && matchesQuery(e, query); });
+  }
+  // Chipy do pokazania: Ninja, TM6, potem funkcje Ninja występujące w co najmniej jednym przepisie (stała kolejność).
+  function availableChips(index) {
+    return DEVICE_CHIPS.concat(NINJA_FUNCTIONS.filter(function (f) {
+      return index.some(function (e) { return (e.ninja_functions || []).indexOf(f) !== -1; });
+    }));
+  }
+  // Włącz / wyłącz chip; null = „Wszystkie" (czyści). Kolejność jak w availableChips.
+  function toggleChip(chips, chip) {
+    if (chip === null) return [];
+    var on = chips.indexOf(chip) !== -1 ? chips.filter(function (c) { return c !== chip; }) : chips.concat([chip]);
+    return DEVICE_CHIPS.concat(NINJA_FUNCTIONS).filter(function (c) { return on.indexOf(c) !== -1; });
+  }
+  // Stan listy z localStorage (od v0.5): { query, chips, scroll } — zapisy bez niego dostają wartości domyślne.
+  function normalizeListState(l) {
+    var out = { query: '', chips: [], scroll: 0 };
+    if (!l || typeof l !== 'object') return out;
+    if (typeof l.query === 'string') out.query = l.query.slice(0, QUERY_MAX);
+    if (Array.isArray(l.chips)) out.chips = DEVICE_CHIPS.concat(NINJA_FUNCTIONS).filter(function (c) { return l.chips.indexOf(c) !== -1; });
+    if (typeof l.scroll === 'number' && isFinite(l.scroll) && l.scroll > 0) out.scroll = Math.floor(l.scroll);
+    return out;
+  }
+
   // Stan z localStorage — każde pole sprawdzone, bo zapis mógł pochodzić ze starszej wersji.
-  // openRecipe: slug otwartego przepisu albo null (lista).
+  // openRecipe: slug otwartego przepisu albo null (lista); list: wyszukiwanie, chipy i przewinięcie listy (od v0.5).
   function normalizeState(s) {
-    var out = { openRecipe: null, recipes: {} };
+    var out = { openRecipe: null, recipes: {}, list: normalizeListState(null) };
     if (!s || typeof s !== 'object') return out;
+    out.list = normalizeListState(s.list);
     if (typeof s.openRecipe === 'string' && SLUG_RE.test(s.openRecipe)) out.openRecipe = s.openRecipe;
     if (s.recipes && typeof s.recipes === 'object') {
       Object.keys(s.recipes).forEach(function (slug) {
@@ -489,6 +556,8 @@
   }
 
   var api = {
+    normalize: normalize, matchesQuery: matchesQuery, matchesChips: matchesChips, filterEntries: filterEntries,
+    availableChips: availableChips, toggleChip: toggleChip, normalizeListState: normalizeListState, NINJA_FUNCTIONS: NINJA_FUNCTIONS,
     I18N: I18N, LANGS: LANGS, ACTIONS: ACTIONS, WHEN: WHEN, tr: tr, trn: trn, normalizeLang: normalizeLang,
     localizeRecipe: localizeRecipe, entryView: entryView, warningsLabel: warningsLabel, decimal: decimal,
     servingsWord: servingsWord, problemsLabel: problemsLabel, groupProblems: groupProblems, scaledAmount: scaledAmount, tm6Time: tm6Time, tm6Speed: tm6Speed,
@@ -613,7 +682,8 @@
   var recipeCache = {};        // pobrane data/<slug>.json
   var problems = [];           // errors.json pogrupowane po plikach (przepisy pominięte przez build)
   var notices = [];            // warnings.json pogrupowane po plikach (braki w tłumaczeniu EN)
-  var listScroll = 0;          // żeby „‹ Przepisy" wracało w to samo miejsce listy
+  var searchTimer = null;      // opóźnienie filtrowania przy wpisywaniu (ok. 150 ms)
+  var scrollTimer = null;      // zapis przewinięcia listy (po chwili bez ruchu)
 
   function render(h, scroll) {
     app.innerHTML = h;
@@ -656,23 +726,24 @@
     if (!index) {
       render(listBar() + '<div class="scroll"><div class="loading">' + T('loading') + '</div></div>');
       // Listy błędów i ostrzeżeń są dodatkiem: gdy się nie wczytają, lista przepisów i tak działa.
+      // Plakietki dochodzą osobno (tylko #badges) — bez przerysowania pola wyszukiwania.
       fetchJson('/errors.json?b=' + BUILD, function (d) {
         problems = groupProblems(d);
-        if (V.screen === 'list' && index && problems.length) drawList(currentScroll());
+        refreshBadges();
       }, function () { /* brak errors.json — bez plakietki */ });
       fetchJson('/warnings.json?b=' + BUILD, function (d) {
         notices = groupProblems(d);
-        if (V.screen === 'list' && index && notices.length) drawList(currentScroll());
+        refreshBadges();
       }, function () { /* brak warnings.json — bez plakietki */ });
       fetchJson('/search.json?b=' + BUILD, function (d) {
         index = d;
-        if (V.screen === 'list') drawList(0);
+        if (V.screen === 'list') drawList(state.list.scroll);
       }, function () {
         if (V.screen === 'list') render(listBar() + '<div class="scroll"><div class="err" data-act="retry-list"><b>' + T('listFailed') + '</b><br><br>' + T('retryHint') + '</div></div>');
       });
       return;
     }
-    drawList(scroll === undefined ? listScroll : scroll);
+    drawList(scroll === undefined ? state.list.scroll : scroll);
   }
 
   function currentScroll() {
@@ -692,24 +763,88 @@
     return h;
   }
 
+  function refreshBadges() {
+    var b = doc.getElementById('badges');
+    if (V.screen === 'list' && b) b.innerHTML = badges();
+  }
+
+  // Lista: plakietki, pole wyszukiwania, chipy, wyniki (#results: licznik / „Wróć do gotowania" / siatka / brak wyników).
+  // Przy wpisywaniu i chipach odświeżane są tylko #chips i #results — przerysowanie pola na iOS 12 zamyka klawiaturę.
   function drawList(scroll) {
+    var h = listBar() + '<div class="scroll"><div id="badges">' + badges() + '</div>';
     if (!index.length) {
-      render(listBar() + '<div class="scroll">' + badges() + '<div class="empty">' + T('empty') + '<br><br>' + T('emptyHint') + '</div></div>');
+      render(h + '<div class="empty">' + T('empty') + '<br><br>' + T('emptyHint') + '</div></div>');
       return;
     }
-    var h = listBar() + '<div class="scroll">' + badges();
-    // Miejsce na wyszukiwarkę (Etap 4).
-    h += '<div class="search"><div class="box">' + T('searchSoon') + '</div></div>';
-    h += resumeCard();
+    var q = state.list.query;
+    h += '<div class="search' + (q ? ' has' : '') + '" id="search"><input id="search-input" class="box" type="text" value="' + esc(q) +
+      '" placeholder="' + T('searchPlaceholder') + '" maxlength="' + QUERY_MAX + '" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">' +
+      '<button class="sclear" data-act="search-clear" aria-label="' + T('searchClear') + '">✕</button></div>';
+    h += '<div class="chips" id="chips">' + chipsHtml() + '</div><div id="results">' + resultsHtml() + '</div>';
+    render(h + '</div>', scroll);
+  }
+
+  // „Wszystkie" podświetlone, gdy żaden chip nie jest zaznaczony. Nazwy funkcji Ninja jak na urządzeniu (po angielsku).
+  function chipsHtml() {
+    var on = state.list.chips;
+    var chip = function (code, label, active) {
+      return '<button class="chip' + (active ? ' on' : '') + '" data-act="chip" data-chip="' + esc(code) + '">' + esc(label) + '</button>';
+    };
+    return chip('', T('chipAll'), !on.length) + availableChips(index).map(function (c) {
+      return chip(c, c === 'ninja' ? 'Ninja' : (c === 'tm6' ? 'TM6' : c), on.indexOf(c) !== -1);
+    }).join('');
+  }
+
+  function resultsHtml() {
+    var q = state.list.query, chips = state.list.chips, active = !!(normalize(q) || chips.length);
+    var list = filterEntries(index, q, chips), h = '';
+    if (active) h += '<div class="count">' + esc(TN('resultsCount', index.length, { shown: list.length })) + '</div>';
+    else h += resumeCard();
+    if (!list.length) {
+      return h + '<div class="nomatch"><b>' + T('noMatches') + '</b><br>' + T('noMatchesHint') +
+        '<br><button class="btn" data-act="search-reset">' + T('clearAll') + '</button></div>';
+    }
     h += '<div class="grid">';
-    for (var i = 0; i < index.length; i++) {
-      var it = index[i], ev = entryView(it, lang), min = it.prep_minutes + it.cook_minutes;
+    for (var i = 0; i < list.length; i++) {
+      var it = list[i], ev = entryView(it, lang), min = it.prep_minutes + it.cook_minutes;
       h += '<div class="card" data-open="' + esc(it.id) + '">' + photo(it.thumb, 'thumb', false) +
         '<div class="txt"><h3>' + esc(ev.title) + '</h3><div class="meta">' + (min ? T('minutes', { n: min }) : T('noCooking')) +
         ' · ' + it.servings + ' ' + servingsWord(it.servings, lang) + '</div><div class="devs">' + deviceBadges(it.tags) +
         (ev.fallback ? '<span class="dev pl">PL</span>' : '') + '</div></div></div>';
     }
-    render(h + '</div></div>', scroll);
+    return h + '</div>';
+  }
+
+  // Odśwież wyniki (i chipy) bez ruszania pola wyszukiwania.
+  function updateResults(withChips) {
+    if (V.screen !== 'list' || !index) return;
+    var res = doc.getElementById('results'), ch = doc.getElementById('chips'), box = doc.getElementById('search');
+    if (!res) return;
+    res.innerHTML = resultsHtml();
+    if (withChips && ch) ch.innerHTML = chipsHtml();
+    if (box) box.className = 'search' + (state.list.query ? ' has' : '');
+  }
+
+  // Wpisywanie: stan zapisany od razu, wyniki po ok. 150 ms bez pisania.
+  function onSearchInput(value) {
+    state.list.query = String(value).slice(0, QUERY_MAX);
+    saveState();
+    var box = doc.getElementById('search');
+    if (box) box.className = 'search' + (state.list.query ? ' has' : '');
+    global.clearTimeout(searchTimer);
+    searchTimer = global.setTimeout(function () { updateResults(false); }, 150);
+  }
+  // query / chips: null = bez zmian.
+  function setSearch(query, chips) {
+    global.clearTimeout(searchTimer);
+    if (query !== null) {
+      state.list.query = query;
+      var input = doc.getElementById('search-input');
+      if (input) input.value = query;
+    }
+    if (chips !== null) state.list.chips = chips;
+    saveState();
+    updateResults(chips !== null);
   }
 
   // „Wróć do gotowania" — ostatnio otwarty przepis, jeśli było w nim coś zrobione.
@@ -1189,7 +1324,7 @@
     closePhoto();
     closeProblems();
     var sc = app.querySelector('.scroll');
-    listScroll = V.screen === 'list' && sc ? sc.scrollTop : 0;
+    if (V.screen === 'list' && sc) { state.list.scroll = sc.scrollTop; saveState(); }
     global.history.pushState({ fromList: true }, '', recipeUrl(slug, 0));
     openRecipe(slug, null);
   }
@@ -1231,6 +1366,9 @@
           else if (a === 'servings-') setServings(V.servings - 1);
           else if (a === 'servings0') setServings(V.r.servings);
           else if (a === 'retry-list') showList();
+          else if (a === 'chip') setSearch(null, toggleChip(state.list.chips, t.getAttribute('data-chip') || null));
+          else if (a === 'search-clear') setSearch('', null);
+          else if (a === 'search-reset') setSearch('', []);
           else if (a === 'retry-recipe') openRecipe(V.slug, null);
           return;
         }
@@ -1240,6 +1378,21 @@
       t = t.parentNode;
     }
   });
+
+  // Wyszukiwarka: wpisywanie (bez przerysowania pola), Enter chowa klawiaturę.
+  doc.addEventListener('input', function (e) {
+    if (e.target && e.target.id === 'search-input') onSearchInput(e.target.value);
+  });
+  doc.addEventListener('keydown', function (e) {
+    if (e.target && e.target.id === 'search-input' && (e.keyCode === 13 || e.key === 'Enter')) { e.preventDefault(); e.target.blur(); }
+  });
+  // Przewinięcie listy zapamiętane (po przeładowaniu Safari lista wraca w to samo miejsce). scroll nie bąbelkuje — faza capture.
+  doc.addEventListener('scroll', function (e) {
+    if (V.screen !== 'list' || !e.target || !e.target.className || String(e.target.className).indexOf('scroll') === -1) return;
+    var el = e.target;
+    global.clearTimeout(scrollTimer);
+    scrollTimer = global.setTimeout(function () { state.list.scroll = el.scrollTop; saveState(); }, 300);
+  }, true);
 
   global.addEventListener('popstate', routeFromUrl);
 
@@ -1258,8 +1411,11 @@
       return;
     }
     if (V.screen === 'list' && index) {
-      var sc = app.querySelector('.scroll');
-      drawList(sc ? sc.scrollTop : 0); // odśwież kartę „Wróć do gotowania"
+      // Odśwież wyniki i kartę „Wróć do gotowania" bez przerysowania pola (klawiatura zostaje).
+      var input = doc.getElementById('search-input');
+      if (!input) { drawList(currentScroll()); return; }
+      if (input.value !== state.list.query) input.value = state.list.query;
+      updateResults(true);
     } else if (V.screen !== 'list') {
       global.history.replaceState(null, '', '/');
       showList();
