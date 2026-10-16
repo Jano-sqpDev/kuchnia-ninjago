@@ -1,8 +1,8 @@
 ---
 # plik: recipes/burgery-wolowe-ninja.md
 schema_version: 1
-title: "Burgery wołowe z Ninji"
-description: "Soczyste burgery wołowe: 4 kotlety po 125 g, o początkowej grubości około 1 cm. 11 min — czas testowy, do potwierdzenia. Po 10 min poniżej 70°C, po 12 min ok. 86°C."
+title: "Burger Ninjago"
+description: "⚠️ KONIECZNIE zrób dołek na środku każdego kotleta! Wołowina 5%, 4 burgery po 125 g, grubość około 1 cm. Air Fry 190°C, 11 min — czas do potwierdzenia z dołkiem. W poprzednim teście bez dołka po 10 min było poniżej 70°C, a po 12 min około 86°C. NIE OBRACAJ."
 servings: 4
 prep_minutes: 10
 cook_minutes: 11
@@ -69,7 +69,7 @@ ninja:
 
 steps:
   - text: "Przełóż mieloną wołowinę do miski. Dodaj sól, pieprz i czosnek. Delikatnie wymieszaj, nie ugniatając mięsa zbyt długo."
-  - text: "Podziel mięso na równe porcje. Uformuj płaskie kotlety o grubości około 1 cm, bez robienia wgłębienia na środku."
+  - text: "⚠️ KONIECZNIE: podziel mięso na równe porcje, uformuj płaskie kotlety o grubości około 1 cm i zrób wgłębienie (dołek) na środku każdego kotleta. Nie pomijaj dołka."
   - text: "Ułóż kotlety na dodatkowych rusztach PETHREE, po dwa w każdej szufladzie, z odstępami. Ustaw strefy według panelu Ninja (bez wstępnego nagrzewania), włącz MATCH, potem START. Nie obracaj kotletów."
   - text: "Wbij termometr poziomo z boku w środek burgera znajdującego się z tyłu szuflady, ponieważ zwykle jest o 2–3°C chłodniejszy niż burger z przodu. Upewnij się, że temperatura w środku utrzymuje się na wymaganym poziomie przez 30 sekund. Jeśli nie, dopiecz i sprawdź ponownie."
     internal_temp_c: 75
@@ -77,8 +77,8 @@ steps:
   - text: "Przekrój bułki. Posmaruj je ketchupem i musztardą. Dodaj sałatę, pomidora, ogórki oraz kotlety z serem. Zamknij burgery i podawaj."
 translations:
   en:
-    title: "Beef Burgers (Ninja)"
-    description: "Juicy lean beef burgers: 4 patties of 125 g each, approximately 1 cm thick before cooking. 11 min — test time, to be confirmed. Below 70°C after 10 min; approximately 86°C after 12 min."
+    title: "Ninjago Burger"
+    description: "⚠️ IMPORTANT: you MUST make a dimple in the centre of every patty! 5% lean beef, four 125 g patties about 1 cm thick. Air Fry at 190°C for 11 min — timing still to be confirmed with the dimple. In the earlier test without a dimple: below 70°C after 10 min and around 86°C after 12 min. DO NOT FLIP."
     ingredients:
       - name: "Lean beef mince (5% fat)"
       - name: "Salt"
@@ -97,7 +97,7 @@ translations:
       Sos: "Sauce"
     steps:
       - text: "Place the minced beef in a bowl with salt, pepper and garlic. Mix gently without overworking the meat."
-      - text: "Divide the meat evenly. Shape flat patties about 1 cm thick, without making a dimple in the centre."
+      - text: "⚠️ IMPORTANT: divide the meat evenly and shape flat patties about 1 cm thick. Make a dimple in the centre of every patty. Do not skip this step."
       - text: "Place the patties on the additional PETHREE racks, two per drawer with space between them. Use the settings on the Ninja panel (no preheat), press MATCH, then START. Do not flip the patties."
       - text: "Insert the thermometer horizontally from the side into the centre of the patty at the back of a drawer, as it tends to be 2–3°C cooler than the one near the handle. Ensure the internal temperature stays at the target for 30 seconds. If it does not, cook a little longer and check again."
       - text: "Put cheddar on the hot patties and leave briefly to melt."
