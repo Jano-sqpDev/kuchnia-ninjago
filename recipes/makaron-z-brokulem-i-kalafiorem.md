@@ -10,24 +10,24 @@ tags: [ninja, obiad, makaron, warzywa]
 source: "ChatGPT — propozycja na podstawie składników użytkownika"
 
 ingredients:
-  - name: "świeża mieszanka brokuła i kalafiora"
+  - name: "Brokuł i kalafior (świeża mieszanka)"
     amount: 320
     unit: g
-  - name: "makaron suchy (penne lub fusilli)"
+  - name: "Makaron suchy (penne lub fusilli)"
     amount: 70
     unit: g
   - name: "Serek Philadelphia"
     amount: 40
     unit: g
     note: "można użyć nieco mniej, jeśli tyle zostało"
-  - name: "cheddar"
+  - name: "Cheddar"
     amount: 15
     unit: g
-  - name: "oliwa lub olej"
+  - name: "Oliwa lub olej"
     amount: 5
     unit: g
-  - name: "sól"
-  - name: "pieprz czarny"
+  - name: "Sól"
+  - name: "Pieprz czarny"
 
 ninja:
   mode: single
@@ -54,14 +54,14 @@ translations:
     title: "Pasta with broccoli, cauliflower and Philadelphia cream cheese"
     description: "One serving of pasta with freshly roasted broccoli and cauliflower and a creamy Philadelphia cream cheese and cheddar sauce. An alarm after 10 minutes reminds you to shake the drawer and check the vegetables. Suggested settings: confirm on the first cook."
     ingredients:
-      - name: "fresh broccoli and cauliflower mix"
-      - name: "dry pasta (penne or fusilli)"
+      - name: "Fresh broccoli and cauliflower mix"
+      - name: "Dry pasta (penne or fusilli)"
       - name: "Philadelphia cream cheese"
         note: "use a little less if that is all you have left"
-      - name: "cheddar"
-      - name: "olive oil or cooking oil"
-      - name: "salt"
-      - name: "black pepper"
+      - name: "Cheddar"
+      - name: "Olive oil or cooking oil"
+      - name: "Salt"
+      - name: "Black pepper"
     steps:
       - text: "Pat the vegetables dry if damp. Cut larger cauliflower florets into smaller pieces so they roast at about the same rate as the broccoli."
       - text: "Toss the vegetables with oil, salt and pepper. Spread them on the original crisper plate in one Ninja drawer. Use the settings on the Ninja panel and start without preheating."
