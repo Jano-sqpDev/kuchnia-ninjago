@@ -681,3 +681,29 @@ test('wygląd v0.7: tokeny kolorów z mockupu v3, bez jasnego motywu i bez pomar
   });
   glow.forEach((sel) => assert.ok(/^(\.npanel|\.zone \.big|\.mode \.m|\.tstrip \.tclock|\.tstrip\.|\.tpanel|\.dial|\.step\.cur|#alarm)/.test(sel), 'poświata poza wyświetlaczem: ' + sel));
 });
+
+// ── v0.7.1: poziom — osobne przewijanie kolumn, niższe panele przy dwóch urządzeniach ──
+test('poziom: kolumny przewijają się osobno, cała treść nie; w pionie bez zmian', () => {
+  const land = css.slice(css.indexOf('@media (min-width: 901px)'), css.indexOf('@media (max-width: 900px)'));
+  assert.ok(land.length > 100, 'brak reguł dla poziomu');
+  assert.match(land, /\.scroll\.rs \{[^}]*overflow: hidden/);
+  assert.match(land, /\.rs \.c1, \.rs \.c2 \{[^}]*overflow-y: auto; -webkit-overflow-scrolling: touch/);
+  // reguły osobnego przewijania tylko w poziomie
+  const outside = css.replace(land, '');
+  assert.ok(!/\.rs \.c[12]/.test(outside) && !/\.scroll\.rs/.test(outside));
+  // przepis renderuje .scroll.rs; opis i notatki na końcu kolumny kroków (wewnątrz .c2)
+  assert.ok(js.includes(`'<div class="scroll rs">`));
+  const draw = js.slice(js.indexOf('function drawRecipe'), js.indexOf('function scrollsItself'));
+  assert.ok(draw.indexOf("h += '<div class=\"c2\">'") < draw.indexOf('class="about"'), 'opis i notatki w kolumnie kroków');
+  // przewijanie do bieżącego kroku: kolumna kroków, jeśli przewija się sama, inaczej całość
+  const toStep = js.slice(js.indexOf('function scrollToStep'), js.indexOf('function recipeScroll'));
+  assert.ok(toStep.includes("querySelector('.c2')") && toStep.includes('scrollsItself(col) ? col : sc'));
+});
+
+test('poziom: dwa urządzenia — Ninja (1 strefa) i TM6 obok siebie, przy 2 strefach niski panel TM6', () => {
+  assert.ok(js.includes("(r.ninja && tm6 ? ' both ' + (r.ninja.mode === 'single' ? 'one' : 'two') : '')"));
+  const land = css.slice(css.indexOf('@media (min-width: 901px)'), css.indexOf('@media (max-width: 900px)'));
+  assert.match(land, /\.pin\.both\.one \{[^}]*display: flex/);
+  assert.match(land, /\.pin\.both\.one \.pn \{[^}]*flex: 0 0 45%/);
+  assert.match(land, /\.pin\.both\.two \.dial \.r \{[^}]*width: 72px; height: 72px/);
+});

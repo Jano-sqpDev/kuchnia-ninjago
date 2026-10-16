@@ -747,7 +747,7 @@
     applyLang();
     // Przerysuj bieżący ekran w nowym języku, bez zmiany przewinięcia.
     if (V.screen === 'list' && index) drawList(currentScroll());
-    else if (V.screen === 'recipe') drawRecipe(V.r, V.step, currentScroll());
+    else if (V.screen === 'recipe') drawRecipe(V.r, V.step, recipeScroll());
     else if (V.screen === 'list') showList();
     else if (V.slug) openRecipe(V.slug, null);
   }
@@ -1005,37 +1005,56 @@
     var h = recipeBar(L.title, { sub: esc(sub), photo: !!r.image, pl: L.fallback });
 
     // Przypięte wyświetlacze urządzeń (jedyne miejsce z poświatą); timer obracania wewnątrz panelu Ninja.
+    // Oba urządzenia (od v0.7.1, w poziomie): Ninja z jedną strefą i TM6 obok siebie (pin both one),
+    // Ninja z dwiema strefami nad niskim panelem TM6 (pin both two). W pionie zawsze jeden pod drugim.
     var tm6 = hasTm6(r);
     if (r.ninja || tm6) {
-      h += '<div class="pin">';
-      if (r.ninja) h += ninjaPanel(r.ninja) + '<div id="servings-note">' + servingsNote() + '</div>';
+      h += '<div class="pin' + (r.ninja && tm6 ? ' both ' + (r.ninja.mode === 'single' ? 'one' : 'two') : '') + '">';
+      if (r.ninja) h += '<div class="pn">' + ninjaPanel(r.ninja) + '<div id="servings-note">' + servingsNote() + '</div></div>';
       if (tm6) h += '<div id="tm6-panel">' + tm6Panel(step) + '</div>';
       h += '</div>';
     }
 
-    // Składniki (karta z licznikiem porcji) | kroki; w pionie jedno pod drugim. Opis i notatki na dole.
-    h += '<div class="scroll"><div class="cols"><div class="c1"><div class="icard"><div class="ch"><h2>' + T('ingredients') + '</h2>' +
+    // Składniki (karta z licznikiem porcji) | kroki, a na końcu kolumny kroków opis i notatki.
+    // W poziomie kolumny przewijają się osobno (.scroll.rs w CSS), w pionie całość jedna pod drugą.
+    h += '<div class="scroll rs"><div class="cols"><div class="c1"><div class="icard"><div class="ch"><h2>' + T('ingredients') + '</h2>' +
       '<div class="stepper" id="servings">' + servingsHtml() + '</div></div><div class="ing" id="ingredients">' + ingredientsHtml() + '</div></div></div>';
     h += '<div class="c2">';
     for (var i = 0; i < L.steps.length; i++) h += stepHtml(L.steps[i], i, step);
-    h += '</div></div>';
     var about = '';
     if (L.description) about += '<p class="desc">' + esc(L.description) + '</p>';
     // Notatki (treść pod YAML) nie mają tłumaczenia — w trybie EN ze znaczkiem PL.
     if (r.notes) about += '<div class="notes"><div class="nh">' + T('notes') + (lang === 'en' ? ' <span class="dev pl">PL</span>' : '') + '</div><div class="txt">' + esc(r.notes) + '</div></div>';
     if (about) h += '<div class="about">' + about + '</div>';
-    h += '</div>';
+    h += '</div></div></div>';
 
-    render(h, keepScroll || 0);
+    var keep = keepScroll && typeof keepScroll === 'object' ? keepScroll : null;
+    render(h, keep ? keep.main : (keepScroll || 0));
+    if (keep) restoreColumns(keep);
     updateTimerUI();
     // Po powrocie do przepisu (np. po przeładowaniu Safari) pokaż bieżący krok.
     if (keepScroll === undefined && step > 0) scrollToStep(step);
   }
 
+  // Czy element ma własne przewijanie (w poziomie kolumny przepisu — overflow-y: auto z CSS).
+  function scrollsItself(el) {
+    try { return !!el && global.getComputedStyle(el).overflowY === 'auto'; } catch (e) { return false; }
+  }
+  // Bieżący krok na górze: w poziomie przewija się TYLKO kolumna kroków (składniki zostają od góry), w pionie całość.
   function scrollToStep(n) {
-    var sc = app.querySelector('.scroll');
-    var el = app.querySelectorAll('.step')[n];
-    if (sc && el) sc.scrollTop = Math.max(0, el.offsetTop - 16);
+    var el = app.querySelectorAll('.step')[n], col = app.querySelector('.c2'), sc = app.querySelector('.scroll');
+    var box = scrollsItself(col) ? col : sc;
+    if (box && el) box.scrollTop = Math.max(0, el.offsetTop - 16);
+  }
+  // Przewinięcie ekranu przepisu (całość + obie kolumny) — zostaje przy przerysowaniu po zmianie języka.
+  function recipeScroll() {
+    var c1 = app.querySelector('.c1'), c2 = app.querySelector('.c2');
+    return { main: currentScroll(), c1: c1 ? c1.scrollTop : 0, c2: c2 ? c2.scrollTop : 0 };
+  }
+  function restoreColumns(k) {
+    var c1 = app.querySelector('.c1'), c2 = app.querySelector('.c2');
+    if (c1) c1.scrollTop = k.c1;
+    if (c2) c2.scrollTop = k.c2;
   }
 
   function rememberRecipe() {

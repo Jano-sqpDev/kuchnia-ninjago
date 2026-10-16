@@ -274,6 +274,41 @@ button { font-family: inherit; }
 .err { margin: 26px 0; padding: 24px; border-radius: 16px; border: 1px solid var(--edge); background: var(--well); }
 .err b { color: var(--hot); }
 
+/* ── poziom (1024 pt szerokości): osobne przewijanie kolumn i niższe panele przy dwóch urządzeniach (od v0.7.1) ── */
+@media (min-width: 901px) {
+  /* Kolumny Składniki i Kroki przewijają się niezależnie; sama .scroll już nie przewija (brak „przeciągania” całości). */
+  .scroll.rs { display: -webkit-flex; display: flex; overflow: hidden; padding: 0; min-height: 0; }
+  .rs .cols { -webkit-flex: 1 1 auto; flex: 1 1 auto; -webkit-align-items: stretch; align-items: stretch; min-width: 0; min-height: 0; }
+  .rs .c1, .rs .c2 { position: relative; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-top: 14px; padding-bottom: 30px; }
+  .rs .cols .c1 { margin-right: 0; padding-left: 20px; padding-right: 8px; }
+  .rs .cols .c2 { padding-left: 8px; padding-right: 20px; }
+
+  /* Ninja z jedną strefą + TM6: panele obok siebie (Ninja ok. 45%), mniejsze pierścienie — rząd nie wyższy niż Ninja z dwiema strefami. */
+  .pin.both.one { display: -webkit-flex; display: flex; -webkit-align-items: stretch; align-items: stretch; }
+  .pin.both.one .pn { -webkit-flex: 0 0 45%; flex: 0 0 45%; min-width: 0; margin-right: 12px; }
+  .pin.both.one .npanel.single .zone { -webkit-flex: 1 1 0; flex: 1 1 0; }
+  .pin.both.one #tm6-panel { -webkit-flex: 1 1 auto; flex: 1 1 auto; min-width: 0; margin-top: 0;
+    display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; }
+  .pin.both.one .tpanel { -webkit-flex: 1 1 auto; flex: 1 1 auto; }
+  .pin.both.one .dial .r { width: 100px; height: 100px; border-radius: 50px; }
+  .pin.both.one .dial .v { font-size: 28px; }
+  .pin.both.one .dial .v.sm { font-size: 19px; }
+
+  /* Ninja z dwiema strefami + TM6: niski panel TM6 (ok. 100 px) — opis po lewej, trzy małe pierścienie z podpisem obok w jednym rzędzie. */
+  .pin.both.two .tpanel { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 10px 16px; }
+  .pin.both.two .tpanel .th { display: block; -webkit-flex: 0 0 190px; flex: 0 0 190px; height: auto; white-space: normal; }
+  .pin.both.two .tpanel .s { display: block; margin-top: 6px; }
+  .pin.both.two .tpanel .tmode { display: block; margin: 2px 0 0; }
+  .pin.both.two .dials { -webkit-flex: 1 1 auto; flex: 1 1 auto; min-width: 0; margin-top: 0;
+    display: -webkit-flex; display: flex; -webkit-justify-content: space-around; justify-content: space-around; }
+  .pin.both.two .dial { width: auto; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+  .pin.both.two .dial .r { width: 72px; height: 72px; border-radius: 36px; border-width: 2px; margin: 0 10px 0 0; }
+  .pin.both.two .dial .v { font-size: 22px; }
+  .pin.both.two .dial .v.sm { font-size: 15px; }
+  .pin.both.two .dial .u { font-size: 11px; margin-top: 2px; }
+  .pin.both.two .dial .dl { margin-top: 0; }
+}
+
 /* ── pion (768 pt szerokości): składniki nad krokami, mniejsze cyfry Ninja (nic nie wychodzi poza strefę) ── */
 @media (max-width: 900px) {
   .cols { display: block; }

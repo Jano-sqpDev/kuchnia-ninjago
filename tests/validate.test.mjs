@@ -71,7 +71,7 @@ test('przykłady wzorcowe (tests/fixtures/recipes) przechodzą walidację; tylko
   const { recipes, errors, warnings } = loadRecipes(FIXTURES);
   assert.deepEqual(errors, []);
   assert.deepEqual(recipes.map((r) => [r.slug, r.translated]), [
-    ['deser-twarogowy', true], ['udka-z-ziemniakami', true], ['warzywa-varoma', true], ['ziemniaczki-brokuly-sync', false],
+    ['deser-twarogowy', true], ['skrzydelka-z-sosem-tm6', true], ['udka-z-ziemniakami', true], ['warzywa-varoma', true], ['ziemniaczki-brokuly-sync', false],
   ]);
   assert.deepEqual(warnings, ['ziemniaczki-brokuly-sync.md → translations.en: brak tłumaczenia EN — w trybie EN przepis wyświetla się po polsku']);
 });
