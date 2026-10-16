@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Kuchnia — mockup UI v3</title>
+<style>
+/* Mockup v3 — „spokojny wyświetlacz”.
+   Układ obecnej aplikacji (v0.5), bo jest czytelny. Hierarchia na ekranie przepisu:
+   1) panel urządzenia — JEDYNE miejsce z neonem (świecące cyfry, krawędź),
+   2) bieżący krok — niebieska ramka,
+   3) cała reszta — spokojne, ciemne pola bez poświaty.
+   Kolor = znaczenie: niebieski (interfejs i Ninja), fiolet (TM6), łososiowy (temperatura w środku).
+   Safari 12: bez flex gap, aspect-ratio, clamp/min/max, :is/:where/:has, inset, conic-gradient, backdrop-filter. */
+
+:root {
+  --plate: #121519; --plate2: #0E1114; --well: #0A0C0F; --edge: #1F252C;
+  --ink: #ECEFF3; --ink2: #A2ACB7; --muted: #6F7A86;
+  --accent: #5B9BE6; --accent-soft: rgba(91,155,230,.16);
+  --ninja: #7CC4FF; --ninja-unit: #A9D6FF; --ninja-glow: rgba(80,170,255,.55);
+  --tm6: #B49CFA; --tm6-glow: rgba(150,120,250,.5);
+  --hot: #FF7A66; --done: #6FA8E8;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; background: #22262B; font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; color: var(--ink); }
+[data-s], [data-o], [data-l], [data-t], [data-act], [data-open], [data-step], button { cursor: pointer; }
+button { font-family: inherit; }
+
+/* pasek sterowania mockupem — tylko na komputerze */
+#tools { padding: 10px 16px; color: #C9D1D9; font-size: 14px; }
+#tools span { margin-right: 6px; opacity: .7; }
+#tools button { font-size: 14px; padding: 6px 10px; margin: 0 4px 6px 0; border: 1px solid #555; background: #3A4048; color: #EEE; border-radius: 6px; }
+#tools button.on { background: #5B9BE6; color: #fff; border-color: #5B9BE6; }
+#tools .grp { display: inline-block; margin-right: 16px; }
+body.real { background: #000; overflow: hidden; }
+body.real #tools { display: none; }
+#stage { position: relative; }
+#device { position: absolute; left: 0; top: 0; overflow: hidden; border-radius: 18px; box-shadow: 0 10px 40px rgba(0,0,0,.6); -webkit-transform-origin: 0 0; transform-origin: 0 0; }
+body.real #device { border-radius: 0; box-shadow: none; }
+
+#app { position: relative; width: 100%; height: 100%; background: var(--plate); color: var(--ink); font-size: 20px; line-height: 1.35; overflow: hidden;
+  display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; }
+.ver { position: absolute; top: 3px; right: 10px; font-size: 11px; color: #6a727b; z-index: 5; }
+
+/* ── pasek górny ── */
+.bar { -webkit-flex: 0 0 auto; flex: 0 0 auto; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 16px 20px 12px; min-height: 80px; background: var(--plate2); border-bottom: 1px solid var(--edge); }
+.bar h1 { -webkit-flex: 1 1 auto; flex: 1 1 auto; min-width: 0; margin: 0; font-size: 28px; font-weight: 700; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btn { -webkit-flex: 0 0 auto; flex: 0 0 auto; height: 52px; min-width: 52px; padding: 0 16px; margin-left: 10px; border-radius: 26px; border: 1px solid var(--edge); background: var(--well); color: var(--ink); font-size: 19px; font-weight: 600; white-space: nowrap;
+  display: -webkit-inline-flex; display: inline-flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
+.btn.back { margin: 0 14px 0 0; }
+.btn .ico { margin-right: 8px; color: var(--ink2); }
+.btn.lang { font-weight: 700; color: var(--muted); }
+.btn.lang .sep { margin: 0 8px; color: var(--edge); }
+.btn.lang .on { color: var(--accent); }
+.ico { display: inline-block; vertical-align: middle; }
+
+.pin { -webkit-flex: 0 0 auto; flex: 0 0 auto; padding: 12px 20px 12px; border-bottom: 1px solid var(--edge); }
+.scroll { -webkit-flex: 1 1 auto; flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px 20px 30px; }
+
+/* ── wyświetlacz Ninja: jedyne świecące miejsce ── */
+.npanel { border-radius: 18px; background: #05070A; border: 1px solid rgba(91,155,230,.45); box-shadow: 0 0 22px rgba(70,140,230,.16), inset 0 0 30px rgba(70,140,230,.05); padding: 12px; }
+.zrow { display: -webkit-flex; display: flex; -webkit-align-items: stretch; align-items: stretch; }
+.zone { -webkit-flex: 1 1 0; flex: 1 1 0; min-width: 0; background: #0A0E13; border: 1px solid #18202A; border-radius: 12px; padding: 12px 16px; }
+.zh { font-size: 15px; color: #8D99A5; }
+.zh b { color: var(--ninja); font-size: 18px; margin-right: 6px; }
+.zone .lbl { font-size: 22px; font-weight: 700; margin: 2px 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zone .fn { font-size: 17px; font-weight: 800; color: #CDE7FF; letter-spacing: .05em; }
+.vals { margin-top: 2px; white-space: nowrap; }
+.big { font-size: 56px; font-weight: 300; color: var(--ninja); font-variant-numeric: tabular-nums; letter-spacing: -.01em; text-shadow: 0 0 16px var(--ninja-glow); }
+.unit { font-size: 21px; color: var(--ninja-unit); margin: 0 20px 0 2px; }
+.portrait .big { font-size: 48px; }
+.portrait .unit { margin-right: 12px; }
+.turn { display: table; margin-top: 8px; padding: 4px 10px; border-radius: 8px; font-size: 16px; font-weight: 800; background: var(--accent); color: #06101C; }
+.turn.ok { background: transparent; color: var(--muted); padding-left: 0; }
+.mode { -webkit-flex: 0 0 104px; flex: 0 0 104px; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; text-align: center; padding: 0 8px; }
+.mode .m { font-size: 16px; font-weight: 800; letter-spacing: .06em; padding: 7px 12px; border-radius: 10px; background: #CFE6FF; color: #06101C; box-shadow: 0 0 14px rgba(120,190,255,.35); }
+.mode .cap { font-size: 13px; color: #8D99A5; margin-top: 6px; line-height: 1.2; }
+
+/* timer: niski pasek pod strefami */
+.tstrip { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; margin-top: 12px; padding: 8px 6px 2px 10px; border-top: 1px solid #18202A; }
+.tstrip .tl { -webkit-flex: 0 0 auto; flex: 0 0 auto; margin-right: 22px; }
+.tstrip .act { font-size: 15px; font-weight: 700; color: #9DB9D8; }
+.tstrip .tm { font-size: 44px; font-weight: 300; line-height: 1.05; font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 0 14px var(--ninja-glow); }
+.tstrip .tm.dash { color: #3E4752; text-shadow: none; }
+.tstrip .ti { -webkit-flex: 1 1 auto; flex: 1 1 auto; min-width: 0; }
+.tstrip .w { font-size: 20px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tstrip .nx { font-size: 16px; color: #8D99A5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tstrip .btn { height: 56px; min-width: 56px; padding: 0 18px; font-size: 18px; background: #0F141A; border-color: #26303A; }
+.tstrip .btn.go { background: var(--accent); border-color: var(--accent); color: #06101C; }
+
+/* wyświetlacz TM6 */
+.tpanel { border-radius: 18px; background: #05070A; border: 1px solid rgba(160,130,250,.45); box-shadow: 0 0 22px rgba(140,110,240,.15), inset 0 0 30px rgba(140,110,240,.05); padding: 12px 16px 14px; }
+.tpanel.off { border-color: #1F252C; box-shadow: none; }
+.th { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; font-size: 17px; color: #8D99A5; }
+.th .tag { font-size: 14px; font-weight: 800; padding: 3px 9px; border-radius: 7px; background: var(--tm6); color: #120A26; margin-right: 12px; }
+.th .s { -webkit-flex: 1 1 auto; flex: 1 1 auto; }
+.th .s b { color: var(--ink); }
+.th .md { color: #D9CCFF; font-weight: 700; }
+.dials { text-align: center; white-space: nowrap; margin-top: 8px; }
+.dial { display: inline-block; width: 32%; vertical-align: top; }
+.dial .r { width: 116px; height: 116px; margin: 0 auto; border-radius: 58px; border: 3px solid var(--tm6); box-shadow: 0 0 16px var(--tm6-glow), inset 0 0 14px rgba(150,120,250,.12);
+  display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
+.dial .v { font-size: 32px; font-weight: 300; color: #fff; line-height: 1; font-variant-numeric: tabular-nums; }
+.dial .v.sm { font-size: 22px; font-weight: 600; }
+.dial .u { font-size: 13px; color: #D9CCFF; margin-top: 4px; }
+.dial .dl { font-size: 15px; color: #8D99A5; margin-top: 6px; }
+.dial.off .r { border-color: #232A33; box-shadow: none; }
+.dial.off .v { color: #3E4752; }
+
+/* ── składniki i kroki: spokojne pola ── */
+.cols { display: -webkit-flex; display: flex; -webkit-align-items: flex-start; align-items: flex-start; }
+.cols .c1 { -webkit-flex: 0 0 38%; flex: 0 0 38%; margin-right: 16px; }
+.cols .c2 { -webkit-flex: 1 1 auto; flex: 1 1 auto; min-width: 0; }
+.portrait .cols { display: block; }
+.portrait .cols .c1 { margin: 0 0 16px; }
+.card { background: var(--well); border: 1px solid var(--edge); border-radius: 16px; }
+.ch { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: space-between; justify-content: space-between; padding: 12px 14px 4px 18px; }
+.ch h2 { margin: 0; font-size: 21px; font-weight: 700; }
+.stepper { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+.stepper .b { width: 48px; height: 48px; border-radius: 24px; border: 1px solid var(--edge); background: #12161B; color: var(--ink); font-size: 26px; font-weight: 300; padding: 0; }
+.stepper .n { width: 92px; text-align: center; line-height: 1.05; }
+.stepper .n b { display: block; font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stepper .n span { font-size: 14px; color: var(--muted); }
+.ing { padding: 0 18px 8px; }
+.ing .g { font-size: 16px; font-weight: 700; color: var(--accent); margin: 14px 0 2px; }
+.ing .row { display: -webkit-flex; display: flex; padding: 9px 0; border-bottom: 1px solid var(--edge); }
+.ing .row:last-child { border-bottom: 0; }
+.ing .q { -webkit-flex: 0 0 104px; flex: 0 0 104px; text-align: right; padding-right: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ing .q .u { font-weight: 500; color: var(--ink2); margin-left: 4px; }
+.ing .q.none { color: var(--muted); font-weight: 400; }
+.ing .nm { -webkit-flex: 1 1 auto; flex: 1 1 auto; }
+
+.step { display: -webkit-flex; display: flex; background: var(--well); border: 1px solid var(--edge); border-radius: 16px; padding: 16px 18px; margin-bottom: 12px; }
+.step .num { -webkit-flex: 0 0 44px; flex: 0 0 44px; height: 44px; line-height: 40px; text-align: center; border-radius: 22px; border: 2px solid var(--edge); color: var(--ink2); font-weight: 700; margin-right: 16px; }
+.step .body { -webkit-flex: 1 1 auto; flex: 1 1 auto; font-size: 22px; line-height: 1.4; }
+.step.cur { border: 2px solid var(--accent); padding: 15px 17px; box-shadow: 0 0 18px rgba(91,155,230,.22); }
+.step.cur .num { border-color: var(--accent); color: var(--accent); }
+.step.past { opacity: .45; }
+.step.past .num { border-color: var(--done); color: var(--done); }
+.chip { display: inline-block; margin: 10px 8px 0 0; padding: 4px 12px; border-radius: 10px; font-size: 17px; font-weight: 700; border: 1px solid; font-variant-numeric: tabular-nums; }
+.chip.tm { color: #D9CCFF; border-color: rgba(180,156,250,.55); }
+.chip.tin { color: var(--hot); border-color: rgba(255,122,102,.6); }
+
+/* ── lista ── */
+.search { margin: 2px 0 12px; height: 56px; border-radius: 14px; background: var(--well); border: 1px solid var(--edge); padding: 0 18px; font-size: 20px; color: var(--muted); display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+.search .ico { margin-right: 12px; }
+.chips { margin-bottom: 14px; white-space: nowrap; overflow: hidden; }
+.fchip { display: inline-block; height: 48px; line-height: 46px; padding: 0 18px; margin-right: 10px; border-radius: 24px; border: 1px solid var(--edge); background: var(--well); color: var(--ink2); font-size: 18px; font-weight: 700; }
+.fchip.on { background: var(--accent); border-color: var(--accent); color: #06101C; }
+.resume { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 14px 18px; margin-bottom: 16px; border: 2px solid var(--accent); }
+.resume .t { -webkit-flex: 1 1 auto; flex: 1 1 auto; }
+.resume .k { font-size: 15px; font-weight: 700; color: var(--accent); }
+.resume .n { font-size: 21px; font-weight: 650; }
+.resume .s { font-size: 17px; color: var(--ink2); }
+.grid { display: grid; grid-template-columns: 1fr 1fr; grid-gap: 14px; }
+.lcard { display: -webkit-flex; display: flex; padding: 12px; }
+.lcard .ph { -webkit-flex: 0 0 132px; flex: 0 0 132px; height: 112px; border-radius: 12px; margin-right: 16px; }
+.lcard h3 { margin: 2px 0 6px; font-size: 21px; line-height: 1.2; font-weight: 700; }
+.lcard .meta { font-size: 17px; color: var(--ink2); }
+.dev { display: inline-block; margin-top: 8px; margin-right: 6px; padding: 2px 8px; border-radius: 6px; font-size: 13px; font-weight: 800; }
+.dev.ninja { background: #CFE6FF; color: #06101C; }
+.dev.tm6 { background: var(--tm6); color: #120A26; }
+
+/* zdjęcia (atrapy) */
+.ph { position: relative; overflow: hidden; text-align: center; }
+.ph .em { position: absolute; left: 0; right: 0; top: 50%; margin-top: -.62em; line-height: 1.24em; }
+.ph.none { background: #161B21; }
+.ph.none .em { opacity: .35; }
+
+/* ── alarm ── */
+#alarm { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 20; background: rgba(4,6,9,.96);
+  display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; text-align: center; }
+#alarm .halo { width: 300px; height: 300px; border-radius: 150px; border: 6px solid var(--ninja); box-shadow: 0 0 40px var(--ninja-glow), inset 0 0 30px rgba(80,170,255,.15);
+  display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center;
+  -webkit-animation: pulse 1.2s ease-in-out infinite; animation: pulse 1.2s ease-in-out infinite; }
+@-webkit-keyframes pulse { 0%,100% { -webkit-transform: scale(1); } 50% { -webkit-transform: scale(1.04); } }
+@keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+#alarm .a1 { font-size: 50px; font-weight: 800; line-height: 1.05; }
+#alarm .zn { margin-top: 28px; font-size: 26px; font-weight: 650; }
+#alarm .zn b { color: var(--ninja); }
+#alarm .done { margin-top: 28px; height: 74px; padding: 0 60px; border-radius: 37px; border: 0; background: var(--accent); color: #06101C; font-size: 26px; font-weight: 800; }
+
+/* ── podgląd zdjęcia ── */
+#viewer { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: #000; z-index: 15; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; }
+#viewer .vb { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 14px 20px; }
+#viewer .vb h1 { -webkit-flex: 1 1 auto; flex: 1 1 auto; margin: 0; font-size: 24px; }
+#viewer .big2 { -webkit-flex: 1 1 auto; flex: 1 1 auto; margin: 0 20px 20px; border-radius: 18px; }
+</style>
+</head>
+<body>
+<div id="tools">
+  <div class="grp"><span>Ekran:</span><button data-s="list" class="on">Lista</button><button data-s="udka">Udka (SYNC + timer)</button><button data-s="burger">Burger Ninjago (MATCH)</button><button data-s="warzywa">Warzywa (TM6)</button></div>
+  <div class="grp"><span>Timer:</span><button data-t="idle" class="on">Przed startem</button><button data-t="run">Odliczanie</button><button data-t="alarm">Alarm</button><button data-t="after">Po czynnościach</button></div>
+  <div class="grp"><span>Język:</span><button data-l="pl" class="on">PL</button><button data-l="en">EN</button></div>
+  <div class="grp"><span>Orientacja:</span><button data-o="land" class="on">Poziom</button><button data-o="port">Pion</button></div>
+</div>
+<div id="stage"><div id="device"><div id="app"></div></div></div>
+
+<script>
+// ES5 — bez let/const/arrow/template literals.
+var T = {
+  pl: { recipes: "Przepisy", back: "‹ Przepisy", search: "Szukaj: nazwa, składnik, tag…", all: "Wszystkie", resume: "Wróć do gotowania",
+        ing: "Składniki", steps: "Kroki", photo: "Zdjęcie", zone: "Strefa", close: "✕ Zamknij", step: "krok", of: "z",
+        sync: "kończą razem", match: "te same ustawienia",
+        flipIn: "Obróć za", flipAt: "Obróć po", flipNow: "Obróć teraz", done: "Zrobione", start: "▶ Start", pause: "Pauza", reset: "↺",
+        afterW: "Dalej według wyświetlacza Ninja", nextFlip: "potem: potrząśnij strefę 2 za 07:00", startHint: "Naciśnij Start razem ze START na Ninja",
+        flip: "Obróć po", shake: "Potrząśnij po", inside: "w środku", speed: "obroty", temp: "temp.", time: "czas", noTm: "Ten krok bez TM6", min: "min",
+        serv: function (n) { var d = n % 10, dd = n % 100; return n === 1 ? "porcja" : (d >= 2 && d <= 4 && (dd < 12 || dd > 14) ? "porcje" : "porcji"); } },
+  en: { recipes: "Recipes", back: "‹ Recipes", search: "Search: name, ingredient, tag…", all: "All", resume: "Continue cooking",
+        ing: "Ingredients", steps: "Steps", photo: "Photo", zone: "Zone", close: "✕ Close", step: "step", of: "of",
+        sync: "finish together", match: "same settings",
+        flipIn: "Flip in", flipAt: "Flip at", flipNow: "Flip now", done: "Done", start: "▶ Start", pause: "Pause", reset: "↺",
+        afterW: "Follow the Ninja display", nextFlip: "then: shake zone 2 in 07:00", startHint: "Press Start together with START on the Ninja",
+        flip: "Flip at", shake: "Shake at", inside: "inside", speed: "speed", temp: "temp", time: "time", noTm: "No TM6 in this step", min: "min",
+        serv: function (n) { return n === 1 ? "serving" : "servings"; } }
+};
+var R = {
+  udka: { pl: "Udka z ziemniakami", en: "Chicken thighs with potatoes", serv: 4, prep: 15, cook: 28, ph: ["#7a3f14","#d8923f","🍗"],
+    ninja: { mode: "sync", z: [ { pl: "Udka", en: "Thighs", fn: "ROAST", t: 200, m: 28, act: "flip", at: 14 }, { pl: "Ziemniaki", en: "Potatoes", fn: "AIR FRY", t: 200, m: 22, act: "shake", at: 11 } ] },
+    ing: [ { a: 8, u: "pcs", pl: "udka z kurczaka", en: "chicken thighs" }, { a: 600, u: "g", pl: "małe ziemniaki", en: "baby potatoes" },
+           { g: ["Marynata","Marinade"], a: 2, u: "tbsp", pl: "oliwa", en: "olive oil" }, { g: ["Marynata","Marinade"], a: 1, u: "tsp", pl: "papryka wędzona", en: "smoked paprika" },
+           { g: ["Marynata","Marinade"], pl: "sól", en: "salt" } ],
+    steps: [ { pl: "Osusz udka i natrzyj marynatą.", en: "Pat the thighs dry and rub with the marinade." },
+             { pl: "Ziemniaki przekrój na pół i wymieszaj z resztą marynaty.", en: "Halve the potatoes and toss with the rest of the marinade." },
+             { pl: "Udka do strefy 1, ziemniaki do strefy 2. Ustaw według panelu, włącz SYNC, START.", en: "Thighs in zone 1, potatoes in zone 2. Set as shown, press SYNC, START." },
+             { pl: "Sprawdź udka termometrem w najgrubszym miejscu.", en: "Check the thickest thigh with a thermometer.", tin: 75 } ] },
+  /* Burger Ninjago — jak w repo (commit ChatGPT z 16.10): wgłębienie, MATCH, bez obracania */
+  burger: { pl: "Burger Ninjago", en: "Ninjago Burger", serv: 4, prep: 10, cook: 11, ph: ["#5a2a14","#c9783f","🍔"],
+    ninja: { mode: "match", z: [ { pl: "Kotlety (2 szt.)", en: "Patties (2 pcs)", fn: "AIR FRY", t: 190, m: 11 }, { pl: "Kotlety (2 szt.)", en: "Patties (2 pcs)", fn: "AIR FRY", t: 190, m: 11 } ] },
+    ing: [ { g: ["Kotlety","Patties"], a: 500, u: "g", pl: "Wołowina mielona 5% tłuszczu", en: "Lean beef mince (5% fat)" }, { g: ["Kotlety","Patties"], a: 3, u: "g", pl: "Sól", en: "Salt" },
+           { g: ["Kotlety","Patties"], a: 1, u: "g", pl: "Pieprz czarny", en: "Black pepper" }, { g: ["Kotlety","Patties"], a: 2, u: "g", pl: "Czosnek granulowany", en: "Garlic granules" },
+           { g: ["Dodatki","Toppings"], a: 4, u: "pcs", pl: "Bułki do burgerów", en: "Burger buns" }, { g: ["Dodatki","Toppings"], a: 80, u: "g", pl: "Ser cheddar", en: "Cheddar" },
+           { g: ["Dodatki","Toppings"], a: 120, u: "g", pl: "Pomidor", en: "Tomato" }, { g: ["Dodatki","Toppings"], a: 40, u: "g", pl: "Sałata", en: "Lettuce" },
+           { g: ["Dodatki","Toppings"], a: 80, u: "g", pl: "Ogórki konserwowe", en: "Pickles" },
+           { g: ["Sos","Sauce"], a: 40, u: "g", pl: "Ketchup", en: "Ketchup" }, { g: ["Sos","Sauce"], a: 20, u: "g", pl: "Musztarda", en: "Mustard" } ],
+    steps: [ { pl: "Przełóż mieloną wołowinę do miski. Dodaj sól, pieprz i czosnek. Delikatnie wymieszaj, nie ugniatając mięsa zbyt długo.", en: "Place the minced beef in a bowl with salt, pepper and garlic. Mix gently without overworking the meat." },
+             { pl: "⚠️ KONIECZNIE: podziel mięso na równe porcje, uformuj płaskie kotlety o grubości około 1 cm i zrób wgłębienie (dołek) na środku każdego kotleta. Nie pomijaj dołka.", en: "⚠️ IMPORTANT: divide the meat evenly and shape flat patties about 1 cm thick. Make a dimple in the centre of every patty. Do not skip this step." },
+             { pl: "Ułóż kotlety na dodatkowych rusztach PETHREE, po dwa w każdej szufladzie, z odstępami. Ustaw strefy według panelu Ninja (bez wstępnego nagrzewania), włącz MATCH, potem START. Nie obracaj kotletów.", en: "Place the patties on the additional PETHREE racks, two per drawer with space between them. Use the settings on the Ninja panel (no preheat), press MATCH, then START. Do not flip the patties." },
+             { pl: "Wbij termometr poziomo z boku w środek burgera znajdującego się z tyłu szuflady, ponieważ zwykle jest o 2–3°C chłodniejszy niż burger z przodu. Upewnij się, że temperatura w środku utrzymuje się na wymaganym poziomie przez 30 sekund. Jeśli nie, dopiecz i sprawdź ponownie.", en: "Insert the thermometer horizontally from the side into the centre of the patty at the back of a drawer, as it tends to be 2–3°C cooler than the one near the handle. Ensure the internal temperature stays at the target for 30 seconds. If it does not, cook a little longer and check again.", tin: 75 },
+             { pl: "Na gorących kotletach ułóż cheddar. Pozostaw na chwilę, aby ser lekko się rozpuścił.", en: "Put cheddar on the hot patties and leave briefly to melt." },
+             { pl: "Przekrój bułki. Posmaruj je ketchupem i musztardą. Dodaj sałatę, pomidora, ogórki oraz kotlety z serem. Zamknij burgery i podawaj.", en: "Slice the buns and spread with ketchup and mustard. Add lettuce, tomato, pickles and the cheesy patties. Close and serve." } ] },
+  warzywa: { pl: "Warzywa na parze z sosem jogurtowym", en: "Steamed vegetables with yoghurt sauce", serv: 2, prep: 10, cook: 23, ph: ["#245a30","#8fc46a","🥦"],
+    ing: [ { a: 300, u: "g", pl: "brokuł", en: "broccoli" }, { a: 200, u: "g", pl: "marchew", en: "carrot" }, { a: 500, u: "ml", pl: "woda", en: "water" },
+           { g: ["Sos","Sauce"], a: 120, u: "g", pl: "jogurt naturalny", en: "plain yoghurt" } ],
+    steps: [ { pl: "Ułóż warzywa w Varomie.", en: "Arrange the vegetables in the Varoma." },
+             { pl: "Wlej wodę do naczynia i podgrzej.", en: "Pour the water into the bowl and heat.", tm: { d: "5:00", t: "100", s: "1" } },
+             { pl: "Załóż Varomę i gotuj na parze.", en: "Fit the Varoma and steam.", tm: { d: "18:00", t: "Varoma", s: "1", mode: ["Gotowanie na parze","Steaming"] } },
+             { pl: "Wymieszaj jogurt z przyprawami.", en: "Mix the yoghurt with seasoning." } ] }
+};
+var LIST = ["burger","udka","warzywa"];
+
+var S = { screen: "list", timer: "idle", lang: "pl", orient: "land", cur: { udka: 0, burger: 0, warzywa: 0 }, serv: {}, photo: false };
+var SKEY = "kitchen-mockup3";
+function save() { try { localStorage.setItem(SKEY, JSON.stringify({ screen: S.screen, cur: S.cur, serv: S.serv, lang: S.lang })); } catch (e) {} }
+(function () { try { var o = JSON.parse(localStorage.getItem(SKEY) || "null"); if (o) { S.screen = R[o.screen] || o.screen === "list" ? o.screen : "list"; S.cur = o.cur || S.cur; S.serv = o.serv || S.serv; S.lang = o.lang || S.lang; } } catch (e) {} })();
+var REAL = (("ontouchstart" in window) && location.search.indexOf("ramka") < 0) || location.search.indexOf("pelny") >= 0;
+if (REAL) document.body.className = "real";
+
+function L() { return T[S.lang]; }
+function tx(o) { return o[S.lang] || o.pl; }
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+function ic(path, s) { s = s || 22; return '<svg class="ico" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + path + '</svg>'; }
+var I_IMG = '<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 8"/>';
+var I_SEARCH = '<circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/>';
+function photo(c, cls, size, style) {
+  if (!c) return '<div class="ph none ' + cls + '"><div class="em" style="font-size:' + Math.round(size * .6) + 'px">🍽</div></div>';
+  return '<div class="ph ' + cls + '" style="' + (style || '') + 'background:' + c[0] + ';background:linear-gradient(135deg,' + c[0] + ',' + c[1] + ')"><div class="em" style="font-size:' + size + 'px">' + c[2] + '</div></div>';
+}
+function langBtn() { return '<button class="btn lang" data-act="lang"><span' + (S.lang === "pl" ? ' class="on"' : '') + '>PL</span><span class="sep">|</span><span' + (S.lang === "en" ? ' class="on"' : '') + '>EN</span></button>'; }
+
+/* ── lista ── */
+function listView() {
+  var h = '<div class="bar"><h1>' + L().recipes + '</h1>' + langBtn() + '</div><div class="scroll">';
+  h += '<div class="search">' + ic(I_SEARCH) + L().search + '</div>';
+  h += '<div class="chips"><span class="fchip on">' + L().all + '</span><span class="fchip">Ninja</span><span class="fchip">TM6</span><span class="fchip">Air Fry</span><span class="fchip">Roast</span></div>';
+  var c = S.cur.udka;
+  if (c > 0) h += '<div class="resume card" data-open="udka"><div class="t"><div class="k">' + L().resume + '</div><div class="n">' + esc(tx(R.udka)) + '</div><div class="s">' + L().step + ' ' + (c + 1) + ' ' + L().of + ' ' + R.udka.steps.length + '</div></div><span class="btn">›</span></div>';
+  h += '<div class="grid">';
+  for (var i = 0; i < LIST.length; i++) {
+    var r = R[LIST[i]], tags = r.ninja ? '<span class="dev ninja">NINJA</span>' : '<span class="dev tm6">TM6</span>';
+    h += '<div class="lcard card" data-open="' + LIST[i] + '">' + photo(r.ph, "", 48) + '<div><h3>' + esc(tx(r)) + '</h3><div class="meta">' + (r.prep + r.cook) + ' min · ' + r.serv + ' ' + L().serv(r.serv) + '</div>' + tags + '</div></div>';
+  }
+  return h + '</div></div>';
+}
+
+/* ── wyświetlacz Ninja ── */
+var TEL = { idle: 0, run: 9.8, alarm: 14, after: 22 };
+function zone(r, i) {
+  var z = r.ninja.z[i], h = '<div class="zone"><div class="zh"><b>' + (i + 1) + '</b>' + L().zone + ' ' + (i + 1) + '</div><div class="lbl">' + esc(tx(z)) + '</div><div class="fn">' + z.fn + '</div>' +
+    '<div class="vals"><span class="big">' + z.t + '</span><span class="unit">°C</span><span class="big">' + z.m + '</span><span class="unit">' + L().min + '</span></div>';
+  if (z.act) {
+    var passed = (i === 0 ? TEL[S.timer] : TEL[S.timer] - 6) >= z.at;
+    h += '<div class="turn' + (passed ? ' ok' : '') + '">' + (passed ? '✓ ' : '↻ ') + L()[z.act] + ' ' + z.at + ' min</div>';
+  }
+  return h + '</div>';
+}
+function strip(r) {
+  var st = S.timer, z = r.ninja.z[0], who = L().zone + " 1 · " + tx(z), act, tm, w, nx, btns;
+  if (st === "idle") { act = L().flipAt; tm = z.at + ":00"; w = who; nx = L().startHint; btns = '<button class="btn go" data-act="t-run">' + L().start + '</button>'; }
+  else if (st === "after") { act = "&nbsp;"; tm = "—"; w = L().afterW; nx = ""; btns = '<button class="btn" data-act="t-reset">' + L().reset + '</button>'; }
+  else { act = L().flipIn; tm = st === "alarm" ? "0:00" : "4:12"; w = who; nx = L().nextFlip; btns = '<button class="btn" data-act="t-reset">' + L().pause + '</button><button class="btn" data-act="t-reset">' + L().reset + '</button>'; }
+  return '<div class="tstrip"><div class="tl" data-act="t-skip"><div class="act">' + act + '</div><div class="tm' + (tm === "—" ? ' dash' : '') + '">' + tm + '</div></div>' +
+    '<div class="ti"><div class="w">' + w + '</div><div class="nx">' + nx + '</div></div>' + btns + '</div>';
+}
+function ninjaPanel(r) {
+  var n = r.ninja;
+  return '<div class="npanel"><div class="zrow">' + zone(r, 0) + '<div class="mode"><span class="m">' + n.mode.toUpperCase() + '</span><span class="cap">' + L()[n.mode] + '</span></div>' + zone(r, 1) + '</div>' +
+    (n.z[0].act ? strip(r) : '') + '</div>';
+}
+
+/* ── wyświetlacz TM6 ── */
+function tm6Panel(r, cur) {
+  var s = r.steps[cur], t = s && s.tm;
+  function dial(v, u, lbl, off, sm) { return '<div class="dial' + (off ? ' off' : '') + '"><div class="r"><div class="v' + (sm ? ' sm' : '') + '">' + v + '</div>' + (u ? '<div class="u">' + u + '</div>' : '') + '</div><div class="dl">' + lbl + '</div></div>'; }
+  var d = t ? dial(t.d, "min:s", L().time) + (t.t === "Varoma" ? dial("Varoma", "", L().temp, false, true) : dial(t.t, "°C", L().temp)) + dial(t.s, "", L().speed)
+            : dial("—", "", L().time, true) + dial("—", "", L().temp, true) + dial("—", "", L().speed, true);
+  return '<div class="tpanel' + (t ? '' : ' off') + '"><div class="th"><span class="tag">TM6</span><span class="s">' + (t ? L().step + ' <b>' + (cur + 1) + '</b> ' + L().of + ' ' + r.steps.length : L().noTm) + '</span>' +
+    (t && t.mode ? '<span class="md">' + tx({ pl: t.mode[0], en: t.mode[1] }) + '</span>' : '') + '</div><div class="dials">' + d + '</div></div>';
+}
+
+/* ── przepis ── */
+function stepsHtml(r, cur) {
+  var h = "";
+  for (var i = 0; i < r.steps.length; i++) {
+    var s = r.steps[i];
+    h += '<div class="step' + (i === cur ? ' cur' : (i < cur ? ' past' : '')) + '" data-step="' + i + '"><div class="num">' + (i < cur ? '✓' : (i + 1)) + '</div><div class="body">' + esc(tx(s));
+    if (s.tm) h += '<div><span class="chip tm">' + s.tm.d + ' · ' + (s.tm.t === "Varoma" ? "Varoma" : s.tm.t + "°C") + ' · ' + L().speed + ' ' + s.tm.s + '</span></div>';
+    if (s.tin) h += '<div><span class="chip tin">🌡 ' + s.tin + '°C ' + L().inside + '</span></div>';
+    h += '</div></div>';
+  }
+  return h;
+}
+function recipeView(id) {
+  var r = R[id], cur = S.cur[id] || 0, sv = S.serv[id] || r.serv, f = sv / r.serv, i, g = null;
+  var h = '<div class="bar"><button class="btn back" data-act="back">' + L().back + '</button><h1>' + esc(tx(r)) + '</h1>' +
+    '<button class="btn" data-act="photo">' + ic(I_IMG) + L().photo + '</button>' + langBtn() + '</div>';
+  h += '<div class="pin" id="pin">' + (r.ninja ? ninjaPanel(r) : tm6Panel(r, cur)) + '</div><div class="scroll">';
+  var ing = '<div class="card"><div class="ch"><h2>' + L().ing + '</h2><div class="stepper"><button class="b" data-act="serv-">−</button><div class="n"><b>' + sv + '</b><span>' + L().serv(sv) + '</span></div><button class="b" data-act="serv+">+</button></div></div><div class="ing">';
+  for (i = 0; i < r.ing.length; i++) {
+    var x = r.ing[i], gn = x.g ? tx({ pl: x.g[0], en: x.g[1] }) : null;
+    if (gn !== g) { g = gn; if (g) ing += '<div class="g">' + esc(g) + '</div>'; }
+    var q = x.a ? Math.round(x.a * f * 2) / 2 : null;
+    ing += '<div class="row"><div class="q' + (x.a ? '' : ' none') + '">' + (x.a ? q + '<span class="u">' + x.u + '</span>' : '—') + '</div><div class="nm">' + esc(tx(x)) + '</div></div>';
+  }
+  ing += '</div></div>';
+  h += '<div class="cols"><div class="c1">' + ing + '</div><div class="c2" id="steps">' + stepsHtml(r, cur) + '</div></div></div>';
+  return h;
+}
+
+function alarmView(r) {
+  return '<div id="alarm"><div class="halo"><div class="a1">' + L().flipNow.toUpperCase().replace(" ", "<br>") + '</div></div>' +
+    '<div class="zn"><b>1</b> ' + L().zone + ' 1 · ' + esc(tx(r.ninja.z[0])) + '</div><button class="done" data-act="t-done">' + L().done + '</button></div>';
+}
+
+function render() {
+  var app = document.getElementById("app"), r = R[S.screen];
+  var h = '<div class="ver">v0.6 · mockup</div>' + (S.screen === "list" ? listView() : recipeView(S.screen));
+  if (r && r.ninja && r.ninja.z[0].act && S.timer === "alarm") h += alarmView(r);
+  if (S.photo && r) h += '<div id="viewer" data-act="close"><div class="vb"><h1>' + esc(tx(r)) + '</h1><button class="btn">' + L().close + '</button></div>' + photo(r.ph, "big2", 200) + '</div>';
+  var old = app.querySelector(".scroll"), keep = (old && render.last === S.screen) ? old.scrollTop : 0;
+  app.innerHTML = h;
+  var sc = app.querySelector(".scroll"); if (sc) sc.scrollTop = keep;
+  render.last = S.screen;
+  app.className = S.orient === "port" ? "portrait" : "landscape";
+  document.documentElement.lang = S.lang;
+  save(); fit();
+}
+function fit() {
+  var d = document.getElementById("device");
+  if (REAL) {
+    var o = window.innerWidth > window.innerHeight ? "land" : "port";
+    if (o !== S.orient) { S.orient = o; render(); return; }
+    d.style.width = window.innerWidth + "px"; d.style.height = window.innerHeight + "px"; d.style.left = "0";
+    d.style.webkitTransform = "none"; d.style.transform = "none";
+    document.getElementById("stage").style.height = window.innerHeight + "px";
+    return;
+  }
+  var w = S.orient === "land" ? 1024 : 768, hh = S.orient === "land" ? 768 : 1024;
+  var top = document.getElementById("tools").offsetHeight;
+  var sc = Math.min(1, (window.innerWidth - 32) / w, (window.innerHeight - top - 16) / hh);
+  d.style.width = w + "px"; d.style.height = hh + "px"; d.style.left = "16px";
+  d.style.webkitTransform = "scale(" + sc + ")"; d.style.transform = "scale(" + sc + ")";
+  document.getElementById("stage").style.height = Math.ceil(hh * sc + 16) + "px";
+}
+function mark(attr, val) { var b = document.querySelectorAll("#tools button[" + attr + "]"); for (var i = 0; i < b.length; i++) b[i].className = b[i].getAttribute(attr) === val ? "on" : ""; }
+function setTimer(st) { S.timer = st; mark("data-t", st); render(); }
+function setStep(n) {
+  S.cur[S.screen] = n; save();
+  var r = R[S.screen];
+  document.getElementById("steps").innerHTML = stepsHtml(r, n);
+  if (!r.ninja) document.getElementById("pin").innerHTML = tm6Panel(r, n);
+}
+document.addEventListener("click", function (e) {
+  var t = e.target;
+  while (t && t !== document) {
+    if (t.getAttribute) {
+      var a = t.getAttribute("data-act");
+      if (t.getAttribute("data-s")) { S.photo = false; S.screen = t.getAttribute("data-s"); mark("data-s", S.screen); render(); return; }
+      if (t.getAttribute("data-t")) { S.screen = "udka"; mark("data-s", "udka"); setTimer(t.getAttribute("data-t")); return; }
+      if (t.getAttribute("data-l")) { S.lang = t.getAttribute("data-l"); mark("data-l", S.lang); render(); return; }
+      if (t.getAttribute("data-o")) { S.orient = t.getAttribute("data-o"); mark("data-o", S.orient); render(); return; }
+      if (a === "t-run") { setTimer("run"); return; }
+      if (a === "t-reset") { setTimer("idle"); return; }
+      if (a === "t-skip") { if (S.timer === "run") setTimer("alarm"); return; }
+      if (a === "t-done") { setTimer("after"); return; }
+      if (a === "lang") { S.lang = S.lang === "pl" ? "en" : "pl"; mark("data-l", S.lang); render(); return; }
+      if (a === "back") { S.photo = false; S.screen = "list"; mark("data-s", "list"); render(); return; }
+      if (a === "photo") { S.photo = true; render(); return; }
+      if (a === "close") { S.photo = false; render(); return; }
+      if (a === "serv-" || a === "serv+") { var r = R[S.screen], v = S.serv[S.screen] || r.serv; S.serv[S.screen] = Math.max(1, Math.min(12, v + (a === "serv+" ? 1 : -1))); render(); return; }
+      if (t.getAttribute("data-open")) { S.photo = false; S.screen = t.getAttribute("data-open"); mark("data-s", S.screen); render(); return; }
+      if (t.getAttribute("data-step")) { setStep(+t.getAttribute("data-step")); return; }
+    }
+    t = t.parentNode;
+  }
+});
+window.addEventListener("resize", fit);
+render();
+</script>
+</body>
+</html>
