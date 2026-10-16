@@ -81,6 +81,7 @@ Każdy składnik to element listy:
 
   **Każda inna jednostka to błąd** (`szt`, `łyżka`, `łyżeczka`, `szczypta`, `ząbek`, `szklanka`…). Coś, czego nie da się tak zapisać (np. „pęczek”, „puszka”), zapisz jako `pcs` z opisem w `note` albo jako składnik bez ilości. `pcs`, `tbsp`, `tsp` i `pinch` przy przeliczaniu porcji zaokrąglają się do połówek, `g` i `ml` do okrągłych wartości.
 - Składnik bez ilości jest OK (sól, pieprz „do smaku”): tylko `name`, bez `amount` i bez `unit`.
+- **Nazwa składnika zaczyna się od produktu w mianowniku:** „Kalafior”, „Jajka”, „Ziemniaki młode”, „Ser cheddar” — nie „kalafiora”, „mieszanka brokuła i kalafiora” ani „z jajkiem” (szczegóły dopisz po nazwie albo w `note`). Tak lepiej działa wyszukiwanie po produkcie.
 - Składniki z tą samą `group` umieszczaj obok siebie.
 
 ## 5. Kroki — `steps`

@@ -74,7 +74,7 @@ J:\APP_DEV\kuchnia-ninjago\      ← kontener, poza repo: mockupy, robocze logi 
   - **po polsku:** komunikaty walidatora i skryptów (także na liście błędów/ostrzeżeń w trybie EN — są dla Janusza), komentarze w kodzie i w `.gitignore`, nazwy testów, CLAUDE.md, README, docs i raporty,
   - pola YAML przepisów (schemat v1) są po angielsku i się nie zmieniają; tagi i treść przepisów — jak w „Format przepisu”,
   - wyjątki celowo po polsku: adres kroku `#krok-N` (część zasad widoku), stare klucze localStorage (`kuchnia-*`), które aplikacja czyta tylko raz, żeby je przenieść, oraz `docs/FORMAT-PRZEPISU.md` (nazwa nadana przez Janusza — ściąga wklejana do ChatGPT).
-- Pliki w `tools\`: `build.mjs`, `validate.mjs` (walidator), `validate-cli.mjs` (`npm run validate`), `search.mjs`, `output.mjs` (kształt JSON-ów), `images.mjs`, `version.mjs`, `icons.mjs` (`npm run icons`), `deploy.mjs` (`npm run deploy`).
+- Pliki w `tools\`: `build.mjs`, `validate.mjs` (walidator), `validate-cli.mjs` (`npm run validate`), `search.mjs`, `bench-search.mjs` (pomiar wyszukiwania), `output.mjs` (kształt JSON-ów), `images.mjs`, `version.mjs`, `icons.mjs` (`npm run icons`), `deploy.mjs` (`npm run deploy`).
 - Testy jednostkowe w `tests\` dla walidatora i normalizacji wyszukiwania (np. „losos" → „łosoś", aliasy tagów).
 - **Testy i build nie zakładają niczego o `recipes/`** (to kolekcja Janusza — ChatGPT dodaje i usuwa przepisy). Przykłady wzorcowe są w `tests/fixtures/recipes/` i testy buildu działają na nich (`KITCHEN_RECIPES_DIR`). Jedyny test na `recipes/`: zero błędów walidacji (twarda bramka dla `npm run deploy`); pusta kolekcja przechodzi.
 
@@ -118,7 +118,7 @@ Pole opcjonalne albo jest wypełnione, albo go nie ma — pusty tekst / `null` t
 | `note` | tekst, np. „drobno posiekana” | opcjonalne |
 | `group` | tekst, np. „Sos” — grupowanie na liście | opcjonalne |
 
-Składnik bez ilości jest OK (np. `- name: "sól"`).
+Składnik bez ilości jest OK (np. `- name: "sól"`). Nazwa składnika zaczyna się od produktu w mianowniku („Kalafior”, „Jajka”, „Ziemniaki młode”, nie „kalafiora” / „z jajkiem”) — lepiej działa wyszukiwanie (od v0.6, zasada w `docs/FORMAT-PRZEPISU.md`, walidator tego nie sprawdza).
 
 ### Kroki — `steps[]`
 
@@ -357,15 +357,20 @@ Polecenia: `npm run validate` (sama walidacja), `npm run build`, `npm test`, `np
 ## Wyszukiwanie
 
 - Build generuje `search.json` (pola opisane w „Wynik buildu”); pole `text` zawiera oba języki, aliasy tagów, składniki i funkcje Ninja, więc wyszukiwanie działa niezależnie od języka interfejsu. iPad pobiera indeks raz i filtruje lokalnie.
-- **Jedno źródło prawdy logiki: `tools/search.mjs`** (`normalize`, `buildSearchText`, `matchesQuery`). `src/app.js` ma **dosłowne kopie** `normalize` i `matchesQuery` — `tests/client.test.mjs` porównuje tekst obu funkcji (bez wcięć) i ich wyniki na tych samych przypadkach. Zmieniasz logikę → zmień oba miejsca, inaczej testy padną. (Wybór: kopia + test zamiast wstrzykiwania przy buildzie, bo testy klienta uruchamiają `src/app.js` bez buildu.)
+- **Jedno źródło prawdy logiki: `tools/search.mjs`** (`normalize`, `buildSearchText`, `matchesQuery`, od v0.6 też `searchWords`, `wordStems`, `matchLevel`, `isEdit1`, `buildDictionary`, `typoCandidates`, `searchIndex`). `src/app.js` ma **dosłowne kopie** wszystkich poza `buildSearchText` — `tests/client.test.mjs` porównuje tekst każdej funkcji (bez wcięć; od `function nazwa(` do `}` z tym samym wcięciem) i wyniki obu wersji na tych samych przypadkach. Zmieniasz logikę → zmień oba miejsca, inaczej testy padną. (Wybór: kopia + test zamiast wstrzykiwania przy buildzie, bo testy klienta uruchamiają `src/app.js` bez buildu.)
 - Normalizacja zapytania i danych: małe litery, usunięcie znaków diakrytycznych przez `normalize('NFD')` + usunięcie znaków łączących (`[\u0300-\u036f]`), **plus ręczne mapowanie `ł→l`** (NFD nie rozkłada „ł"). „losos" ma znaleźć „łosoś".
 - Rozwijanie aliasów tagów (patrz wyżej): „thermomix” → tm6, „af” / „airfryer” → ninja.
-- Wiele słów = AND. Dopasowanie po fragmencie słowa.
+- **Dopasowanie słowa (od v0.6) — trzy poziomy, od najlepszego:**
+  1. **dokładne** — słowo jest fragmentem pola `text` (jak w v0.5),
+  2. **rdzeń (polska odmiana)** — tylko słowa ≥ 5 znaków: słowo bez 1 lub 2 ostatnich liter, rdzeń ≥ 4 znaki („kalafiorem” → „kalafior”, „ziemniakow” → „ziemniak”, „jajka” → „jajk” łapie „duże jajko”). Krótsze słowa tylko dokładnie („sol” nie łapie „sok”),
+  3. **literówka — tylko awaryjnie:** słowo ≥ 5 znaków, które nie trafia w ŻADEN przepis ani dokładnie, ani rdzeniem, jest zastępowane słowami ze słownika w odległości edycyjnej 1 (wstawienie, usunięcie, zamiana, przestawienie sąsiednich liter), porównywanymi też z początkiem dłuższych słów („klafior” → „kalafiora”). Słownik = unikalne słowa (≥ 4 znaki) z pól `text`, budowany raz po wczytaniu `search.json`; odległość liczona tylko na słowniku. Nad wynikami „Pokazuję wyniki dla: …” / „Showing results for: …” (zapytanie z poprawionymi słowami, najkrótsza propozycja).
+- Wiele słów = I: każde słowo musi trafić (dowolnym poziomem). **Kolejność wyników:** grupa dokładnych, potem rdzeni, potem literówek; grupa przepisu = najsłabsze z jego dopasowań; w grupie kolejność z indeksu. Wyszukiwanie liczone na całym indeksie, chipy filtrują potem (poprawka nie zależy od filtrów).
+- Pomiar: `node tools/bench-search.mjs [liczba]` — sztuczny indeks (domyślnie 1000 przepisów, ~2000 słów w słowniku); test w `tests/search.test.mjs` pilnuje < 50 ms na wyszukiwanie w Node.
 - **Widok (v0.5):** pole tekstowe (czcionka ≥ 16 px, `autocomplete/autocorrect/autocapitalize="off"`, `spellcheck="false"`), filtrowanie po ok. 150 ms bez pisania, ✕ czyści pole, Enter chowa klawiaturę. **Przy wpisywaniu i chipach odświeżane są tylko `#chips` i `#results`** (licznik, karta „Wróć do gotowania”, siatka) — przerysowanie pola na iOS 12 zamyka klawiaturę i gubi kursor. Plakietki dochodzą osobno do `#badges`.
 - **Chipy:** „Wszystkie / All”, „Ninja”, „TM6”, potem funkcje Ninja występujące w co najmniej jednym przepisie (kolejność jak w walidatorze). Urządzenie po tagach `ninja` / `tm6`, funkcja po `ninja_functions`. W grupie LUB, między grupami I, całość I z tekstem; „Wszystkie” czyści, podświetlone, gdy nic nie zaznaczone. Chipy to `<button>` (cursor: pointer). Czyste funkcje: `matchesChips`, `filterEntries`, `availableChips`, `toggleChip`.
 - **Wyniki:** licznik „3 z 12 przepisów” / „3 of 12 recipes” tylko przy aktywnym wyszukiwaniu lub chipach (wtedy karta „Wróć do gotowania” znika); brak wyników → „Nic nie pasuje” + „Wyczyść” (czyści pole i chipy).
 - **Pamięć:** tekst, chipy i przewinięcie listy w `kitchen-state.list` (zapis od razu przy wpisywaniu / chipie, przewinięcie po chwili bez ruchu i przy wejściu w przepis) — po przeładowaniu i po „‹ Przepisy” lista wraca w tym samym stanie.
-- Tolerancja literówek: na razie nie. Jeśli kiedyś, to własna prosta logika lub biblioteka sprawdzona na Safari 12.
+- Granica tolerancji: odległość 1 (np. „philadelfia” → „philadelphia” to 2 zmiany, nie znajdzie). Bez bibliotek.
 
 ---
 
@@ -461,7 +466,8 @@ Mam plan Pro z limitami — **jeden etap na sesję**. Po każdym etapie zatrzyma
      - Zmiana bieżącego kroku **nie przerysowuje ekranu** ani nie resetuje przewinięcia — aktualizuj tylko elementy kroków.
      - **Pułapka iOS 12 (dotyk):** dotknięcie elementu bez `cursor: pointer` nie wysyła zdarzenia `click` do nasłuchu na `document` (event delegation). Wszystko, co reaguje na dotyk (karty, kroki, zdjęcie, przyciski), ma `cursor: pointer` albo jest `<button>` / `<a>`.
      - **Przeliczanie porcji:** przyciski − / + przy liczbie porcji (zakres 1–12). Ilości przeliczane z zaokrąglaniem: `pcs`, `tbsp`, `tsp`, `pinch` do połówek (do v0.3: `szt` i łyżki), `g`/`ml` do okrągłych wartości; składniki bez ilości bez zmian. Link „przepis: N” wraca do oryginalnej liczby porcji. Wybrana liczba porcji zapamiętywana razem z krokiem. Ustawienia Ninja i TM6 się **nie zmieniają**; przy zmienionej liczbie porcji pod panelem Ninja pojawia się uwaga.
-4. ✅ **Wyszukiwarka i filtry (v0.5)** — pole z filtrowaniem na bieżąco, chipy urządzeń i funkcji Ninja, licznik, brak wyników, pamięć stanu listy (opis w „Wyszukiwanie”). W obecnym wyglądzie (mockup v2 czeka na decyzję).
+4. ✅ **Wyszukiwarka i filtry (v0.5)** — pole z filtrowaniem na bieżąco, chipy urządzeń i funkcji Ninja, licznik, brak wyników, pamięć stanu listy (opis w „Wyszukiwanie”). W obecnym wyglądzie (mockupy v2 / v3 czekają na decyzję).
+   - ✅ **4.1 (v0.6):** polska odmiana (rdzeń) i literówki awaryjnie, kolejność wyników według jakości dopasowania, „Pokazuję wyniki dla: …”.
 5. **Timer czynności Ninja — przypomnienia o obracaniu/potrząsaniu (v0.3–v0.3.2)** — pole `ninja.zoneN.turn`, timer pod panelem Ninja tylko w przepisach z `turn`, kompensacja wysuniętej szuflady (opis w „Wygląd i działanie”). Do sprawdzenia na iPadzie.
 6. **Dwujęzyczność PL / EN (v0.4)** — słownik interfejsu, przełącznik „PL | EN”, jednostki z listy angielskich skrótów, `translations.en` w pliku przepisu (ostrzeżenia, pomarańczowa plakietka, fallback PL), `recipes/tags.yml`, wyszukiwanie w obu językach, testy niezależne od `recipes/` (przykłady w `tests/fixtures/recipes/`). Do sprawdzenia na iPadzie.
 7. (Później, na moje życzenie) tryb gotowania krok po kroku, minutniki przy krokach TM6 (`timer_seconds`).

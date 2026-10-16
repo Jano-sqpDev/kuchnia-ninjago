@@ -532,7 +532,7 @@ const ENTRIES = [
   searchEntry({ slug: 'deser', data: { title: 'Deser twarogowy', tags: ['deser'], ingredients: [{ name: 'twaróg' }] } }, null, {}),
 ].map(plain);
 const ids = (list) => plain(list).map((e) => e.id);
-const find = (q, chips) => ids(K.filterEntries(ENTRIES, q, chips || []));
+const find = (q, chips) => ids(K.filterEntries(ENTRIES, q, chips || []).results);
 
 test('wyszukiwarka: „losos" → „łosoś", thermomix → tm6, af / airfryer → ninja', () => {
   assert.deepEqual(find('losos'), ['losos']);
@@ -603,20 +603,52 @@ test('licznik wyników: polska odmiana po „z", angielska 1 / wiele', () => {
   assert.equal(K.trn('en', 'resultsCount', 1, { shown: 1 }), '1 of 1 recipe');
 });
 
-// Jedno źródło prawdy: tools/search.mjs. Kopie normalize i matchesQuery w src/app.js muszą być dosłownie takie same
+// Jedno źródło prawdy: tools/search.mjs. Kopie funkcji wyszukiwania w src/app.js muszą być dosłownie takie same
 // (porównanie tekstu funkcji bez wcięć) i dawać te same wyniki.
+const SEARCH_FUNCTIONS = ['normalize', 'matchesQuery', 'searchWords', 'wordStems', 'matchLevel', 'isEdit1', 'buildDictionary', 'typoCandidates', 'searchIndex'];
+// Tekst funkcji: od „function nazwa(" do „}" z tym samym wcięciem co początek; linie bez wcięć.
+function functionBody(code, name) {
+  const lines = code.split(/\r?\n/);
+  const start = lines.findIndex((l) => new RegExp('^(\\s*)(export )?function ' + name + '\\(').test(l));
+  assert.ok(start !== -1, 'brak funkcji ' + name);
+  const indent = /^\s*/.exec(lines[start])[0];
+  const end = lines.findIndex((l, i) => i > start && l === indent + '}');
+  assert.ok(end !== -1, 'brak końca funkcji ' + name);
+  return lines.slice(start, end + 1).map((l) => l.trim().replace(/^export /, '')).filter(Boolean).join('\n');
+}
+
 test('wyszukiwarka: kopia w app.js jest identyczna z tools/search.mjs (tekst i wyniki)', () => {
   const srcSearch = readFileSync(join(root, 'tools', 'search.mjs'), 'utf8');
-  const body = (code, name) => {
-    const m = new RegExp('function ' + name + '\\([^)]*\\) \\{[\\s\\S]*?\\n\\s*\\}\\r?\\n').exec(code);
-    assert.ok(m, 'brak funkcji ' + name);
-    return m[0].split(/\r?\n/).map((l) => l.trim()).filter(Boolean).join('\n');
-  };
-  for (const name of ['normalize', 'matchesQuery']) assert.equal(body(js, name), body(srcSearch, name), name + ': app.js ≠ tools/search.mjs');
+  for (const name of SEARCH_FUNCTIONS) {
+    const a = functionBody(js, name), b = functionBody(srcSearch, name);
+    assert.ok(a.split('\n').length > 2, name + ': za krótki wycinek');
+    assert.equal(a, b, name + ': app.js ≠ tools/search.mjs');
+    assert.equal(typeof K[name], 'function', name + ' w kitchenTest');
+  }
   const texts = ['Łosoś', 'ZAŻÓŁĆ GĘŚLĄ JAŹŃ', '  dwa   słowa\t', 'Crème brûlée', 'Śmietanka 18%', ''];
   texts.forEach((t) => assert.equal(K.normalize(t), search.normalize(t), t));
-  const queries = ['losos', 'thermomix', 'af', 'air fry', 'udka ziem', 'salmon', 'fish', 'roast', 'losos dynia', '', 'ZUPA krem', 'twarog'];
+  const queries = ['losos', 'thermomix', 'af', 'air fry', 'udka ziem', 'salmon', 'fish', 'roast', 'losos dynia', '', 'ZUPA krem', 'twarog',
+    'ziemniakow', 'kurczaka', 'cukinii', 'losis', 'ziemnaiki', 'twarozek', 'salmno', 'udka kurczka', 'sol', 'xyzxyz'];
   ENTRIES.forEach((e) => queries.forEach((q) => assert.equal(K.matchesQuery(e, q), search.matchesQuery(e, q), e.id + ' / ' + q)));
+  const dictA = plain(K.buildDictionary(ENTRIES)), dictB = search.buildDictionary(ENTRIES);
+  assert.deepEqual(dictA, dictB);
+  queries.forEach((q) => {
+    const a = plain(K.searchIndex(ENTRIES, q, dictA)), b = search.searchIndex(ENTRIES, q, dictB);
+    assert.deepEqual({ ids: a.results.map((e) => e.id), corrected: a.corrected }, { ids: b.results.map((e) => e.id), corrected: b.corrected }, q);
+  });
+  [['kalafjor', 'kalafior'], ['klafior', 'kalafiora'], ['ab', 'ba'], ['cheddar', 'chedar'], ['abc', 'abd'], ['abcd', 'acbd'], ['abcd', 'adcb']]
+    .forEach(([x, y]) => assert.equal(K.isEdit1(x, y), search.isEdit1(x, y), x + '/' + y));
+});
+
+test('lista: wyniki dzięki poprawce literówki pokazują „Pokazuję wyniki dla"', () => {
+  const r = plain(K.filterEntries(ENTRIES, 'ziemnaiki', [], K.buildDictionary(ENTRIES)));
+  assert.deepEqual([ids(r.results), r.corrected], [['udka'], 'ziemniaki']);
+  assert.equal(K.tr('pl', 'showingFor', { q: 'kalafior' }), 'Pokazuję wyniki dla: kalafior');
+  assert.equal(K.tr('en', 'showingFor', { q: 'cauliflower' }), 'Showing results for: cauliflower');
+  assert.ok(js.includes("T('showingFor'"));
+  // Chipy po wyszukiwaniu: poprawka literówki nie zależy od filtrów.
+  assert.deepEqual(ids(K.filterEntries(ENTRIES, 'ziemnaiki', ['tm6'], K.buildDictionary(ENTRIES)).results), ['udka']);
+  assert.deepEqual(ids(K.filterEntries(ENTRIES, 'ziemnaiki', ['Bake'], K.buildDictionary(ENTRIES)).results), []);
 });
 
 test('lista: pole wyszukiwania z atrybutami dla iOS, chipy jako przyciski, odświeżanie bez przerysowania pola', () => {

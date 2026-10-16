@@ -27,7 +27,7 @@
       empty: 'Nie ma jeszcze przepisów.', emptyHint: 'Dodaj pierwszy: plik w recipes/ na GitHubie albo przez Claude Code („dodaj do przepisów”).',
       searchPlaceholder: 'Szukaj: nazwa, składnik, tag…', searchClear: 'Wyczyść pole', chipAll: 'Wszystkie',
       resultsCount: ['{shown} z {n} przepisu', '{shown} z {n} przepisów', '{shown} z {n} przepisów'],
-      noMatches: 'Nic nie pasuje.', noMatchesHint: 'Spróbuj innego słowa albo wyłącz filtry.', clearAll: 'Wyczyść',
+      showingFor: 'Pokazuję wyniki dla: {q}', noMatches: 'Nic nie pasuje.', noMatchesHint: 'Spróbuj innego słowa albo wyłącz filtry.', clearAll: 'Wyczyść',
       minutes: '{n} min', noCooking: 'bez gotowania', servings: ['porcja', 'porcje', 'porcji'],
       resumeTitle: 'Wróć do gotowania', resumeStep: '{title} — krok {n} z {total}', open: 'Otwórz ›', show: 'Pokaż ›', close: '✕ Zamknij',
       problemsCount: ['{n} przepis z błędem', '{n} przepisy z błędem', '{n} przepisów z błędem'],
@@ -67,7 +67,7 @@
       empty: 'No recipes yet.', emptyHint: 'Add the first one: a file in recipes/ on GitHub or via Claude Code.',
       searchPlaceholder: 'Search: name, ingredient, tag…', searchClear: 'Clear the field', chipAll: 'All',
       resultsCount: ['{shown} of {n} recipe', '{shown} of {n} recipes'],
-      noMatches: 'No matches.', noMatchesHint: 'Try another word or turn off the filters.', clearAll: 'Clear',
+      showingFor: 'Showing results for: {q}', noMatches: 'No matches.', noMatchesHint: 'Try another word or turn off the filters.', clearAll: 'Clear',
       minutes: '{n} min', noCooking: 'no cooking', servings: ['serving', 'servings'],
       resumeTitle: 'Back to cooking', resumeStep: '{title} — step {n} of {total}', open: 'Open ›', show: 'Show ›', close: '✕ Close',
       problemsCount: ['{n} recipe with an error', '{n} recipes with errors'],
@@ -254,7 +254,8 @@
   function clampServings(n) { return Math.max(SERVINGS_MIN, Math.min(SERVINGS_MAX, n)); }
 
   // ───────── wyszukiwanie i filtry listy (czyste funkcje) ─────────
-  // normalize i matchesQuery to DOSŁOWNE kopie z tools/search.mjs (jedno źródło prawdy: tam; build robi z nich pole
+  // normalize, matchesQuery, searchWords, wordStems, matchLevel, isEdit1, buildDictionary, typoCandidates i searchIndex to
+  // DOSŁOWNE kopie z tools/search.mjs (jedno źródło prawdy: tam; build robi z nich pole
   // text w search.json). tests/client.test.mjs porównuje tekst obu funkcji i wyniki na tych samych przypadkach —
   // zmiana w jednym miejscu bez drugiego wywala testy.
 
@@ -276,6 +277,103 @@
     return words.every(function (word) { return entry.text.indexOf(word) !== -1; });
   }
 
+  // Słowa zapytania po normalizacji (puste zapytanie → []).
+  function searchWords(query) {
+    return normalize(query).split(' ').filter(Boolean);
+  }
+
+  // Rdzenie słowa na polską odmianę: bez 1 lub 2 ostatnich liter, tylko dla słów >= 5 znaków, rdzeń >= 4 znaki.
+  // „kalafiorem" → [„kalafiore", „kalafior"]; „jajka" → [„jajk"]; „sol" → [] (krótkie słowa tylko dokładnie).
+  function wordStems(word) {
+    var out = [];
+    if (word.length < 5) return out;
+    for (var cut = 1; cut <= 2; cut++) {
+      if (word.length - cut >= 4) out.push(word.slice(0, word.length - cut));
+    }
+    return out;
+  }
+
+  // Jak słowo trafia w tekst: 0 = dokładny fragment, 1 = rdzeń (odmiana), -1 = nie trafia.
+  function matchLevel(text, word) {
+    if (text.indexOf(word) !== -1) return 0;
+    var stems = wordStems(word);
+    for (var i = 0; i < stems.length; i++) if (text.indexOf(stems[i]) !== -1) return 1;
+    return -1;
+  }
+
+  // Odległość edycyjna najwyżej 1: wstawienie, usunięcie, zamiana albo przestawienie dwóch sąsiednich liter.
+  function isEdit1(a, b) {
+    if (a === b) return true;
+    var la = a.length, lb = b.length;
+    if (la - lb > 1 || lb - la > 1) return false;
+    var i = 0;
+    while (i < la && i < lb && a.charAt(i) === b.charAt(i)) i++;
+    if (la === lb) {
+      if (a.slice(i + 1) === b.slice(i + 1)) return true;
+      return a.charAt(i) === b.charAt(i + 1) && a.charAt(i + 1) === b.charAt(i) && a.slice(i + 2) === b.slice(i + 2);
+    }
+    if (la > lb) return a.slice(i + 1) === b.slice(i);
+    return a.slice(i) === b.slice(i + 1);
+  }
+
+  // Słownik do poprawiania literówek: unikalne słowa (>= 4 znaki) ze wszystkich pól text, posortowane.
+  // Budowany raz po wczytaniu search.json.
+  function buildDictionary(entries) {
+    var seen = {}, out = [];
+    entries.forEach(function (e) {
+      String(e.text).split(/[^a-z0-9]+/).forEach(function (w) {
+        if (w.length >= 4 && !Object.prototype.hasOwnProperty.call(seen, w)) { seen[w] = true; out.push(w); }
+      });
+    });
+    return out.sort();
+  }
+
+  // Słowa ze słownika w odległości 1 od słowa z zapytania — także względem początku dłuższych słów
+  // („klafior" → „kalafiora"). Najkrótsze najpierw, najwyżej 5.
+  function typoCandidates(word, dict) {
+    var out = [], n = word.length;
+    dict.forEach(function (w) {
+      if (w === word) return;
+      var ok = isEdit1(word, w);
+      for (var len = n - 1; !ok && len <= n + 1; len++) {
+        if (len >= 4 && len < w.length && isEdit1(word, w.slice(0, len))) ok = true;
+      }
+      if (ok) out.push(w);
+    });
+    out.sort(function (a, b) { return a.length - b.length || (a < b ? -1 : (a > b ? 1 : 0)); });
+    return out.slice(0, 5);
+  }
+
+  // Wyszukiwanie z odmianą i literówkami. Wiele słów = I: każde słowo musi trafić dokładnie, rdzeniem albo przez poprawkę
+  // literówki. Poprawka tylko awaryjnie: słowo >= 5 znaków, które nie trafia w ŻADEN przepis ani dokładnie, ani rdzeniem.
+  // Kolejność: grupa 0 (dokładnie), 1 (rdzeń), 2 (literówka) — grupa przepisu to najsłabsze z jego dopasowań;
+  // w grupie kolejność z indeksu. corrected = zapytanie z poprawionymi słowami (do „Pokazuję wyniki dla: …") albo null.
+  function searchIndex(entries, query, dict) {
+    var words = searchWords(query);
+    if (!words.length) return { results: entries.slice(), corrected: null };
+    var plan = words.map(function (w) {
+      var hit = entries.some(function (e) { return matchLevel(e.text, w) !== -1; });
+      return { word: w, fixes: hit || w.length < 5 ? null : typoCandidates(w, dict || buildDictionary(entries)) };
+    });
+    var groups = [[], [], []];
+    entries.forEach(function (e) {
+      var level = 0;
+      for (var i = 0; i < plan.length; i++) {
+        var p = plan[i], l;
+        if (p.fixes === null) l = matchLevel(e.text, p.word);
+        else l = p.fixes.some(function (f) { return e.text.indexOf(f) !== -1; }) ? 2 : -1;
+        if (l === -1) return;
+        if (l > level) level = l;
+      }
+      groups[level].push(e);
+    });
+    var fixed = plan.some(function (p) { return p.fixes !== null && p.fixes.length; });
+    return {
+      results: groups[0].concat(groups[1], groups[2]),
+      corrected: fixed && groups[2].length ? plan.map(function (p) { return p.fixes && p.fixes.length ? p.fixes[0] : p.word; }).join(' ') : null,
+    };
+  }
+
   // Chipy filtrów: urządzenia (po tagach) i funkcje Ninja (po ninja_functions z search.json).
   var DEVICE_CHIPS = ['ninja', 'tm6'];
   var NINJA_FUNCTIONS = ['Air Fry', 'Max Crisp', 'Roast', 'Bake', 'Reheat', 'Dehydrate'];
@@ -289,9 +387,11 @@
     return (!devices.length || devices.some(function (d) { return tags.indexOf(d) !== -1; })) &&
       (!functions.length || functions.some(function (f) { return fns.indexOf(f) !== -1; }));
   }
-  // Lista po wyszukiwaniu (tekst I chipy), w kolejności z search.json.
-  function filterEntries(index, query, chips) {
-    return index.filter(function (e) { return matchesChips(e, chips) && matchesQuery(e, query); });
+  // Lista po wyszukiwaniu (tekst I chipy): { results, corrected }. Wyszukiwanie (odmiana, literówki) na całym indeksie,
+  // chipy potem — poprawka literówki nie zależy od zaznaczonych filtrów. dict = buildDictionary(index), liczony raz.
+  function filterEntries(index, query, chips, dict) {
+    var r = searchIndex(index, query, dict);
+    return { results: r.results.filter(function (e) { return matchesChips(e, chips); }), corrected: r.corrected };
   }
   // Chipy do pokazania: Ninja, TM6, potem funkcje Ninja występujące w co najmniej jednym przepisie (stała kolejność).
   function availableChips(index) {
@@ -556,7 +656,8 @@
   }
 
   var api = {
-    normalize: normalize, matchesQuery: matchesQuery, matchesChips: matchesChips, filterEntries: filterEntries,
+    normalize: normalize, matchesQuery: matchesQuery, searchWords: searchWords, wordStems: wordStems, matchLevel: matchLevel,
+    isEdit1: isEdit1, buildDictionary: buildDictionary, typoCandidates: typoCandidates, searchIndex: searchIndex, matchesChips: matchesChips, filterEntries: filterEntries,
     availableChips: availableChips, toggleChip: toggleChip, normalizeListState: normalizeListState, NINJA_FUNCTIONS: NINJA_FUNCTIONS,
     I18N: I18N, LANGS: LANGS, ACTIONS: ACTIONS, WHEN: WHEN, tr: tr, trn: trn, normalizeLang: normalizeLang,
     localizeRecipe: localizeRecipe, entryView: entryView, warningsLabel: warningsLabel, decimal: decimal,
@@ -679,6 +780,7 @@
   // V.screen: 'start' | 'list' | 'loading' | 'error' | 'recipe'; V.L — przepis w bieżącym języku (localizeRecipe).
   var V = { screen: 'start', slug: null, r: null, L: null, step: 0, servings: 0 };
   var index = null;            // search.json (lista)
+  var dictionary = [];         // słowa z pól text (poprawianie literówek), liczone raz po wczytaniu search.json
   var recipeCache = {};        // pobrane data/<slug>.json
   var problems = [];           // errors.json pogrupowane po plikach (przepisy pominięte przez build)
   var notices = [];            // warnings.json pogrupowane po plikach (braki w tłumaczeniu EN)
@@ -737,6 +839,7 @@
       }, function () { /* brak warnings.json — bez plakietki */ });
       fetchJson('/search.json?b=' + BUILD, function (d) {
         index = d;
+        dictionary = buildDictionary(d);
         if (V.screen === 'list') drawList(state.list.scroll);
       }, function () {
         if (V.screen === 'list') render(listBar() + '<div class="scroll"><div class="err" data-act="retry-list"><b>' + T('listFailed') + '</b><br><br>' + T('retryHint') + '</div></div>');
@@ -797,8 +900,10 @@
 
   function resultsHtml() {
     var q = state.list.query, chips = state.list.chips, active = !!(normalize(q) || chips.length);
-    var list = filterEntries(index, q, chips), h = '';
+    var found = filterEntries(index, q, chips, dictionary), list = found.results, h = '';
     if (active) h += '<div class="count">' + esc(TN('resultsCount', index.length, { shown: list.length })) + '</div>';
+    // Wynik dzięki poprawce literówki: pokaż, jakiego słowa użyliśmy.
+    if (found.corrected && list.length) h += '<div class="corrected">' + T('showingFor', { q: '<b>' + esc(found.corrected) + '</b>' }) + '</div>';
     else h += resumeCard();
     if (!list.length) {
       return h + '<div class="nomatch"><b>' + T('noMatches') + '</b><br>' + T('noMatchesHint') +

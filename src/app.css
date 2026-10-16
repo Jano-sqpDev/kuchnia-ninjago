@@ -70,6 +70,9 @@ button { font-family: inherit; }
   background: var(--well); color: var(--ink2); font-size: 18px; font-weight: 700; vertical-align: middle; }
 .chip.on { background: var(--live); border-color: var(--live); color: #111; }
 .count { padding: 10px 20px 0; color: var(--ink2); font-size: 18px; font-weight: 600; }
+/* „Pokazuję wyniki dla: …" — wynik dzięki poprawce literówki */
+.corrected { padding: 6px 20px 0; color: var(--ink2); font-size: 18px; }
+.corrected b { color: var(--live); }
 .nomatch { text-align: center; color: var(--muted); padding: 70px 40px; font-size: 22px; }
 .nomatch b { color: var(--ink); }
 .nomatch .btn { margin: 22px 0 0; font-size: 20px; font-weight: 700; padding: 0 26px; }
