@@ -1,7 +1,7 @@
 ---
 # plik: recipes/kids-cieple-muffinki-bananowe.md
 schema_version: 1
-title: "Kids · Ciepłe muffinki bananowe"
+title: "Ciepłe muffinki bananowe"
 description: "Śniadaniowe muffinki bananowe dla dzieci, miękkie i lekko wilgotne. Z podanej ilości wychodzą cztery małe muffinki, czyli dwie porcje. Ustawienia Ninja pochodzą z przepisu źródłowego i wymagają sprawdzenia w DZ400UK."
 servings: 2
 prep_minutes: 3
@@ -38,7 +38,7 @@ ingredients:
 ninja:
   mode: single
   zone1:
-    label: "Kids · Muffinki bananowe"
+    label: "Muffinki bananowe"
     function: "Air Fry"
     temp_c: 180
     minutes: 10
@@ -53,7 +53,7 @@ steps:
 
 translations:
   en:
-    title: "Kids · Warm banana muffins"
+    title: "Warm banana muffins"
     description: "Soft, slightly moist banana breakfast muffins for children. This batch makes four small muffins, or two servings. Ninja settings are from the source recipe and still need checking in the DZ400UK."
     ingredients:
       - name: "Ripe banana"
@@ -74,5 +74,5 @@ translations:
       - text: "Check near the end of the programme, after about nine minutes: the muffins should be risen and lightly golden, with a set centre and no raw batter. If ready sooner, stop early; if they need longer, cook briefly and check the middle again."
       - text: "Carefully remove the moulds, let them cool slightly and serve warm. Optionally serve with skyr or fresh fruit."
     labels:
-      zone1: "Kids · Banana muffins"
+      zone1: "Banana muffins"
 ---
