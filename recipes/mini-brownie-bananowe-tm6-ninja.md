@@ -1,7 +1,7 @@
 ---
 # plik: recipes/mini-brownie-bananowe-tm6-ninja.md
 schema_version: 1
-title: "Mini brownie bananowe — TM6 + Ninja"
+title: "Mini brownie bananowe"
 description: "Wilgotne ciasto czekoladowo-bananowe bez odżywki białkowej, z kawałkami czekolady, na cztery małe porcje. Do przygotowania w TM6 i upieczenia w metalowej foremce MasterClass 18 × 9 × 5,5 cm. Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu."
 servings: 4
 prep_minutes: 8
@@ -64,7 +64,7 @@ steps:
 
 translations:
   en:
-    title: "Mini banana brownies — TM6 + Ninja"
+    title: "Mini banana brownies"
     description: "Moist chocolate-banana cake without protein powder, with chocolate pieces, making four small portions. Mix in the TM6 and bake in an 18 × 9 × 5.5 cm MasterClass metal loaf tin. Suggested settings: confirm on the first cook."
     ingredients:
       - name: "Ripe banana"
