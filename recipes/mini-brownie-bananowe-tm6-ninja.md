@@ -6,7 +6,7 @@ description: "Wilgotne ciasto czekoladowo-bananowe bez odżywki białkowej, z ka
 servings: 4
 prep_minutes: 8
 cook_minutes: 25
-tags: [tm6, ninja, deser, brownie, banan, czekolada]
+tags: [tm6, ninja, low, kids, deser, brownie, banan, czekolada]
 source: "ChatGPT — nowy przepis dla dzieci, do pierwszego testu w Ninja DZ400UK"
 
 ingredients:
