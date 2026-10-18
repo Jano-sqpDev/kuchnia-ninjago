@@ -6,7 +6,7 @@ description: "Klasyczne słodkie babeczki waniliowe z malinami, borówkami lub t
 servings: 8
 prep_minutes: 13
 cook_minutes: 17
-tags: [ninja, kids, muffinki, deser, śniadanie, owoce, wanilia]
+tags: [ninja, norm, kids, muffinki, deser, śniadanie, owoce, wanilia]
 source: "Kupiony e-book kulinarny — Babeczki waniliowe z owocami; przepis dostarczony przez użytkownika"
 
 ingredients:
