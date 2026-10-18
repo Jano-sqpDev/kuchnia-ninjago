@@ -6,7 +6,7 @@ description: "Śniadaniowe muffinki bananowe dla dzieci, miękkie i lekko wilgot
 servings: 2
 prep_minutes: 3
 cook_minutes: 10
-tags: [ninja, kids, muffinki, śniadanie, banan]
+tags: [ninja, low, kids, muffinki, śniadanie, banan]
 source: "Kupiony e-book kulinarny — Ciepłe muffinki bananowe; przepis dostarczony przez użytkownika"
 
 ingredients:
