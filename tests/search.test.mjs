@@ -181,10 +181,10 @@ test('wydajność: 1000 przepisów — słownik raz, wyszukiwanie z literówką 
 });
 
 test('znaczniki: plakietki w search.json; „kids" i „norm" trafiają przez tagi', () => {
-  const badges = { kids: { label: 'KIDS', color: 'yellow' }, norm: { label: 'NORM', color: 'green' } };
+  const badges = { kids: { label: 'KIDS', color: 'yellow', rank: 0 }, norm: { label: 'NORM', color: 'green', rank: 1 } };
   const e = searchEntry({ slug: 'muffinki', data: { title: 'Muffinki bananowe', tags: ['ninja', 'kids', 'norm', 'deser'], ingredients: [{ name: 'banan' }] } },
     null, { kids: 'kids', norm: 'norm', deser: 'dessert' }, badges);
-  assert.deepEqual(e.badges, [{ tag: 'kids', label: 'KIDS', color: 'yellow' }, { tag: 'norm', label: 'NORM', color: 'green' }]);
+  assert.deepEqual(e.badges, [{ tag: 'kids', label: 'KIDS', color: 'yellow', rank: 0 }, { tag: 'norm', label: 'NORM', color: 'green', rank: 1 }]);
   const dict = buildDictionary([e]);
   for (const q of ['kids', 'KIDS', 'norm', 'muffinki kids']) assert.deepEqual(searchIndex([e], q, dict).results.map((x) => x.id), ['muffinki'], q);
   assert.deepEqual(entry({ title: 'A', tags: [], ingredients: [] }).badges, []);

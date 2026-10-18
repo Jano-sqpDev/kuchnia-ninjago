@@ -1,0 +1,10 @@
+# Fixture testów znaczników z grupami (Etap 9): LOW / NORM wykluczają się (grupa diet), KIDS bez grupy.
+groups:
+  diet: { required: false }
+low: { en: low, badge: LOW, color: red, group: diet }
+norm: { en: norm, badge: NORM, color: green, group: diet }
+kids: { en: kids, badge: KIDS, color: yellow }
+# błędna definicja (kolor spoza listy) — tag zostaje zwykłym tagiem, przepis dostaje ostrzeżenie
+vege: { en: veggie, badge: VEGE, color: purple }
+obiad: dinner
+deser: dessert

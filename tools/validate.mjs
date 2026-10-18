@@ -391,16 +391,24 @@ export function tagWarnings(tags, tagMap, { file } = {}) {
 // recipes/tags.yml: mapa tag_PL: tag_EN. Zwraca { map, warnings } — zły plik nie psuje buildu (pusta mapa + ostrzeżenie).
 // Znaczniki (od v0.8): tag z polami badge + color w tags.yml dostaje kolorową plakietkę i chip filtra.
 // Kolory z zamkniętej listy (tokeny w src/app.css), etykieta krótka, wielkimi literami, ta sama w PL i EN.
-export const BADGE_COLORS = ['yellow', 'green', 'orange', 'pink'];
+export const BADGE_COLORS = ['yellow', 'green', 'orange', 'pink', 'red'];
 const BADGE_RE = /^[A-Z0-9]{1,6}$/;
-const TAG_ENTRY_KEYS = ['en', 'badge', 'color'];
+const TAG_ENTRY_KEYS = ['en', 'badge', 'color', 'group'];
+// Grupy znaczników (od v0.9): sekcja „groups" w tags.yml (zarezerwowany klucz, nie tag). Znaczniki z jednej grupy
+// wykluczają się w przepisie; required: true — brak znacznika z grupy to błąd, false — ostrzeżenie.
+export const GROUPS_KEY = 'groups';
+const GROUP_KEYS = ['required'];
 
-// recipes/tags.yml: tag_PL: tag_EN (tekst) albo tag_PL: { en: tag_EN, badge: ETYKIETA, color: kolor } (znacznik).
-// Zwraca { map (tłumaczenia), badges (tag → { label, color }), warnings } — zły plik albo wpis nie psuje buildu:
-// złe wpisy są pomijane z ostrzeżeniem (tag zostaje zwykłym tagiem).
+// recipes/tags.yml: tag_PL: tag_EN (tekst) albo tag_PL: { en: tag_EN, badge: ETYKIETA, color: kolor, group: grupa } (znacznik),
+// plus sekcja groups: { nazwa: { required: true|false } }.
+// Zwraca { map (tłumaczenia), badges (tag → { label, color, group?, rank }), groups (nazwa → { required, tags }),
+// rejected (tagi z błędną definicją znacznika), warnings } — zły plik albo wpis nie psuje buildu:
+// złe wpisy są pomijane z ostrzeżeniem (tag zostaje zwykłym tagiem). rank = kolejność w pliku.
 export function parseTagMap(text) {
   const map = {};
   const badges = {};
+  const groups = {};
+  const rejected = [];
   const warnings = [];
   const w = (fieldPath, reason) => warnings.push('tags.yml → ' + fieldPath + ': ' + reason);
   const doc = parseDocument(text.replace(/^﻿/, ''), { uniqueKeys: true, prettyErrors: false });
@@ -409,25 +417,45 @@ export function parseTagMap(text) {
     const pl = YAML_ERRORS_PL[e.code];
     const original = e.message.split('\n')[0];
     w('(YAML)', 'niepoprawny YAML: ' + (pl ? pl + ' [' + original + ']' : original) + ' — tagi w trybie EN bez tłumaczenia i bez plakietek');
-    return { map, badges, warnings };
+    return { map, badges, groups, rejected, warnings };
   }
   const data = doc.toJS();
-  if (data === null || data === undefined) return { map, badges, warnings };
-  if (!isObj(data)) { w('(plik)', 'musi być mapą: tag_PL: tag_EN'); return { map, badges, warnings }; }
+  if (data === null || data === undefined) return { map, badges, groups, rejected, warnings };
+  if (!isObj(data)) { w('(plik)', 'musi być mapą: tag_PL: tag_EN'); return { map, badges, groups, rejected, warnings }; }
+  // Grupy znaczników najpierw (znaczniki mogą stać w pliku przed sekcją groups).
+  if (GROUPS_KEY in data) {
+    const g = data[GROUPS_KEY];
+    if (!isObj(g)) w(GROUPS_KEY, 'musi być mapą: nazwa_grupy: { required: true | false }');
+    else {
+      Object.keys(g).forEach((name) => {
+        const def = g[name];
+        if (!/^[a-z0-9-]+$/.test(name)) { w(GROUPS_KEY + '.' + name, 'nazwa grupy: małe litery a–z, cyfry i myślniki'); return; }
+        if (!isObj(def)) { w(GROUPS_KEY + '.' + name, 'musi być obiektem, np. { required: false }'); return; }
+        Object.keys(def).forEach((k) => { if (!GROUP_KEYS.includes(k)) w(GROUPS_KEY + '.' + name + '.' + k, 'nieznane pole — dozwolone: required'); });
+        if ('required' in def && typeof def.required !== 'boolean') { w(GROUPS_KEY + '.' + name + '.required', 'musi być true albo false, jest ' + describeValue(def.required)); return; }
+        groups[name] = { required: def.required === true, tags: [] };
+      });
+    }
+  }
+  let rank = 0;
   const checkEn = (tag, en, fieldPath) => {
     if (!isText(en)) { w(fieldPath, 'tłumaczenie musi być niepustym tekstem, jest ' + describeValue(en)); return; }
     if (en !== en.trim().toLowerCase()) { w(fieldPath, 'tłumaczenie zapisuj małymi literami: "' + en + '"'); return; }
     map[tag] = en;
   };
   Object.keys(data).forEach((tag) => {
+    if (tag === GROUPS_KEY) return;
     const v = data[tag];
     if (tag !== tag.trim().toLowerCase()) { w(tag, 'tag zapisuj małymi literami'); return; }
     if (!isObj(v)) { checkEn(tag, v, tag); return; }
     // Znacznik: { en, badge, color }
     Object.keys(v).forEach((k) => { if (!TAG_ENTRY_KEYS.includes(k)) w(tag + '.' + k, 'nieznane pole — dozwolone: ' + TAG_ENTRY_KEYS.join(', ')); });
     if ('en' in v) checkEn(tag, v.en, tag + '.en');
-    if (!('badge' in v) && !('color' in v)) return;
-    if (DEVICE_TAGS.includes(tag)) { w(tag, 'tag urządzenia nie może mieć plakietki (ma już NINJA / TM6)'); return; }
+    if (!('badge' in v) && !('color' in v)) {
+      if ('group' in v) { w(tag + '.group', 'grupa tylko przy znaczniku — dopisz badge i color'); rejected.push(tag); }
+      return;
+    }
+    if (DEVICE_TAGS.includes(tag)) { w(tag, 'tag urządzenia nie może mieć plakietki (ma już NINJA / TM6)'); rejected.push(tag); return; }
     let ok = true;
     if (!('badge' in v)) { w(tag + '.badge', 'brak etykiety plakietki (jest color) — dopisz np. badge: ' + tag.toUpperCase().slice(0, 6)); ok = false; }
     else if (typeof v.badge !== 'string' || !BADGE_RE.test(v.badge)) {
@@ -435,15 +463,50 @@ export function parseTagMap(text) {
     }
     if (!('color' in v)) { w(tag + '.color', 'brak koloru plakietki — dozwolone: ' + BADGE_COLORS.join(', ')); ok = false; }
     else if (!BADGE_COLORS.includes(v.color)) { w(tag + '.color', 'nieznany kolor ' + describeValue(v.color) + ' — dozwolone: ' + BADGE_COLORS.join(', ')); ok = false; }
-    if (ok) badges[tag] = { label: v.badge, color: v.color };
+    if ('group' in v && !Object.prototype.hasOwnProperty.call(groups, v.group)) {
+      w(tag + '.group', 'nieznana grupa ' + describeValue(v.group) + ' — dopisz ją w sekcji groups' +
+        (Object.keys(groups).length ? ' (są: ' + Object.keys(groups).join(', ') + ')' : '')); ok = false;
+    }
+    if (!ok) { rejected.push(tag); return; }
+    badges[tag] = { label: v.badge, color: v.color, rank: rank++ };
+    if ('group' in v) { badges[tag].group = v.group; groups[v.group].tags.push(tag); }
   });
-  return { map, badges, warnings };
+  return { map, badges, groups, rejected, warnings };
 }
 
-// Plakietki przepisu w kolejności tagów: [{ tag, label, color }] (tylko tagi będące znacznikami w tags.yml).
+// Plakietki przepisu: [{ tag, label, color, group?, rank }] — najpierw znaczniki z grup, potem bez grupy,
+// w każdej części w kolejności z tags.yml (tylko tagi będące znacznikami).
 export function recipeBadges(tags, badgeMap) {
-  return tags.filter((t) => Object.prototype.hasOwnProperty.call(badgeMap || {}, t))
-    .map((t) => ({ tag: t, label: badgeMap[t].label, color: badgeMap[t].color }));
+  const out = tags.filter((t) => Object.prototype.hasOwnProperty.call(badgeMap || {}, t)).map((t) => {
+    const b = badgeMap[t], o = { tag: t, label: b.label, color: b.color };
+    if (b.group) o.group = b.group;
+    o.rank = typeof b.rank === 'number' ? b.rank : 0;
+    return o;
+  });
+  return out.sort((a, b) => ((a.group ? 0 : 1) - (b.group ? 0 : 1)) || (a.rank - b.rank));
+}
+
+// Znaczniki w przepisie względem grup z tags.yml: dwa z jednej grupy = błąd; brak znacznika z grupy = ostrzeżenie
+// (required: false) albo błąd (required: true); tag z błędną definicją znacznika = ostrzeżenie.
+// Zwraca { errors, warnings } w formacie „plik → tags: przyczyna".
+export function badgeGroupCheck(tags, tagInfo, { file } = {}) {
+  const errors = [], warnings = [];
+  const info = tagInfo || {}, badges = info.badges || {}, groups = info.groups || {};
+  Object.keys(groups).forEach((name) => {
+    const g = groups[name];
+    if (!g.tags.length) return;
+    const used = tags.filter((t) => g.tags.includes(t));
+    const labels = g.tags.map((t) => badges[t].label).join('/');
+    if (used.length > 1) {
+      errors.push(file + ' → tags: znaczniki ' + used.map((t) => badges[t].label).join(' i ') + ' wykluczają się (grupa ' + name + ') — zostaw jeden');
+    } else if (!used.length) {
+      (g.required ? errors : warnings).push(file + ' → tags: brak znacznika ' + labels + ' (grupa ' + name + ' w recipes/tags.yml) — dopisz jeden z tagów: ' + g.tags.join(', '));
+    }
+  });
+  (info.rejected || []).forEach((t) => {
+    if (tags.includes(t)) warnings.push(file + ' → tags: tag „' + t + '” ma błędną definicję znacznika w recipes/tags.yml — plakietki nie ma');
+  });
+  return { errors, warnings };
 }
 
 // Tagi w trybie EN: tłumaczenie z tags.yml, brakujące i tagi urządzeń bez zmian.
@@ -568,11 +631,13 @@ export function loadRecipes(recipesDir) {
 
   let tagMap = {};
   let badgeMap = {};
+  let tagInfo = { badges: {}, groups: {}, rejected: [] };
   const tagsPath = join(recipesDir, TAGS_FILE);
   if (existsSync(tagsPath)) {
     const t = parseTagMap(readFileSync(tagsPath, 'utf8'));
     tagMap = t.map;
     badgeMap = t.badges;
+    tagInfo = { badges: t.badges, groups: t.groups, rejected: t.rejected };
     notice(t.warnings);
   }
 
@@ -601,6 +666,10 @@ export function loadRecipes(recipesDir) {
     if (result.error) { report([file + ' → (YAML): ' + result.error], true); return; }
     const errs = validateRecipe(result.data, { file: file, recipesDir });
     if (errs.length) { report(errs, true); return; }
+    // Znaczniki względem grup z tags.yml (od v0.9): wykluczające się = błąd (przepis pominięty), brak = ostrzeżenie / błąd.
+    const groupCheck = badgeGroupCheck(result.data.tags, tagInfo, { file });
+    if (groupCheck.errors.length) { report(groupCheck.errors, true); return; }
+    notice(groupCheck.warnings);
 
     // Bez pola image — zdjęcie po nazwie pliku. Zły plik nie ukrywa przepisu: publikujemy go bez zdjęcia.
     let image = result.data.image || null;

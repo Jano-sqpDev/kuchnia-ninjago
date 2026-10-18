@@ -17,7 +17,14 @@ Aplikacja ma interfejs po polsku i po angielsku (przełącznik „PL | EN”). D
 - **Każdy NOWY przepis musi mieć kompletny blok `translations.en`** (tytuł, opis, wszystkie składniki i kroki w tej samej kolejności, grupy, opisy szuflad Ninja — `docs/FORMAT-PRZEPISU.md`, punkt 10). Przy poprawianiu przepisu zaktualizuj też tłumaczenie (dodany krok = dodany krok w `translations.en.steps`).
 - **Jednostki tylko z listy:** `g`, `kg`, `ml`, `l`, `pcs`, `tbsp`, `tsp`, `pinch` (angielskie skróty, w obu językach). Każda inna jednostka to błąd walidacji.
 - **Nowy tag** (taki, którego nie ma w `recipes/tags.yml`) — dopisz go do `recipes/tags.yml` z tłumaczeniem, w tym samym commicie co przepis.
-- **Znaczniki:** tag `kids` = przepis dla dzieci, `norm` = dla osób bez redukcji (przepis bez nich jest domyślnie redukcyjny) — dodawaj je do `tags`, gdy pasują. Nowy znacznik tylko na wyraźną prośbę użytkownika: wpis w `recipes/tags.yml` z `badge` (1–6 znaków, A–Z / cyfry) i `color` (wyłącznie `yellow`, `green`, `orange`, `pink`) — `docs/FORMAT-PRZEPISU.md`, punkt 6.
+- **Znaczniki (plakietki LOW / NORM / KIDS) — każdy przepis musi mieć dokładnie jeden z `low` albo `norm`, a `kids` dodatkowo, gdy pasuje:**
+  - **LOW** (tag `low`) — przepis dla Janusza na redukcję: zbilansowany albo naturalnie pasujący do jego bilansu kalorii i białka, **bez dodawania odżywki**. Oceniasz **standardową porcję z pola `servings`**, nie cały wypiek ani garnek. Samo wystąpienie cukru, czekolady czy odżywki nie decyduje.
+  - **NORM** (tag `norm`) — zwykły przepis, niekoniecznie redukcyjny.
+  - **KIDS** (tag `kids`) — przepis także dla dzieci, bez dodatków wprowadzanych dla suplementacji Janusza. Dodatkowy — łączy się z LOW albo NORM.
+  - Karolina nie ma znacznika — korzysta ze wszystkich przepisów.
+  - **Każdy przepis ma dokładnie jeden znacznik diety: `low` ALBO `norm`.** Dozwolone: LOW, NORM, LOW+KIDS, NORM+KIDS. `low` i `norm` naraz to błąd (przepis znika ze strony); brak obu to ostrzeżenie (przepis jest, ale na liście braków).
+  - W tytule nie pisz „Kids”, „Low”, „Norm”, „TM6”, „Ninja” — od tego są plakietki.
+  - Nowy znacznik tylko na wyraźną prośbę użytkownika: wpis w `recipes/tags.yml` z `badge` (1–6 znaków, A–Z / cyfry), `color` (wyłącznie `yellow`, `green`, `orange`, `pink`, `red`) i ewentualnie `group` — `docs/FORMAT-PRZEPISU.md`, punkt 6.
 - Brak lub niekompletne tłumaczenie nie blokuje publikacji (to tylko ostrzeżenie — przepis wyświetla się wtedy po polsku), ale **`npm run validate` nie może wypisać żadnego ostrzeżenia dotyczącego Twojego przepisu.**
 
 ## Czego nie wolno

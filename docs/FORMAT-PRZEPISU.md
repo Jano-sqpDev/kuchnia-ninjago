@@ -114,12 +114,21 @@ Każdy składnik to element listy:
 obiad: dinner
 kurczak: chicken
 wołowina: beef
+groups:
+  diet: { required: false }
+low: { en: low, badge: LOW, color: red, group: diet }
+norm: { en: norm, badge: NORM, color: green, group: diet }
 kids: { en: kids, badge: KIDS, color: yellow }
-norm: { en: norm, badge: NORM, color: green }
 ```
 
-- **Znaczniki (kolorowe plakietki):** tag **`kids`** = przepis dla dzieci, tag **`norm`** = dla osób bez redukcji; **przepis bez nich jest domyślnie redukcyjny.** Dopisz je do `tags` przepisu, gdy pasują (mogą być oba). Aplikacja pokazuje je jako kolorowe plakietki (KIDS, NORM) i daje filtr na liście.
-- Lista znaczników i ich kolorów jest w `recipes/tags.yml` (pola `badge` i `color`, jak wyżej). **Nowy znacznik dodaje się tylko tam:** `badge` — 1–6 znaków, wielkie litery A–Z i cyfry (ta sama etykieta w PL i EN), `color` — wyłącznie `yellow`, `green`, `orange` albo `pink`. W samym przepisie znacznik to zwykły tag.
+- **Znaczniki (kolorowe plakietki) — znaczenie:**
+  - **LOW** (tag `low`) — przepis dla Janusza na redukcję: zbilansowany albo naturalnie pasujący do jego bilansu kalorii i białka, **bez dodawania odżywki**. Oceniasz **standardową porcję z pola `servings`**, nie cały wypiek ani garnek. Samo wystąpienie cukru, czekolady czy odżywki nie decyduje.
+  - **NORM** (tag `norm`) — zwykły przepis, niekoniecznie redukcyjny.
+  - **KIDS** (tag `kids`) — przepis także dla dzieci, bez dodatków wprowadzanych dla suplementacji Janusza. Dodatkowy — łączy się z LOW albo NORM.
+  - Karolina nie ma znacznika — korzysta ze wszystkich przepisów.
+  - **Każdy przepis ma dokładnie jeden znacznik diety: `low` ALBO `norm`.** Dozwolone: LOW, NORM, LOW+KIDS, NORM+KIDS. `low` i `norm` naraz to błąd (przepis znika ze strony); brak obu to ostrzeżenie (przepis jest, ale na liście braków).
+- **W tytule nie pisz** „Kids”, „Low”, „Norm”, „TM6”, „Ninja” — od tego są plakietki (np. „Babeczki waniliowe z owocami”, nie „Kids · Babeczki…”).
+- Lista znaczników i ich kolorów jest w `recipes/tags.yml` (pola `badge`, `color` i opcjonalnie `group`, jak wyżej). **Nowy znacznik dodaje się tylko tam:** `badge` — 1–6 znaków, wielkie litery A–Z i cyfry (ta sama etykieta w PL i EN), `color` — wyłącznie `yellow`, `green`, `orange`, `pink` albo `red`. Znaczniki z tą samą `group` wykluczają się w przepisie; grupy opisuje sekcja `groups` (`required: true` — brak znacznika z grupy to błąd, `false` — ostrzeżenie). W samym przepisie znacznik to zwykły tag.
 
 ## 7. Ninja Foodi MAX Dual Zone DZ400UK — `ninja`
 

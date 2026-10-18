@@ -1,8 +1,12 @@
 # Tłumaczenia tagów na angielski: tag_PL: tag_EN (małe litery).
 # Tagi urządzeń (ninja, tm6) nie wymagają tłumaczenia.
-# Znaczniki (kolorowa plakietka + chip filtra na liście): tag: { en: tag_EN, badge: ETYKIETA, color: kolor }
-#   badge — 1–6 znaków, wielkie litery A–Z i cyfry (ta sama w PL i EN); color — tylko: yellow, green, orange, pink.
-#   kids = przepis dla dzieci, norm = dla osób bez redukcji; przepis bez tych tagów jest domyślnie redukcyjny.
+# Znaczniki (kolorowa plakietka + chip filtra na liście): tag: { en: tag_EN, badge: ETYKIETA, color: kolor, group: grupa }
+#   badge — 1–6 znaków, wielkie litery A–Z i cyfry (ta sama w PL i EN); color — tylko: yellow, green, orange, pink, red.
+#   group (opcjonalnie) — znaczniki z jednej grupy wykluczają się w przepisie; grupy definiuje sekcja groups niżej.
+#   low = redukcja (Janusz), norm = zwykły przepis; każdy przepis ma dokładnie jeden z nich. kids = także dla dzieci (dodatkowo).
+#   required: false — brak low/norm to ostrzeżenie; zmiana na true zrobi z tego błąd.
+groups:
+  diet: { required: false }
 obiad: dinner
 burgery: burgers
 wołowina: beef
@@ -17,8 +21,9 @@ sernik: cheesecake
 brownie: brownie
 banan: banana
 czekolada: chocolate
+low: { en: low, badge: LOW, color: red, group: diet }
+norm: { en: norm, badge: NORM, color: green, group: diet }
 kids: { en: kids, badge: KIDS, color: yellow }
-norm: { en: norm, badge: NORM, color: green }
 muffinki: muffins
 owoce: fruit
 wanilia: vanilla

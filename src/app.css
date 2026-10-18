@@ -5,7 +5,7 @@
      2) bieżący krok — niebieska ramka,
      3) cała reszta — spokojne, ciemne pola bez poświat.
    Kolor = znaczenie: niebieski (interfejs i Ninja), fiolet (TM6), łososiowy (temperatura w środku).
-   Wyjątki kolorystyczne: plakietki problemów na liście (czerwona — błędy, pomarańczowa — brak tłumaczenia EN).
+   Wyjątki kolorystyczne: plakietki problemów na liście (ciemnoczerwona — błędy, pomarańczowa — braki) i płaskie plakietki znaczników.
    Tylko ciemny motyw. */
 
 :root {
@@ -15,12 +15,13 @@
   --ninja: #7CC4FF; --ninja-unit: #A9D6FF; --ninja-glow: rgba(80,170,255,.55);
   --tm6: #B49CFA; --tm6-glow: rgba(150,120,250,.5);
   --hot: #FF7A66; --done: #6FA8E8;
-  --error: #D92D20; --warn: #FF8A3D;
+  --error: #8E1B14; --warn: #FF8A3D; /* błąd: ciemna cegła — wyraźnie inna niż jaskrawa plakietka LOW (--b-red) */
   /* znaczniki przepisów (recipes/tags.yml: badge + color) — zamknięta lista, płaskie plakietki bez poświaty */
   --b-yellow: #F2C94C; --b-yellow-ink: #1A1400;
   --b-green: #6FCF97; --b-green-ink: #06210F;
   --b-orange: #F2994A; --b-orange-ink: #1F0E00;
   --b-pink: #F2A6C8; --b-pink-ink: #2A0A18;
+  --b-red: #E5484D; --b-red-ink: #FFFFFF;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -198,10 +199,12 @@ button { font-family: inherit; }
 .chip.c-green { border-color: var(--b-green); } .chip.c-green .dot { background: var(--b-green); }
 .chip.c-orange { border-color: var(--b-orange); } .chip.c-orange .dot { background: var(--b-orange); }
 .chip.c-pink { border-color: var(--b-pink); } .chip.c-pink .dot { background: var(--b-pink); }
+.chip.c-red { border-color: var(--b-red); } .chip.c-red .dot { background: var(--b-red); }
 .chip.on.c-yellow { background: var(--b-yellow); color: var(--b-yellow-ink); }
 .chip.on.c-green { background: var(--b-green); color: var(--b-green-ink); }
 .chip.on.c-orange { background: var(--b-orange); color: var(--b-orange-ink); }
 .chip.on.c-pink { background: var(--b-pink); color: var(--b-pink-ink); }
+.chip.on.c-red { background: var(--b-red); color: var(--b-red-ink); }
 .chip.on .dot { background: currentColor; }
 .count { padding: 0 2px 6px; color: var(--ink2); font-size: 18px; font-weight: 600; }
 .corrected { padding: 0 2px 10px; color: var(--ink2); font-size: 18px; }
@@ -229,6 +232,7 @@ button { font-family: inherit; }
 .dev.b-green { background: var(--b-green); color: var(--b-green-ink); }
 .dev.b-orange { background: var(--b-orange); color: var(--b-orange-ink); }
 .dev.b-pink { background: var(--b-pink); color: var(--b-pink-ink); }
+.dev.b-red { background: var(--b-red); color: var(--b-red-ink); }
 /* tryb EN, przepis bez tłumaczenia — wyświetlany po polsku */
 .dev.pl { background: transparent; color: var(--ink2); border: 1px solid var(--muted); padding: 1px 7px; }
 .about .nh .dev, .bar .dev { margin-top: 0; }

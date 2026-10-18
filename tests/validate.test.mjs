@@ -630,8 +630,8 @@ test('tłumaczenie: ścieżka po polsku na liście ostrzeżeń', () => {
 // --- I: tagi i recipes/tags.yml ---
 
 test('tags.yml: mapa tag PL → EN; złe wpisy pominięte z ostrzeżeniem', () => {
-  assert.deepEqual(parseTagMap('# komentarz\nobiad: dinner\nwołowina: beef\n'), { map: { obiad: 'dinner', 'wołowina': 'beef' }, badges: {}, warnings: [] });
-  assert.deepEqual(parseTagMap(''), { map: {}, badges: {}, warnings: [] });
+  assert.deepEqual(parseTagMap('# komentarz\nobiad: dinner\nwołowina: beef\n'), { map: { obiad: 'dinner', 'wołowina': 'beef' }, badges: {}, groups: {}, rejected: [], warnings: [] });
+  assert.deepEqual(parseTagMap(''), { map: {}, badges: {}, groups: {}, rejected: [], warnings: [] });
   const bad = parseTagMap('Obiad: dinner\nzupa: Soup\nryby:\nkurczak: chicken\n');
   assert.deepEqual(bad.map, { kurczak: 'chicken' });
   assert.equal(bad.warnings.length, 3);
@@ -674,18 +674,19 @@ test('znaczniki: badge + color w tags.yml (obok zwykłych wpisów — zgodnie ws
   const t = parseTagMap('obiad: dinner\nkids: { en: kids, badge: KIDS, color: yellow }\nnorm:\n  en: norm\n  badge: NORM\n  color: green\n');
   assert.deepEqual(t.warnings, []);
   assert.deepEqual(t.map, { obiad: 'dinner', kids: 'kids', norm: 'norm' });
-  assert.deepEqual(t.badges, { kids: { label: 'KIDS', color: 'yellow' }, norm: { label: 'NORM', color: 'green' } });
-  assert.deepEqual(BADGE_COLORS, ['yellow', 'green', 'orange', 'pink']);
+  assert.deepEqual(t.badges, { kids: { label: 'KIDS', color: 'yellow', rank: 0 }, norm: { label: 'NORM', color: 'green', rank: 1 } });
+  assert.deepEqual(BADGE_COLORS, ['yellow', 'green', 'orange', 'pink', 'red']);
   // samo tłumaczenie w postaci obiektu — bez plakietki
-  assert.deepEqual(parseTagMap('zupa: { en: soup }\n'), { map: { zupa: 'soup' }, badges: {}, warnings: [] });
+  assert.deepEqual(parseTagMap('zupa: { en: soup }\n'), { map: { zupa: 'soup' }, badges: {}, groups: {}, rejected: [], warnings: [] });
 });
 
 test('znaczniki: zły kolor, za długa / mała etykieta, brak pary, nieznane pole, tag urządzenia — ostrzeżenie, bez plakietki', () => {
   const bad = (yaml) => parseTagMap(yaml);
-  let t = bad('kids: { en: kids, badge: KIDS, color: red }\n');
+  let t = bad('kids: { en: kids, badge: KIDS, color: purple }\n');
   assert.deepEqual(t.badges, {});
   assert.deepEqual(t.map, { kids: 'kids' });                        // tłumaczenie zostaje
-  assert.match(t.warnings[0], /^tags\.yml → kids\.color: nieznany kolor "red" — dozwolone: yellow, green, orange, pink$/);
+  assert.match(t.warnings[0], /^tags\.yml → kids\.color: nieznany kolor "purple" — dozwolone: yellow, green, orange, pink, red$/);
+  assert.deepEqual(t.rejected, ['kids']);
   t = bad('dzieci: { en: kids, badge: DZIECKO, color: yellow }\n');
   assert.match(t.warnings[0], /^tags\.yml → dzieci\.badge: etykieta plakietki: 1–6 znaków/);
   assert.deepEqual(t.badges, {});
@@ -697,9 +698,9 @@ test('znaczniki: zły kolor, za długa / mała etykieta, brak pary, nieznane pol
 });
 
 test('znaczniki: plakietki przepisu w kolejności tagów; tylko tagi będące znacznikami', () => {
-  const badges = { kids: { label: 'KIDS', color: 'yellow' }, norm: { label: 'NORM', color: 'green' } };
-  assert.deepEqual(recipeBadges(['ninja', 'norm', 'deser', 'kids'], badges),
-    [{ tag: 'norm', label: 'NORM', color: 'green' }, { tag: 'kids', label: 'KIDS', color: 'yellow' }]);
+  const badges = { kids: { label: 'KIDS', color: 'yellow', rank: 1 }, norm: { label: 'NORM', color: 'green', rank: 0 } };
+  assert.deepEqual(recipeBadges(['ninja', 'kids', 'deser', 'norm'], badges),
+    [{ tag: 'norm', label: 'NORM', color: 'green', rank: 0 }, { tag: 'kids', label: 'KIDS', color: 'yellow', rank: 1 }]);
   assert.deepEqual(recipeBadges(['deser'], badges), []);
   assert.deepEqual(recipeBadges(['kids'], undefined), []);
 });
@@ -708,7 +709,50 @@ test('znaczniki: loadRecipes zwraca badgeMap, a zły wpis trafia do ostrzeżeń 
   const { badgeMap, warnings, errors } = loadRecipes(tempRecipesDir({
     'tags.yml': 'kids: { en: kids, badge: KIDS, color: yellow }\nnorm: { en: norm, badge: NORM, color: purple }\n',
   }));
-  assert.deepEqual(badgeMap, { kids: { label: 'KIDS', color: 'yellow' } });
+  assert.deepEqual(badgeMap, { kids: { label: 'KIDS', color: 'yellow', rank: 0 } });
   assert.deepEqual(errors, []);
   assert.ok(warnings.some((w) => w.startsWith('tags.yml → norm.color: nieznany kolor')));
+});
+
+// --- K: grupy znaczników (Etap 9): LOW / NORM w grupie diet, KIDS bez grupy — fixture tests/fixtures/badges ---
+const BADGE_FIX = join(root, 'tests', 'fixtures', 'badges');
+const badgeWarnings = (warnings) => warnings.filter((w) => / → tags: /.test(w));
+
+test('grupy znaczników: LOW, NORM, LOW+KIDS, NORM+KIDS przechodzą; KIDS bez grupy = ostrzeżenie; LOW+NORM = błąd', () => {
+  const { recipes, errors, warnings, badgeMap } = loadRecipes(BADGE_FIX);
+  assert.deepEqual(recipes.map((r) => r.slug), ['babeczki-kids', 'lazania-norm', 'nalesniki-norm-kids', 'owsianka-low', 'placuszki-low-kids', 'salatka-vege']);
+  assert.deepEqual(errors, ['ciasto-low-norm.md → tags: znaczniki LOW i NORM wykluczają się (grupa diet) — zostaw jeden']);
+  assert.deepEqual(badgeWarnings(warnings), [
+    'babeczki-kids.md → tags: brak znacznika LOW/NORM (grupa diet w recipes/tags.yml) — dopisz jeden z tagów: low, norm',
+    'salatka-vege.md → tags: tag „vege” ma błędną definicję znacznika w recipes/tags.yml — plakietki nie ma',
+  ]);
+  assert.ok(warnings.includes('tags.yml → vege.color: nieznany kolor "purple" — dozwolone: yellow, green, orange, pink, red'));
+  assert.deepEqual(Object.keys(badgeMap), ['low', 'norm', 'kids']);
+  // kolejność plakietek: najpierw z grup (LOW, NORM), potem bez grupy (KIDS) — niezależnie od kolejności tagów w przepisie
+  assert.deepEqual(recipeBadges(['kids', 'deser', 'low'], badgeMap).map((b) => b.label), ['LOW', 'KIDS']);
+  assert.deepEqual(recipeBadges(['kids', 'norm'], badgeMap).map((b) => [b.label, b.group || null]), [['NORM', 'diet'], ['KIDS', null]]);
+});
+
+test('grupy znaczników: required: true — brak znacznika z grupy staje się błędem (jedna wartość w tags.yml)', () => {
+  const files = {};
+  readdirSync(BADGE_FIX).forEach((f) => { files[f] = readFileSync(join(BADGE_FIX, f), 'utf8'); });
+  files['tags.yml'] = files['tags.yml'].replace('diet: { required: false }', 'diet: { required: true }');
+  const { recipes, errors, warnings } = loadRecipes(tempRecipesDir(files));
+  assert.ok(errors.includes('babeczki-kids.md → tags: brak znacznika LOW/NORM (grupa diet w recipes/tags.yml) — dopisz jeden z tagów: low, norm'));
+  assert.ok(!recipes.some((r) => r.slug === 'babeczki-kids'), 'przepis bez znacznika pominięty');
+  assert.ok(!badgeWarnings(warnings).some((w) => w.includes('brak znacznika')));
+});
+
+test('grupy znaczników: definicja w tags.yml — nieznana grupa, zła wartość required, kolor red', () => {
+  let t = parseTagMap('low: { en: low, badge: LOW, color: red, group: dieta }\n');
+  assert.deepEqual(t.badges, {});
+  assert.match(t.warnings[0], /^tags\.yml → low\.group: nieznana grupa "dieta" — dopisz ją w sekcji groups$/);
+  t = parseTagMap('groups:\n  diet: { required: tak }\nlow: { badge: LOW, color: red, group: diet }\n');
+  assert.match(t.warnings[0], /groups\.diet\.required: musi być true albo false/);
+  assert.match(t.warnings[1], /low\.group: nieznana grupa "diet"/);
+  t = parseTagMap('low: { badge: LOW, color: red, group: diet }\ngroups:\n  diet: {}\n');      // sekcja groups może być za znacznikami
+  assert.deepEqual(t.warnings, []);
+  assert.deepEqual(t.badges.low, { label: 'LOW', color: 'red', rank: 0, group: 'diet' });
+  assert.deepEqual(t.groups, { diet: { required: false, tags: ['low'] } });
+  assert.ok(!('groups' in t.map), 'groups to nie tag');
 });

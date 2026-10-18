@@ -73,10 +73,10 @@ test('słownik: tr / trn — wstawianie wartości, odmiana PL tylko w PL, EN 1 /
   assert.equal(K.servingsWord(22, 'pl'), 'porcje');
   assert.equal(K.problemsLabel(1, 'en'), '1 recipe with an error');
   assert.equal(K.problemsLabel(3, 'en'), '3 recipes with errors');
-  assert.equal(K.warningsLabel(1), '1 przepis bez tłumaczenia EN');
-  assert.equal(K.warningsLabel(2), '2 przepisy bez tłumaczenia EN');
-  assert.equal(K.warningsLabel(5), '5 przepisów bez tłumaczenia EN');
-  assert.equal(K.warningsLabel(2, 'en'), '2 recipes without English translation');
+  assert.equal(K.warningsLabel(1), '1 przepis z brakami');
+  assert.equal(K.warningsLabel(2), '2 przepisy z brakami');
+  assert.equal(K.warningsLabel(5), '5 przepisów z brakami');
+  assert.equal(K.warningsLabel(2, 'en'), '2 recipes with missing info');
   assert.equal(K.tr('en', 'ninjaFor', { n: 1, servings: K.servingsWord(1, 'en') }), 'Ninja settings are for 1 serving.');
   assert.equal(K.tr('pl', 'ninjaFor', { n: 4, servings: 'x' }), 'Ustawienia Ninja są dla 4 porcji.');
   assert.equal(K.tr('en', 'turnRequired', { action: 'Flip', n: 14 }), 'Flip at 14 min');
@@ -709,50 +709,79 @@ test('poziom: dwa urządzenia — Ninja (1 strefa) i TM6 obok siebie, przy 2 str
 });
 
 // ── v0.8: znaczniki (KIDS, NORM…) — plakietki i chipy filtrów ──
-const BADGES = { kids: { label: 'KIDS', color: 'yellow' }, norm: { label: 'NORM', color: 'green' } };
+// Znaczniki jak w tags.yml od v0.9: LOW i NORM w grupie diet (wykluczają się), KIDS bez grupy.
+const BADGES = { low: { label: 'LOW', color: 'red', group: 'diet', rank: 0 }, norm: { label: 'NORM', color: 'green', group: 'diet', rank: 1 },
+  kids: { label: 'KIDS', color: 'yellow', rank: 2 } };
+const bEntry = (slug, tags, extra) => searchEntry({ slug, data: Object.assign({ title: slug, tags, ingredients: [{ name: slug }] }, extra || {}) }, null, {}, BADGES);
 const B_ENTRIES = [
-  searchEntry({ slug: 'muffinki', data: { title: 'Muffinki', tags: ['ninja', 'kids', 'deser'], ingredients: [{ name: 'banan' }],
-    ninja: { mode: 'single', zone1: { function: 'Bake', temp_c: 160, minutes: 18 } } } }, null, {}, BADGES),
-  searchEntry({ slug: 'makaron', data: { title: 'Makaron', tags: ['norm', 'obiad'], ingredients: [{ name: 'makaron' }] } }, null, {}, BADGES),
-  searchEntry({ slug: 'naleśniki', data: { title: 'Naleśniki', tags: ['tm6', 'kids', 'norm'], ingredients: [{ name: 'mąka' }] } }, null, {}, BADGES),
-  searchEntry({ slug: 'salatka', data: { title: 'Sałatka', tags: ['obiad'], ingredients: [{ name: 'sałata' }] } }, null, {}, BADGES),
+  bEntry('muffinki', ['ninja', 'low', 'kids'], { ninja: { mode: 'single', zone1: { function: 'Bake', temp_c: 160, minutes: 18 } } }),
+  bEntry('makaron', ['norm', 'obiad']),
+  bEntry('nalesniki', ['tm6', 'norm', 'kids']),
+  bEntry('salatka', ['low']),
+  bEntry('placki', ['kids']),
 ].map(plain);
+const B_INFO = () => K.badgeIndex(B_ENTRIES);
 const bfind = (q, chips) => ids(K.filterEntries(B_ENTRIES, q, chips || [], K.buildDictionary(B_ENTRIES)).results);
+const btoggle = (chips, chip) => plain(K.toggleChip(chips, chip, B_INFO()));
 
-test('znaczniki: chipy po urządzeniach i funkcjach, tylko występujące; etykieta i kolor z search.json', () => {
-  assert.deepEqual(plain(K.availableChips(B_ENTRIES)), ['ninja', 'tm6', 'Bake', 'badge:kids', 'badge:norm']);
-  assert.deepEqual(plain(K.badgeIndex(B_ENTRIES)), BADGES);
+test('znaczniki: chipy po urządzeniach i funkcjach — najpierw grupa (LOW, NORM), potem bez grupy (KIDS)', () => {
+  assert.deepEqual(plain(K.availableChips(B_ENTRIES)), ['ninja', 'tm6', 'Bake', 'badge:low', 'badge:norm', 'badge:kids']);
+  assert.deepEqual(plain(B_INFO()), { low: { label: 'LOW', color: 'red', group: 'diet', rank: 0 }, kids: { label: 'KIDS', color: 'yellow', group: null, rank: 2 },
+    norm: { label: 'NORM', color: 'green', group: 'diet', rank: 1 } });
+  assert.deepEqual(plain(B_ENTRIES[0].badges).map((b) => b.label), ['LOW', 'KIDS']);           // plakietki: LOW przed KIDS
   assert.deepEqual(plain(K.availableChips(ENTRIES)), ['ninja', 'tm6', 'Air Fry', 'Roast']);   // bez znaczników — bez chipów
-  // kolor spoza listy ignorowany
-  assert.deepEqual(plain(K.badgeIndex([{ badges: [{ tag: 'x', label: 'X', color: 'red' }] }])), {});
+  assert.deepEqual(plain(K.badgeIndex([{ badges: [{ tag: 'x', label: 'X', color: 'purple' }] }])), {}); // kolor spoza listy
 });
 
-test('znaczniki: LUB w grupie, I z urządzeniami / funkcjami i z tekstem; „Wszystkie" czyści', () => {
-  assert.deepEqual(bfind('', ['badge:kids']), ['muffinki', 'naleśniki']);
-  assert.deepEqual(bfind('', ['badge:norm']), ['makaron', 'naleśniki']);
-  assert.deepEqual(bfind('', ['badge:kids', 'badge:norm']), ['muffinki', 'makaron', 'naleśniki']);   // LUB
-  assert.deepEqual(bfind('', ['ninja', 'badge:kids']), ['muffinki']);                                 // I z urządzeniem
-  assert.deepEqual(bfind('', ['tm6', 'badge:norm']), ['naleśniki']);
-  assert.deepEqual(bfind('', ['Bake', 'badge:norm']), []);                                            // I z funkcją
-  assert.deepEqual(bfind('makaron', ['badge:kids']), []);                                             // I z tekstem
-  assert.deepEqual(bfind('kids'), ['muffinki', 'naleśniki']);                                         // słowo przez tagi
-  assert.deepEqual(plain(K.toggleChip(['badge:kids'], 'ninja')), ['ninja', 'badge:kids']);
-  assert.deepEqual(plain(K.toggleChip(['ninja', 'badge:kids'], 'badge:norm')), ['ninja', 'badge:kids', 'badge:norm']);
-  assert.deepEqual(plain(K.toggleChip(['ninja', 'badge:kids', 'badge:norm'], 'badge:kids')), ['ninja', 'badge:norm']);
-  assert.deepEqual(plain(K.toggleChip(['ninja', 'badge:kids'], null)), []);
+test('znaczniki: LOW / NORM jak przełącznik, KIDS osobno (I); I z urządzeniami, funkcjami i tekstem', () => {
+  assert.deepEqual(bfind('', ['badge:low']), ['muffinki', 'salatka']);                  // LOW — także LOW+KIDS
+  assert.deepEqual(bfind('', ['badge:norm']), ['makaron', 'nalesniki']);
+  assert.deepEqual(bfind('', ['badge:kids']), ['muffinki', 'nalesniki', 'placki']);      // KIDS — wszystkie KIDS
+  assert.deepEqual(bfind('', ['badge:low', 'badge:kids']), ['muffinki']);               // LOW + KIDS — oba
+  assert.deepEqual(bfind('', ['badge:norm', 'badge:kids']), ['nalesniki']);             // NORM + KIDS — oba
+  assert.deepEqual(bfind('', ['ninja', 'badge:low']), ['muffinki']);
+  assert.deepEqual(bfind('', ['tm6', 'badge:low']), []);
+  assert.deepEqual(bfind('', ['ninja', 'tm6', 'badge:kids']), ['muffinki', 'nalesniki']); // urządzenia LUB, I z KIDS
+  assert.deepEqual(bfind('', ['Bake', 'badge:norm']), []);
+  assert.deepEqual(bfind('makaron', ['badge:norm']), ['makaron']);
+  assert.deepEqual(bfind('makaron', ['badge:low']), []);
+  assert.deepEqual(bfind('low'), ['muffinki', 'salatka']);                              // słowa przez tagi
+  assert.deepEqual(bfind('kids norm'), ['nalesniki']);
+  // przełącznik w grupie: NORM przy LOW zamienia, ponowne dotknięcie wyłącza; KIDS zostaje
+  assert.deepEqual(btoggle(['badge:low'], 'badge:norm'), ['badge:norm']);
+  assert.deepEqual(btoggle(['badge:norm', 'badge:kids'], 'badge:low'), ['badge:kids', 'badge:low']);
+  assert.deepEqual(btoggle(['badge:low'], 'badge:low'), []);
+  assert.deepEqual(btoggle(['badge:low'], 'badge:kids'), ['badge:low', 'badge:kids']);
+  assert.deepEqual(btoggle(['tm6', 'badge:low'], 'ninja'), ['ninja', 'tm6', 'badge:low']);
+  assert.deepEqual(btoggle(['ninja', 'badge:low', 'badge:kids'], null), []);            // „Wszystkie"
+  // bez informacji o grupach (np. przed wczytaniem listy) — zwykłe włączanie
+  assert.deepEqual(plain(K.toggleChip(['badge:low'], 'badge:norm')), ['badge:low', 'badge:norm']);
   assert.equal(K.isBadgeChip('badge:'), false);
   assert.equal(K.isBadgeChip('badge:a b'), false);
 });
 
-test('znaczniki: pamięć stanu listy zachowuje chipy znaczników (stare zapisy bez nich działają)', () => {
+test('znaczniki: pamięć stanu — chipy znaczników zostają; zapis z v0.8 z low i norm naraz → zostaje pierwszy', () => {
   assert.deepEqual(plain(K.normalizeListState({ query: '', chips: ['badge:norm', 'tm6', 'badge:kids', 'badge:norm', 'badge:', 7], scroll: 0 })).chips,
     ['tm6', 'badge:norm', 'badge:kids']);
   assert.deepEqual(plain(K.normalizeState({ list: { chips: ['badge:kids'] } })).list.chips, ['badge:kids']);
   assert.deepEqual(plain(K.normalizeListState({ chips: ['ninja'] })).chips, ['ninja']);
+  const saved = plain(K.normalizeListState({ chips: ['badge:norm', 'badge:kids', 'badge:low'] })).chips;
+  assert.deepEqual(plain(K.fixGroupChips(saved, B_INFO())), ['badge:norm', 'badge:kids']);
+  assert.deepEqual(plain(K.fixGroupChips(['badge:low', 'badge:norm', 'ninja'], B_INFO())), ['badge:low', 'ninja']);
+  assert.deepEqual(plain(K.fixGroupChips(['badge:low', 'badge:norm'], {})), ['badge:low', 'badge:norm']); // znaczniki nieznane — bez zmian
+  assert.ok(js.includes('fixGroupChips(state.list.chips, badgeIndex(d))'), 'migracja przy wczytaniu listy');
+});
+
+test('znaczniki: plakietka i chip w PL i EN mają tę samą etykietę; brak znacznika opisany na liście braków', () => {
+  for (const l of ['pl', 'en']) assert.deepEqual(plain(K.entryView(B_ENTRIES[0], l)).title, 'muffinki');
+  assert.ok(K.tr('pl', 'warningBadge').startsWith('Brak znacznika'));
+  assert.ok(K.tr('en', 'warningBadge').startsWith('Missing badge'));
+  assert.ok(js.includes("it.path === 'tags'"));
 });
 
 test('znaczniki: płaskie plakietki i chipy w kolorach z listy (bez poświaty), etykieta ta sama w PL i EN', () => {
-  for (const [c, bg, ink] of [['yellow', '#F2C94C', '#1A1400'], ['green', '#6FCF97', '#06210F'], ['orange', '#F2994A', '#1F0E00'], ['pink', '#F2A6C8', '#2A0A18']]) {
+  for (const [c, bg, ink] of [['yellow', '#F2C94C', '#1A1400'], ['green', '#6FCF97', '#06210F'], ['orange', '#F2994A', '#1F0E00'], ['pink', '#F2A6C8', '#2A0A18'],
+    ['red', '#E5484D', '#FFFFFF']]) {
     assert.ok(css.includes('--b-' + c + ': ' + bg) && css.includes('--b-' + c + '-ink: ' + ink), c);
     assert.ok(css.includes('.dev.b-' + c + ' { background: var(--b-' + c + '); color: var(--b-' + c + '-ink); }'), 'plakietka ' + c);
     assert.ok(css.includes('.chip.on.c-' + c + ' { background: var(--b-' + c + '); color: var(--b-' + c + '-ink); }'), 'aktywny chip ' + c);
@@ -760,4 +789,13 @@ test('znaczniki: płaskie plakietki i chipy w kolorach z listy (bez poświaty), 
   assert.ok(js.includes("'<span class=\"dev b-' + b.color + '\">' + esc(b.label) + '</span>'"));
   assert.ok(js.includes('deviceBadges(it.tags) + badgeTags(it.badges)'), 'plakietki na karcie po NINJA / TM6');
   assert.ok(js.includes('badges: r.badges'), 'plakietki obok tytułu przepisu');
+});
+
+test('LOW (czerwony) wyraźnie inny niż plakietka błędu na liście', () => {
+  assert.ok(css.includes('--b-red: #E5484D'));
+  const err = /--error: (#[0-9A-Fa-f]{6})/.exec(css)[1];
+  const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [a, b] = [rgb(err), rgb('#E5484D')];
+  const dist = Math.sqrt(a.reduce((sum, v, i) => sum + (v - b[i]) * (v - b[i]), 0));
+  assert.ok(dist > 100, 'kolor błędu za blisko LOW: ' + err + ' (odległość ' + dist.toFixed(0) + ')');
 });

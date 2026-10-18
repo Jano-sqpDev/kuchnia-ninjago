@@ -33,9 +33,10 @@
       problemsCount: ['{n} przepis z błędem', '{n} przepisy z błędem', '{n} przepisów z błędem'],
       problemsIntro: 'Te pliki w repo mają błędy. Popraw je na GitHubie (albo poproś o to Claude / Codex) — po publikacji plakietka zniknie.',
       problemSkipped: 'Przepisu nie ma na liście, dopóki błąd nie zostanie poprawiony.', problemNoPhoto: 'Przepis jest na liście, ale bez zdjęcia.',
-      warningsCount: ['{n} przepis bez tłumaczenia EN', '{n} przepisy bez tłumaczenia EN', '{n} przepisów bez tłumaczenia EN'],
-      warningsIntro: 'Tym przepisom brakuje tłumaczenia EN — w trybie EN wyświetlają się po polsku (znaczek PL). Poproś ChatGPT o uzupełnienie bloku translations.en (docs/FORMAT-PRZEPISU.md) i tagów w recipes/tags.yml.',
+      warningsCount: ['{n} przepis z brakami', '{n} przepisy z brakami', '{n} przepisów z brakami'],
+      warningsIntro: 'Te przepisy są na liście, ale czegoś im brakuje: tłumaczenia EN (w trybie EN wyświetlają się po polsku), tłumaczenia tagu albo znacznika (np. LOW / NORM). Poproś ChatGPT o uzupełnienie według docs/FORMAT-PRZEPISU.md i recipes/tags.yml.',
       warningFallback: 'W trybie EN przepis wyświetla się po polsku.', warningTagsOnly: 'Tagi bez tłumaczenia — w trybie EN wyświetlane bez zmian.',
+      warningBadge: 'Brak znacznika — przepis jest na liście, ale bez plakietki z tej grupy.',
       plOnly: 'brak tłumaczenia EN',
       prep: 'przygotowanie', cook: 'pieczenie', noBake: 'bez pieczenia', fewer: 'Mniej porcji', more: 'Więcej porcji', original: 'przepis: {n}',
       ingredients: 'Składniki', steps: 'Kroki', notes: 'Notatki',
@@ -73,9 +74,10 @@
       problemsCount: ['{n} recipe with an error', '{n} recipes with errors'],
       problemsIntro: 'These files in the repo have errors. Fix them on GitHub (or ask Claude / Codex to do it) — the badge disappears after publishing.',
       problemSkipped: 'The recipe is not on the list until the error is fixed.', problemNoPhoto: 'The recipe is on the list, but without a photo.',
-      warningsCount: ['{n} recipe without English translation', '{n} recipes without English translation'],
-      warningsIntro: 'These recipes are missing the English translation — in EN mode they are shown in Polish (PL badge). Ask ChatGPT to complete translations.en (docs/FORMAT-PRZEPISU.md) and the tags in recipes/tags.yml.',
+      warningsCount: ['{n} recipe with missing info', '{n} recipes with missing info'],
+      warningsIntro: 'These recipes are on the list, but something is missing: the English translation (in EN mode they are shown in Polish), a tag translation or a badge (e.g. LOW / NORM). Ask ChatGPT to complete them according to docs/FORMAT-PRZEPISU.md and recipes/tags.yml.',
       warningFallback: 'In EN mode the recipe is shown in Polish.', warningTagsOnly: 'Tags without translation — shown unchanged in EN mode.',
+      warningBadge: 'Missing badge — the recipe is on the list, but without a badge from this group.',
       plOnly: 'no English translation',
       prep: 'prep', cook: 'cooking', noBake: 'no cooking', fewer: 'Fewer servings', more: 'More servings', original: 'recipe: {n}',
       ingredients: 'Ingredients', steps: 'Steps', notes: 'Notes',
@@ -381,10 +383,12 @@
 
   // Chipy znaczników (od v0.8): „badge:<tag>" — tag z polami badge/color w recipes/tags.yml (plakietki w search.json → badges).
   var BADGE_CHIP = 'badge:';
-  var BADGE_COLORS = ['yellow', 'green', 'orange', 'pink'];
+  var BADGE_COLORS = ['yellow', 'green', 'orange', 'pink', 'red'];
   function isBadgeChip(c) { return typeof c === 'string' && c.indexOf(BADGE_CHIP) === 0 && c.length > BADGE_CHIP.length && c.length <= 46 && !/\s/.test(c); }
 
-  // Wewnątrz grupy LUB (Ninja + TM6 = jedno albo drugie; KIDS + NORM = jedno albo drugie), między grupami I. Brak zaznaczonych = wszystko.
+  // Urządzenia i funkcje: wewnątrz grupy LUB (Ninja + TM6 = jedno albo drugie), między grupami I.
+  // Znaczniki (od v0.9): każdy zaznaczony musi być w przepisie (I) — z jednej grupy (np. LOW / NORM) zaznaczony jest najwyżej
+  // jeden (toggleChip przełącza), a znacznik bez grupy (KIDS) to osobny warunek. Brak zaznaczonych = wszystko.
   function matchesChips(entry, chips) {
     var devices = chips.filter(function (c) { return DEVICE_CHIPS.indexOf(c) !== -1; });
     var functions = chips.filter(function (c) { return NINJA_FUNCTIONS.indexOf(c) !== -1; });
@@ -392,7 +396,7 @@
     var tags = entry.tags || [], fns = entry.ninja_functions || [];
     return (!devices.length || devices.some(function (d) { return tags.indexOf(d) !== -1; })) &&
       (!functions.length || functions.some(function (f) { return fns.indexOf(f) !== -1; })) &&
-      (!badges.length || badges.some(function (b) { return tags.indexOf(b) !== -1; }));
+      badges.every(function (b) { return tags.indexOf(b) !== -1; });
   }
   // Lista po wyszukiwaniu (tekst I chipy): { results, corrected }. Wyszukiwanie (odmiana, literówki) na całym indeksie,
   // chipy potem — poprawka literówki nie zależy od zaznaczonych filtrów. dict = buildDictionary(index), liczony raz.
@@ -400,24 +404,41 @@
     var r = searchIndex(index, query, dict);
     return { results: r.results.filter(function (e) { return matchesChips(e, chips); }), corrected: r.corrected };
   }
-  // Znaczniki występujące w przepisach: { tag: { label, color } } (z pola badges w search.json; kolor tylko z listy).
+  // Znaczniki występujące w przepisach: { tag: { label, color, group, rank } } (z pola badges w search.json; kolor tylko z listy).
   function badgeIndex(index) {
     var out = {};
     index.forEach(function (e) {
       (e.badges || []).forEach(function (b) {
-        if (b && typeof b.tag === 'string' && typeof b.label === 'string' && BADGE_COLORS.indexOf(b.color) !== -1 && !out[b.tag]) out[b.tag] = { label: b.label, color: b.color };
+        if (!b || typeof b.tag !== 'string' || typeof b.label !== 'string' || BADGE_COLORS.indexOf(b.color) === -1 || out[b.tag]) return;
+        out[b.tag] = { label: b.label, color: b.color, group: typeof b.group === 'string' ? b.group : null, rank: typeof b.rank === 'number' ? b.rank : 0 };
       });
     });
     return out;
   }
+  // Kolejność znaczników: najpierw z grup, potem bez grupy; w każdej części jak w tags.yml (rank).
+  function badgeOrder(info) {
+    return Object.keys(info).sort(function (a, b) {
+      return ((info[a].group ? 0 : 1) - (info[b].group ? 0 : 1)) || (info[a].rank - info[b].rank);
+    });
+  }
   // Chipy do pokazania: Ninja, TM6, potem funkcje Ninja występujące w co najmniej jednym przepisie (stała kolejność),
-  // potem znaczniki występujące w przepisach (po etykiecie).
+  // potem znaczniki występujące w przepisach (LOW, NORM, KIDS — kolejność jak plakietki).
   function availableChips(index) {
-    var badges = badgeIndex(index);
     return DEVICE_CHIPS.concat(NINJA_FUNCTIONS.filter(function (f) {
       return index.some(function (e) { return (e.ninja_functions || []).indexOf(f) !== -1; });
-    }), Object.keys(badges).sort(function (a, b) { return badges[a].label < badges[b].label ? -1 : (badges[a].label > badges[b].label ? 1 : 0); })
-      .map(function (t) { return BADGE_CHIP + t; }));
+    }), badgeOrder(badgeIndex(index)).map(function (t) { return BADGE_CHIP + t; }));
+  }
+  // Z jednej grupy znaczników zostaje najwyżej jeden chip — pierwszy (migracja zapisów z v0.8, np. low i norm naraz).
+  function fixGroupChips(chips, info) {
+    var seen = {};
+    return chips.filter(function (c) {
+      if (!isBadgeChip(c)) return true;
+      var b = info && info[c.slice(BADGE_CHIP.length)], g = b && b.group;
+      if (!g) return true;
+      if (seen[g]) return false;
+      seen[g] = true;
+      return true;
+    });
   }
   // Kolejność zapisu chipów: urządzenia, funkcje (stała kolejność), znaczniki (w kolejności włączania), bez powtórzeń.
   function orderChips(list) {
@@ -426,10 +447,20 @@
     return DEVICE_CHIPS.concat(NINJA_FUNCTIONS).filter(function (c) { return list.indexOf(c) !== -1; }).concat(badges);
   }
   // Włącz / wyłącz chip; null = „Wszystkie" (czyści wszystkie grupy, także znaczniki).
-  function toggleChip(chips, chip) {
+  // info = badgeIndex(index): znacznik z grupy działa jak przełącznik — włączenie NORM przy LOW zamienia je.
+  function toggleChip(chips, chip, info) {
     if (chip === null) return [];
-    var on = chips.indexOf(chip) !== -1 ? chips.filter(function (c) { return c !== chip; }) : chips.concat([chip]);
-    return orderChips(on);
+    var on;
+    if (chips.indexOf(chip) !== -1) on = chips.filter(function (c) { return c !== chip; });
+    else {
+      var b = isBadgeChip(chip) && info ? info[chip.slice(BADGE_CHIP.length)] : null;
+      on = chips.filter(function (c) {
+        if (!b || !b.group || !isBadgeChip(c)) return true;
+        var o = info[c.slice(BADGE_CHIP.length)];
+        return !(o && o.group === b.group);
+      }).concat([chip]);
+    }
+    return fixGroupChips(orderChips(on), info);
   }
   // Stan listy z localStorage (od v0.5): { query, chips, scroll } — zapisy bez niego dostają wartości domyślne.
   function normalizeListState(l) {
@@ -682,7 +713,7 @@
   }
 
   var api = {
-    badgeIndex: badgeIndex, isBadgeChip: isBadgeChip,
+    badgeIndex: badgeIndex, isBadgeChip: isBadgeChip, fixGroupChips: fixGroupChips, badgeOrder: badgeOrder,
     normalize: normalize, matchesQuery: matchesQuery, searchWords: searchWords, wordStems: wordStems, matchLevel: matchLevel,
     isEdit1: isEdit1, buildDictionary: buildDictionary, typoCandidates: typoCandidates, searchIndex: searchIndex, matchesChips: matchesChips, filterEntries: filterEntries,
     availableChips: availableChips, toggleChip: toggleChip, normalizeListState: normalizeListState, NINJA_FUNCTIONS: NINJA_FUNCTIONS,
@@ -872,6 +903,9 @@
       fetchJson('/search.json?b=' + BUILD, function (d) {
         index = d;
         dictionary = buildDictionary(d);
+        // Zapis z v0.8 mógł mieć dwa znaczniki z jednej grupy (np. low i norm) — zostaje pierwszy.
+        var fixed = fixGroupChips(state.list.chips, badgeIndex(d));
+        if (fixed.length !== state.list.chips.length) { state.list.chips = fixed; saveState(); }
         if (V.screen === 'list') drawList(state.list.scroll);
       }, function () {
         if (V.screen === 'list') render(listBar() + '<div class="scroll"><div class="err" data-act="retry-list"><b>' + T('listFailed') + '</b><br><br>' + T('retryHint') + '</div></div>');
@@ -1249,8 +1283,12 @@
     groups.forEach(function (g) {
       var stateText;
       if (warn) {
-        var fallback = g.items.some(function (it) { return it.path.indexOf('translations') === 0; });
-        stateText = fallback ? T('warningFallback') : (g.file === 'tags.yml' ? '' : T('warningTagsOnly'));
+        // Co brakuje: tłumaczenie przepisu (path translations…), znacznik z grupy (path „tags"), tłumaczenie tagu (tags[i]).
+        var parts = [];
+        if (g.items.some(function (it) { return it.path.indexOf('translations') === 0; })) parts.push(T('warningFallback'));
+        if (g.items.some(function (it) { return it.path === 'tags'; })) parts.push(T('warningBadge'));
+        if (g.file !== 'tags.yml' && g.items.some(function (it) { return /^tags\[/.test(it.path); })) parts.push(T('warningTagsOnly'));
+        stateText = parts.join(' ');
       } else stateText = g.skipped ? T('problemSkipped') : T('problemNoPhoto');
       h += '<div class="pfile"><div class="pname">recipes/' + esc(g.file) + '</div>' +
         (stateText ? '<div class="pstate' + (g.skipped ? ' skipped' : '') + '">' + stateText + '</div>' : '');
@@ -1529,7 +1567,7 @@
           else if (a === 'servings-') setServings(V.servings - 1);
           else if (a === 'servings0') setServings(V.r.servings);
           else if (a === 'retry-list') showList();
-          else if (a === 'chip') setSearch(null, toggleChip(state.list.chips, t.getAttribute('data-chip') || null));
+          else if (a === 'chip') setSearch(null, toggleChip(state.list.chips, t.getAttribute('data-chip') || null, badgeIndex(index)));
           else if (a === 'search-clear') setSearch('', null);
           else if (a === 'search-reset') setSearch('', []);
           else if (a === 'retry-recipe') openRecipe(V.slug, null);

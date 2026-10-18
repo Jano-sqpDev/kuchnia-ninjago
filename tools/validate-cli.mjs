@@ -8,7 +8,7 @@ const { recipes, errors, warnings } = loadRecipes(recipesDir);
 
 // Ostrzeżenia (tłumaczenie EN, tagi bez tłumaczenia) nie zmieniają kodu wyjścia — przepis i tak się publikuje.
 if (warnings.length) {
-  console.warn('\nOstrzeżenia (' + warnings.length + ') — przepis się publikuje, ale w trybie EN częściowo po polsku:\n');
+  console.warn('\nOstrzeżenia (' + warnings.length + ') — przepisy się publikują, ale czegoś im brakuje (tłumaczenie EN, tagi, znaczniki):\n');
   warnings.forEach((w) => console.warn('  ⚠ ' + w));
   console.warn('');
 }

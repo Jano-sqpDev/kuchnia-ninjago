@@ -119,7 +119,7 @@ if (problems.length) {
 }
 if (notices.length) {
   const files = new Set(notices.map((p) => p.file));
-  console.warn('Ostrzeżenia (tłumaczenie EN / tagi), pliki: ' + files.size + ' — lista w _site/warnings.json i na stronie:');
+  console.warn('Ostrzeżenia (tłumaczenie EN / tagi / znaczniki), pliki: ' + files.size + ' — lista w _site/warnings.json i na stronie:');
   notices.forEach((p) => console.warn('  ⚠ ' + p.file + ' → ' + p.path + ': ' + p.reason));
   console.warn('');
 }
