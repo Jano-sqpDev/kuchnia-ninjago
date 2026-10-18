@@ -6,7 +6,7 @@ description: "⚠️ KONIECZNIE zrób dołek na środku każdego kotleta! Wołow
 servings: 4
 prep_minutes: 10
 cook_minutes: 11
-tags: [ninja, obiad, burgery, wołowina, wysokobiałkowe]
+tags: [ninja, low, obiad, burgery, wołowina, wysokobiałkowe]
 
 ingredients:
   - name: "Wołowina mielona 5% tłuszczu"
