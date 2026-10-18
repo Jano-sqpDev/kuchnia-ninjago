@@ -6,7 +6,7 @@ description: "Tost z jajkiem i cheddarem: 180°C przez 8 minut sprawdzone dla ja
 servings: 1
 prep_minutes: 4
 cook_minutes: 8
-tags: [ninja, śniadanie, jajka, tosty]
+tags: [ninja, low, śniadanie, jajka, tosty]
 source: "Test użytkownika z 12.10.2026, korekta czasu dodawania sera"
 
 ingredients:
