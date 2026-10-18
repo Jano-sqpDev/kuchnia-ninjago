@@ -1,7 +1,7 @@
 ---
 # plik: recipes/kids-babeczki-waniliowe-z-owocami.md
 schema_version: 1
-title: "Kids · Babeczki waniliowe z owocami"
+title: "Babeczki waniliowe z owocami"
 description: "Klasyczne słodkie babeczki waniliowe z malinami, borówkami lub truskawkami, przeznaczone przede wszystkim dla dzieci. Osiem sztuk pieczonych w dwóch szufladach Ninji. Ustawienia pochodzą z przepisu źródłowego i wymagają pierwszego testu w DZ400UK."
 servings: 8
 prep_minutes: 13
@@ -44,12 +44,12 @@ ingredients:
 ninja:
   mode: match
   zone1:
-    label: "Kids · Babeczki (4 szt.)"
+    label: "Babeczki (4 szt.)"
     function: "Bake"
     temp_c: 160
     minutes: 17
   zone2:
-    label: "Kids · Babeczki (4 szt.)"
+    label: "Babeczki (4 szt.)"
     function: "Bake"
     temp_c: 160
     minutes: 17
@@ -66,7 +66,7 @@ steps:
 
 translations:
   en:
-    title: "Kids · Vanilla fruit cupcakes"
+    title: "Vanilla fruit cupcakes"
     description: "Classic sweet vanilla cupcakes with raspberries, blueberries or strawberries, mainly intended for children. Eight cupcakes baked across two Ninja drawers. Settings come from the source recipe and need an initial test in the DZ400UK."
     ingredients:
       - name: "Eggs"
@@ -91,6 +91,6 @@ translations:
       - text: "Check towards the end of the programme, after about fifteen minutes. A skewer inserted in the centre should come out without raw batter; moisture from the fruit is normal. Stop early if done, or bake briefly longer if the centre remains raw."
       - text: "Remove the cupcakes, let them cool slightly and serve. Store leftovers in a sealed container and ideally eat within two days."
     labels:
-      zone1: "Kids · Cupcakes (4 pcs)"
-      zone2: "Kids · Cupcakes (4 pcs)"
+      zone1: "Cupcakes (4 pcs)"
+      zone2: "Cupcakes (4 pcs)"
 ---
