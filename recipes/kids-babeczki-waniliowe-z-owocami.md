@@ -2,8 +2,8 @@
 # plik: recipes/kids-babeczki-waniliowe-z-owocami.md
 schema_version: 1
 title: "Babeczki waniliowe z owocami"
-description: "Klasyczne słodkie babeczki waniliowe z owocami dla dzieci. Składniki zmniejszone o połowę po przygotowaniu zbyt dużej porcji. Do metalowych foremek o wysokości około 2,5 cm mieści się maksymalnie pięć sztuk w jednej szufladzie. Liczba babeczek zależy od rozmiaru foremek. Czas i temperatura wymagają sprawdzenia po pierwszym teście w DZ400UK."
-servings: 4
+description: "Klasyczne słodkie babeczki waniliowe z owocami dla dzieci. Składniki zmniejszone o połowę po przygotowaniu zbyt dużej porcji. Do metalowych foremek o wysokości około 2,5 cm mieści się maksymalnie pięć sztuk w jednej szufladzie. Z tej ilości ciasta powinno wyjść około dziesięciu małych babeczek. Czas i temperatura wymagają sprawdzenia po pierwszym teście w DZ400UK."
+servings: 10
 prep_minutes: 13
 cook_minutes: 17
 tags: [ninja, norm, kids, muffinki, deser, śniadanie, owoce, wanilia]
@@ -55,7 +55,7 @@ ninja:
     minutes: 17
 
 steps:
-  - text: "Roztop masło i odstaw, aby przestygło. Przygotuj małe metalowe foremki o wysokości około 2,5 cm i delikatnie natłuść je niewielką częścią roztopionego masła. Do jednej szuflady Ninji mieści się maksymalnie pięć takich foremek. Liczba babeczek z tej porcji zależy od ich wielkości i poziomu napełnienia."
+  - text: "Roztop masło i odstaw, aby przestygło. Przygotuj małe metalowe foremki o wysokości około 2,5 cm i delikatnie natłuść je niewielką częścią roztopionego masła. Do jednej szuflady Ninji mieści się maksymalnie pięć takich foremek. Połowa oryginalnego przepisu powinna wystarczyć na około dziesięć takich foremek."
   - text: "Mikserem ręcznym ubij jajka z cukrem na jasną, puszystą masę."
   - text: "Dodaj mleko i przestudzone roztopione masło. Krótko wymieszaj."
   - text: "Dodaj mąkę, proszek do pieczenia i sól. Wymieszaj tylko do połączenia składników, a następnie dodaj wanilię."
@@ -67,7 +67,7 @@ steps:
 translations:
   en:
     title: "Vanilla fruit cupcakes"
-    description: "Classic sweet vanilla fruit cupcakes for children. The ingredient quantities have been halved after the original batch made far too much batter. Small shallow metal moulds about 2.5 cm high fit up to five per Ninja drawer. The yield depends on the mould size. The source baking settings still need checking after the first DZ400UK test."
+    description: "Classic sweet vanilla fruit cupcakes for children. The ingredient quantities have been halved after the original batch made far too much batter. Small shallow metal moulds about 2.5 cm high fit up to five per Ninja drawer. The half-size recipe should make about ten small cupcakes. The source baking settings still need checking after the first DZ400UK test."
     ingredients:
       - name: "Eggs"
       - name: "Butter"
@@ -82,7 +82,7 @@ translations:
       - name: "Fruit"
         note: "raspberries, blueberries, bilberries or chopped strawberries; frozen fruit can be used without thawing"
     steps:
-      - text: "Melt the butter and leave it to cool. Prepare small metal muffin moulds about 2.5 cm high and lightly grease them with a little of the melted butter. Up to five of these moulds fit in one Ninja drawer. The yield depends on their size and how full they are."
+      - text: "Melt the butter and leave it to cool. Prepare small metal muffin moulds about 2.5 cm high and lightly grease them with a little of the melted butter. Up to five of these moulds fit in one Ninja drawer. The halved original recipe should fill about ten of these moulds."
       - text: "Using a hand mixer, beat the eggs and sugar until pale and fluffy."
       - text: "Add the milk and cooled melted butter. Mix briefly."
       - text: "Add the flour, baking powder and salt. Mix just until combined, then add the vanilla."
