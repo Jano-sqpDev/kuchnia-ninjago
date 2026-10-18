@@ -6,7 +6,7 @@ description: "Mały sernik bez spodu, przygotowany w Thermomixie TM6 i upieczony
 servings: 4
 prep_minutes: 10
 cook_minutes: 28
-tags: [tm6, ninja, deser, sernik, wysokobiałkowe]
+tags: [tm6, ninja, low, deser, sernik, wysokobiałkowe]
 source: "ChatGPT — nowy przepis do testu TM6 + Ninja DZ400UK, 16.10.2026"
 
 ingredients:
