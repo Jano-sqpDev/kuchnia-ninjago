@@ -6,7 +6,7 @@ description: "Dziewięć małych falafeli z ciecierzycy z puszki, trzy porcje po
 servings: 3
 prep_minutes: 35
 cook_minutes: 17
-tags: [tm6, ninja, low, kids, obiad]
+tags: [tm6, ninja, norm, kids, obiad]
 source: "ChatGPT — adaptacja falafeli dla Heleny; temperatura i czas na podstawie instrukcji Ninja MAX Dual Zone AF400UK, przygotowanie w TM6 do testu"
 
 ingredients:
