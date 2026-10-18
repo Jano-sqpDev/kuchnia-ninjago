@@ -6,7 +6,7 @@ description: "Jedna porcja makaronu z pieczoną mieszanką świeżego brokuła i
 servings: 1
 prep_minutes: 10
 cook_minutes: 14
-tags: [ninja, obiad, makaron, warzywa]
+tags: [ninja, low, obiad, makaron, warzywa]
 source: "ChatGPT — propozycja na podstawie składników użytkownika"
 
 ingredients:
