@@ -6,7 +6,7 @@ description: "Jajko w koszulce w ceramicznej kokilce z odrobiną wody. Najpierw 
 servings: 1
 prep_minutes: 5
 cook_minutes: 8
-tags: [ninja, śniadanie, jajka]
+tags: [ninja, low, śniadanie, jajka]
 source: "Julia — Easy Air Fryer Poached Eggs; adaptacja na jedną ceramiczną kokilkę i Ninja DZ400UK"
 
 ingredients:
