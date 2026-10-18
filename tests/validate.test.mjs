@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, readdirSync } from
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateRecipe, validateTranslations, parseTagMap, tagWarnings, translateTags, parseRecipeFile, loadRecipes, describePath, suggestSlug, splitError, imageKind, findImageBySlug, NINJA_FUNCTIONS, NINJA_MODES, TURN_ACTIONS, UNITS } from '../tools/validate.mjs';
+import { validateRecipe, validateTranslations, parseTagMap, tagWarnings, translateTags, recipeBadges, BADGE_COLORS, parseRecipeFile, loadRecipes, describePath, suggestSlug, splitError, imageKind, findImageBySlug, NINJA_FUNCTIONS, NINJA_MODES, TURN_ACTIONS, UNITS } from '../tools/validate.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 // Przykłady wzorcowe — testy nie zakładają, że w recipes/ jest jakiś konkretny przepis (to kolekcja Janusza).
@@ -71,7 +71,7 @@ test('przykłady wzorcowe (tests/fixtures/recipes) przechodzą walidację; tylko
   const { recipes, errors, warnings } = loadRecipes(FIXTURES);
   assert.deepEqual(errors, []);
   assert.deepEqual(recipes.map((r) => [r.slug, r.translated]), [
-    ['deser-twarogowy', true], ['skrzydelka-z-sosem-tm6', true], ['udka-z-ziemniakami', true], ['warzywa-varoma', true], ['ziemniaczki-brokuly-sync', false],
+    ['deser-twarogowy', true], ['placuszki-bananowe', true], ['skrzydelka-z-sosem-tm6', true], ['udka-z-ziemniakami', true], ['warzywa-varoma', true], ['ziemniaczki-brokuly-sync', false],
   ]);
   assert.deepEqual(warnings, ['ziemniaczki-brokuly-sync.md → translations.en: brak tłumaczenia EN — w trybie EN przepis wyświetla się po polsku']);
 });
@@ -630,8 +630,8 @@ test('tłumaczenie: ścieżka po polsku na liście ostrzeżeń', () => {
 // --- I: tagi i recipes/tags.yml ---
 
 test('tags.yml: mapa tag PL → EN; złe wpisy pominięte z ostrzeżeniem', () => {
-  assert.deepEqual(parseTagMap('# komentarz\nobiad: dinner\nwołowina: beef\n'), { map: { obiad: 'dinner', 'wołowina': 'beef' }, warnings: [] });
-  assert.deepEqual(parseTagMap(''), { map: {}, warnings: [] });
+  assert.deepEqual(parseTagMap('# komentarz\nobiad: dinner\nwołowina: beef\n'), { map: { obiad: 'dinner', 'wołowina': 'beef' }, badges: {}, warnings: [] });
+  assert.deepEqual(parseTagMap(''), { map: {}, badges: {}, warnings: [] });
   const bad = parseTagMap('Obiad: dinner\nzupa: Soup\nryby:\nkurczak: chicken\n');
   assert.deepEqual(bad.map, { kurczak: 'chicken' });
   assert.equal(bad.warnings.length, 3);
@@ -666,4 +666,49 @@ test('loadRecipes: ostrzeżenia osobno od błędów; przepis z ostrzeżeniem jes
   assert.deepEqual(notices[0], { file: 'bez-en.md', path: 'translations.en', where: 'tłumaczenie → EN',
     reason: 'brak tłumaczenia EN — w trybie EN przepis wyświetla się po polsku' });
   assert.equal(warnings.length, notices.length);
+});
+
+// --- J: znaczniki (plakietki) w tags.yml ---
+
+test('znaczniki: badge + color w tags.yml (obok zwykłych wpisów — zgodnie wstecz)', () => {
+  const t = parseTagMap('obiad: dinner\nkids: { en: kids, badge: KIDS, color: yellow }\nnorm:\n  en: norm\n  badge: NORM\n  color: green\n');
+  assert.deepEqual(t.warnings, []);
+  assert.deepEqual(t.map, { obiad: 'dinner', kids: 'kids', norm: 'norm' });
+  assert.deepEqual(t.badges, { kids: { label: 'KIDS', color: 'yellow' }, norm: { label: 'NORM', color: 'green' } });
+  assert.deepEqual(BADGE_COLORS, ['yellow', 'green', 'orange', 'pink']);
+  // samo tłumaczenie w postaci obiektu — bez plakietki
+  assert.deepEqual(parseTagMap('zupa: { en: soup }\n'), { map: { zupa: 'soup' }, badges: {}, warnings: [] });
+});
+
+test('znaczniki: zły kolor, za długa / mała etykieta, brak pary, nieznane pole, tag urządzenia — ostrzeżenie, bez plakietki', () => {
+  const bad = (yaml) => parseTagMap(yaml);
+  let t = bad('kids: { en: kids, badge: KIDS, color: red }\n');
+  assert.deepEqual(t.badges, {});
+  assert.deepEqual(t.map, { kids: 'kids' });                        // tłumaczenie zostaje
+  assert.match(t.warnings[0], /^tags\.yml → kids\.color: nieznany kolor "red" — dozwolone: yellow, green, orange, pink$/);
+  t = bad('dzieci: { en: kids, badge: DZIECKO, color: yellow }\n');
+  assert.match(t.warnings[0], /^tags\.yml → dzieci\.badge: etykieta plakietki: 1–6 znaków/);
+  assert.deepEqual(t.badges, {});
+  assert.match(bad('kids: { badge: Kids, color: yellow }\n').warnings[0], /^tags\.yml → kids\.badge: etykieta plakietki/);
+  assert.match(bad('kids: { badge: KIDS }\n').warnings[0], /kids\.color: brak koloru plakietki/);
+  assert.match(bad('kids: { color: pink }\n').warnings[0], /kids\.badge: brak etykiety plakietki/);
+  assert.match(bad('kids: { en: kids, badge: KIDS, color: yellow, icon: x }\n').warnings[0], /kids\.icon: nieznane pole/);
+  assert.match(bad('ninja: { badge: AF, color: green }\n').warnings[0], /tag urządzenia nie może mieć plakietki/);
+});
+
+test('znaczniki: plakietki przepisu w kolejności tagów; tylko tagi będące znacznikami', () => {
+  const badges = { kids: { label: 'KIDS', color: 'yellow' }, norm: { label: 'NORM', color: 'green' } };
+  assert.deepEqual(recipeBadges(['ninja', 'norm', 'deser', 'kids'], badges),
+    [{ tag: 'norm', label: 'NORM', color: 'green' }, { tag: 'kids', label: 'KIDS', color: 'yellow' }]);
+  assert.deepEqual(recipeBadges(['deser'], badges), []);
+  assert.deepEqual(recipeBadges(['kids'], undefined), []);
+});
+
+test('znaczniki: loadRecipes zwraca badgeMap, a zły wpis trafia do ostrzeżeń (build go nie przerywa)', () => {
+  const { badgeMap, warnings, errors } = loadRecipes(tempRecipesDir({
+    'tags.yml': 'kids: { en: kids, badge: KIDS, color: yellow }\nnorm: { en: norm, badge: NORM, color: purple }\n',
+  }));
+  assert.deepEqual(badgeMap, { kids: { label: 'KIDS', color: 'yellow' } });
+  assert.deepEqual(errors, []);
+  assert.ok(warnings.some((w) => w.startsWith('tags.yml → norm.color: nieznany kolor')));
 });

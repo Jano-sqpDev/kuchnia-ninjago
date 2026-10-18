@@ -379,13 +379,20 @@
   var NINJA_FUNCTIONS = ['Air Fry', 'Max Crisp', 'Roast', 'Bake', 'Reheat', 'Dehydrate'];
   var QUERY_MAX = 100;
 
-  // Wewnątrz grupy LUB (Ninja + TM6 = jedno albo drugie), między grupami I. Brak zaznaczonych = wszystko.
+  // Chipy znaczników (od v0.8): „badge:<tag>" — tag z polami badge/color w recipes/tags.yml (plakietki w search.json → badges).
+  var BADGE_CHIP = 'badge:';
+  var BADGE_COLORS = ['yellow', 'green', 'orange', 'pink'];
+  function isBadgeChip(c) { return typeof c === 'string' && c.indexOf(BADGE_CHIP) === 0 && c.length > BADGE_CHIP.length && c.length <= 46 && !/\s/.test(c); }
+
+  // Wewnątrz grupy LUB (Ninja + TM6 = jedno albo drugie; KIDS + NORM = jedno albo drugie), między grupami I. Brak zaznaczonych = wszystko.
   function matchesChips(entry, chips) {
     var devices = chips.filter(function (c) { return DEVICE_CHIPS.indexOf(c) !== -1; });
     var functions = chips.filter(function (c) { return NINJA_FUNCTIONS.indexOf(c) !== -1; });
+    var badges = chips.filter(isBadgeChip).map(function (c) { return c.slice(BADGE_CHIP.length); });
     var tags = entry.tags || [], fns = entry.ninja_functions || [];
     return (!devices.length || devices.some(function (d) { return tags.indexOf(d) !== -1; })) &&
-      (!functions.length || functions.some(function (f) { return fns.indexOf(f) !== -1; }));
+      (!functions.length || functions.some(function (f) { return fns.indexOf(f) !== -1; })) &&
+      (!badges.length || badges.some(function (b) { return tags.indexOf(b) !== -1; }));
   }
   // Lista po wyszukiwaniu (tekst I chipy): { results, corrected }. Wyszukiwanie (odmiana, literówki) na całym indeksie,
   // chipy potem — poprawka literówki nie zależy od zaznaczonych filtrów. dict = buildDictionary(index), liczony raz.
@@ -393,24 +400,43 @@
     var r = searchIndex(index, query, dict);
     return { results: r.results.filter(function (e) { return matchesChips(e, chips); }), corrected: r.corrected };
   }
-  // Chipy do pokazania: Ninja, TM6, potem funkcje Ninja występujące w co najmniej jednym przepisie (stała kolejność).
+  // Znaczniki występujące w przepisach: { tag: { label, color } } (z pola badges w search.json; kolor tylko z listy).
+  function badgeIndex(index) {
+    var out = {};
+    index.forEach(function (e) {
+      (e.badges || []).forEach(function (b) {
+        if (b && typeof b.tag === 'string' && typeof b.label === 'string' && BADGE_COLORS.indexOf(b.color) !== -1 && !out[b.tag]) out[b.tag] = { label: b.label, color: b.color };
+      });
+    });
+    return out;
+  }
+  // Chipy do pokazania: Ninja, TM6, potem funkcje Ninja występujące w co najmniej jednym przepisie (stała kolejność),
+  // potem znaczniki występujące w przepisach (po etykiecie).
   function availableChips(index) {
+    var badges = badgeIndex(index);
     return DEVICE_CHIPS.concat(NINJA_FUNCTIONS.filter(function (f) {
       return index.some(function (e) { return (e.ninja_functions || []).indexOf(f) !== -1; });
-    }));
+    }), Object.keys(badges).sort(function (a, b) { return badges[a].label < badges[b].label ? -1 : (badges[a].label > badges[b].label ? 1 : 0); })
+      .map(function (t) { return BADGE_CHIP + t; }));
   }
-  // Włącz / wyłącz chip; null = „Wszystkie" (czyści). Kolejność jak w availableChips.
+  // Kolejność zapisu chipów: urządzenia, funkcje (stała kolejność), znaczniki (w kolejności włączania), bez powtórzeń.
+  function orderChips(list) {
+    var badges = [];
+    list.forEach(function (c) { if (isBadgeChip(c) && badges.indexOf(c) === -1) badges.push(c); });
+    return DEVICE_CHIPS.concat(NINJA_FUNCTIONS).filter(function (c) { return list.indexOf(c) !== -1; }).concat(badges);
+  }
+  // Włącz / wyłącz chip; null = „Wszystkie" (czyści wszystkie grupy, także znaczniki).
   function toggleChip(chips, chip) {
     if (chip === null) return [];
     var on = chips.indexOf(chip) !== -1 ? chips.filter(function (c) { return c !== chip; }) : chips.concat([chip]);
-    return DEVICE_CHIPS.concat(NINJA_FUNCTIONS).filter(function (c) { return on.indexOf(c) !== -1; });
+    return orderChips(on);
   }
   // Stan listy z localStorage (od v0.5): { query, chips, scroll } — zapisy bez niego dostają wartości domyślne.
   function normalizeListState(l) {
     var out = { query: '', chips: [], scroll: 0 };
     if (!l || typeof l !== 'object') return out;
     if (typeof l.query === 'string') out.query = l.query.slice(0, QUERY_MAX);
-    if (Array.isArray(l.chips)) out.chips = DEVICE_CHIPS.concat(NINJA_FUNCTIONS).filter(function (c) { return l.chips.indexOf(c) !== -1; });
+    if (Array.isArray(l.chips)) out.chips = orderChips(l.chips);
     if (typeof l.scroll === 'number' && isFinite(l.scroll) && l.scroll > 0) out.scroll = Math.floor(l.scroll);
     return out;
   }
@@ -656,6 +682,7 @@
   }
 
   var api = {
+    badgeIndex: badgeIndex, isBadgeChip: isBadgeChip,
     normalize: normalize, matchesQuery: matchesQuery, searchWords: searchWords, wordStems: wordStems, matchLevel: matchLevel,
     isEdit1: isEdit1, buildDictionary: buildDictionary, typoCandidates: typoCandidates, searchIndex: searchIndex, matchesChips: matchesChips, filterEntries: filterEntries,
     availableChips: availableChips, toggleChip: toggleChip, normalizeListState: normalizeListState, NINJA_FUNCTIONS: NINJA_FUNCTIONS,
@@ -792,13 +819,22 @@
   function recipeBar(title, o) {
     o = o || {};
     return '<div class="bar"><button class="btn back" data-act="back">' + T('back') + '</button><div class="ttl"><h1><span class="tt">' + (title ? esc(title) : '') + '</span>' +
-      (o.pl ? ' <span class="dev pl" title="' + T('plOnly') + '">PL</span>' : '') + '</h1>' + (o.sub ? '<div class="sub">' + o.sub + '</div>' : '') + '</div>' +
+      (o.badges ? badgeTags(o.badges) : '') + (o.pl ? ' <span class="dev pl" title="' + T('plOnly') + '">PL</span>' : '') + '</h1>' + (o.sub ? '<div class="sub">' + o.sub + '</div>' : '') + '</div>' +
       (o.photo ? '<button class="btn" data-act="photo">' + icon(ICON_PHOTO) + T('photo') + '</button>' : '') + langButton() + '</div>';
   }
 
   function photo(src, cls) {
     if (!src) return '<div class="ph none ' + cls + '"><div class="em">🍽</div></div>';
     return '<div class="ph ' + cls + '"><img src="' + esc(src) + '" alt=""></div>';
+  }
+
+  // Plakietki znaczników (KIDS, NORM…): płaskie, w kolorze z listy — ten sam kształt co NINJA / TM6.
+  function badgeTags(list) {
+    var h = '';
+    (list || []).forEach(function (b) {
+      if (b && typeof b.label === 'string' && BADGE_COLORS.indexOf(b.color) !== -1) h += '<span class="dev b-' + b.color + '">' + esc(b.label) + '</span>';
+    });
+    return h;
   }
 
   function deviceBadges(tags) {
@@ -885,12 +921,17 @@
 
   // „Wszystkie" podświetlone, gdy żaden chip nie jest zaznaczony. Nazwy funkcji Ninja jak na urządzeniu (po angielsku).
   function chipsHtml() {
-    var on = state.list.chips;
-    var chip = function (code, label, active) {
-      return '<button class="chip' + (active ? ' on' : '') + '" data-act="chip" data-chip="' + esc(code) + '">' + esc(label) + '</button>';
+    var on = state.list.chips, badges = badgeIndex(index);
+    var chip = function (code, label, active, cls) {
+      return '<button class="chip' + (cls ? ' ' + cls : '') + (active ? ' on' : '') + '" data-act="chip" data-chip="' + esc(code) + '">' + label + '</button>';
     };
+    // Znaczniki: nieaktywny z kolorową kropką i cienką ramką w kolorze, aktywny wypełniony kolorem znacznika.
     return chip('', T('chipAll'), !on.length) + availableChips(index).map(function (c) {
-      return chip(c, c === 'ninja' ? 'Ninja' : (c === 'tm6' ? 'TM6' : c), on.indexOf(c) !== -1);
+      if (isBadgeChip(c)) {
+        var b = badges[c.slice(BADGE_CHIP.length)];
+        return chip(c, '<span class="dot"></span>' + esc(b.label), on.indexOf(c) !== -1, 'badge c-' + b.color);
+      }
+      return chip(c, esc(c === 'ninja' ? 'Ninja' : (c === 'tm6' ? 'TM6' : c)), on.indexOf(c) !== -1);
     }).join('');
   }
 
@@ -910,7 +951,7 @@
       var it = list[i], ev = entryView(it, lang), min = it.prep_minutes + it.cook_minutes;
       h += '<div class="lcard" data-open="' + esc(it.id) + '">' + photo(it.thumb, 'thumb') +
         '<div class="txt"><h3>' + esc(ev.title) + '</h3><div class="meta">' + (min ? T('minutes', { n: min }) : T('noCooking')) +
-        ' · ' + it.servings + ' ' + servingsWord(it.servings, lang) + '</div><div class="devs">' + deviceBadges(it.tags) +
+        ' · ' + it.servings + ' ' + servingsWord(it.servings, lang) + '</div><div class="devs">' + deviceBadges(it.tags) + badgeTags(it.badges) +
         (ev.fallback ? '<span class="dev pl">PL</span>' : '') + '</div></div></div>';
     }
     return h + '</div>';
@@ -1002,7 +1043,7 @@
     global.history.replaceState(global.history.state, '', recipeUrl(r.id, step));
 
     var sub = T('prep') + ' ' + T('minutes', { n: r.prep_minutes }) + ' · ' + (r.cook_minutes ? T('cook') + ' ' + T('minutes', { n: r.cook_minutes }) : T('noBake'));
-    var h = recipeBar(L.title, { sub: esc(sub), photo: !!r.image, pl: L.fallback });
+    var h = recipeBar(L.title, { sub: esc(sub), photo: !!r.image, pl: L.fallback, badges: r.badges });
 
     // Przypięte wyświetlacze urządzeń (jedyne miejsce z poświatą); timer obracania wewnątrz panelu Ninja.
     // Oba urządzenia (od v0.7.1, w poziomie): Ninja z jedną strefą i TM6 obok siebie (pin both one),

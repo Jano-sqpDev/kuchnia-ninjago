@@ -1,12 +1,12 @@
 // Kształt wygenerowanych plików JSON (to, co pobiera iPad).
 import { buildSearchText } from './search.mjs';
-import { translateTags } from './validate.mjs';
+import { translateTags, recipeBadges } from './validate.mjs';
 
 // Pełne dane jednego przepisu dla strony przepisu.
 // images = { thumb, large } z tools/images.mjs albo brak, gdy przepis nie ma zdjęcia.
 // translated = tłumaczenie EN kompletne; niekompletne nie trafia na stronę (w trybie EN przepis po polsku).
-// tagMap — tłumaczenia tagów z recipes/tags.yml → pole tags_en.
-export function recipeJson({ slug, data, body, translated }, images, tagMap) {
+// tagMap — tłumaczenia tagów z recipes/tags.yml → pole tags_en; badgeMap — znaczniki → pole badges.
+export function recipeJson({ slug, data, body, translated }, images, tagMap, badgeMap) {
   const result = Object.assign({ id: slug }, data);
   // image w danych strony to zawsze przetworzona duża wersja; bez niej (brak zdjęcia albo błąd) — brak pola.
   delete result.image;
@@ -16,12 +16,13 @@ export function recipeJson({ slug, data, body, translated }, images, tagMap) {
   }
   if (!translated) delete result.translations;
   result.tags_en = translateTags(data.tags, tagMap || {});
+  result.badges = recipeBadges(data.tags, badgeMap);
   if (body) result.notes = body;
   return result;
 }
 
 // Lekki wpis indeksu: lista przepisów i wyszukiwanie (oba języki).
-export function searchEntry({ slug, data, translated }, images, tagMap) {
+export function searchEntry({ slug, data, translated }, images, tagMap, badgeMap) {
   const functions = [];
   if (data.ninja) {
     [data.ninja.zone1, data.ninja.zone2].forEach((z) => {
@@ -34,6 +35,7 @@ export function searchEntry({ slug, data, translated }, images, tagMap) {
     title: data.title,
     tags: data.tags,
     tags_en: translateTags(data.tags, tagMap || {}),
+    badges: recipeBadges(data.tags, badgeMap),
     ingredients: data.ingredients.map((i) => i.name),
     ninja_functions: functions,
     servings: data.servings,

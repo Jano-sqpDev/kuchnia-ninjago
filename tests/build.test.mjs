@@ -84,6 +84,11 @@ test('build przykładów: search.json, data/*.json, strony /p/<slug>/, zdjęcia,
   const syncEntry = index.find((x) => x.id === 'ziemniaczki-brokuly-sync');
   assert.ok(!('title_en' in syncEntry));
   assert.deepEqual(syncEntry.tags_en, ['ninja', 'vegetables', 'side']);
+  // Znaczniki z tags.yml (badge + color): plakietki w search.json i w danych przepisu; przepis bez znaczników — pusta lista.
+  const kidsNorm = [{ tag: 'kids', label: 'KIDS', color: 'yellow' }, { tag: 'norm', label: 'NORM', color: 'green' }];
+  assert.deepEqual(index.find((x) => x.id === 'placuszki-bananowe').badges, kidsNorm);
+  assert.deepEqual(readJson(out, 'data/placuszki-bananowe.json').badges, kidsNorm);
+  assert.deepEqual(syncEntry.badges, []);
 });
 
 test('prawie pusta kolekcja: jeden przepis bez tags.yml i bez tłumaczenia — build przechodzi', () => {

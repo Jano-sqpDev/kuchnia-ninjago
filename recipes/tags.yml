@@ -1,5 +1,8 @@
 # Tłumaczenia tagów na angielski: tag_PL: tag_EN (małe litery).
 # Tagi urządzeń (ninja, tm6) nie wymagają tłumaczenia.
+# Znaczniki (kolorowa plakietka + chip filtra na liście): tag: { en: tag_EN, badge: ETYKIETA, color: kolor }
+#   badge — 1–6 znaków, wielkie litery A–Z i cyfry (ta sama w PL i EN); color — tylko: yellow, green, orange, pink.
+#   kids = przepis dla dzieci, norm = dla osób bez redukcji; przepis bez tych tagów jest domyślnie redukcyjny.
 obiad: dinner
 burgery: burgers
 wołowina: beef
@@ -14,7 +17,8 @@ sernik: cheesecake
 brownie: brownie
 banan: banana
 czekolada: chocolate
-kids: kids
+kids: { en: kids, badge: KIDS, color: yellow }
+norm: { en: norm, badge: NORM, color: green }
 muffinki: muffins
 owoce: fruit
 wanilia: vanilla

@@ -38,7 +38,7 @@ if (missingMarks.length) {
 // Błędny przepis NIE przerywa buildu: jest pomijany, reszta się publikuje, a lista błędów trafia
 // do _site/errors.json (aplikacja pokazuje czerwoną plakietkę). Twardo pilnują: npm run validate i npm test.
 // Braki w tłumaczeniu EN to tylko ostrzeżenia (_site/warnings.json, pomarańczowa plakietka) — przepis wychodzi zawsze.
-const { recipes, problems, notices, tagMap } = loadRecipes(recipesDir);
+const { recipes, problems, notices, tagMap, badgeMap } = loadRecipes(recipesDir);
 
 // Siatka bezpieczeństwa dla Safari 12: esbuild obniża składnię, a przy czymś,
 // czego nie da się obniżyć, przerywa build.
@@ -78,8 +78,8 @@ for (const r of recipes) {
       problems.push({ file: r.slug + '.md', path: 'image', where: describePath('image'), reason, skipped: false });
     }
   }
-  recipeData[r.slug] = JSON.stringify(recipeJson(r, images, tagMap));
-  index.push(searchEntry(r, images, tagMap));
+  recipeData[r.slug] = JSON.stringify(recipeJson(r, images, tagMap, badgeMap));
+  index.push(searchEntry(r, images, tagMap, badgeMap));
 }
 const searchJson = JSON.stringify(index);
 const errorsJson = JSON.stringify(problems);

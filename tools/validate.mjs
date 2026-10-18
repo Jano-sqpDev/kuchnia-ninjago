@@ -389,8 +389,18 @@ export function tagWarnings(tags, tagMap, { file } = {}) {
 }
 
 // recipes/tags.yml: mapa tag_PL: tag_EN. Zwraca { map, warnings } — zły plik nie psuje buildu (pusta mapa + ostrzeżenie).
+// Znaczniki (od v0.8): tag z polami badge + color w tags.yml dostaje kolorową plakietkę i chip filtra.
+// Kolory z zamkniętej listy (tokeny w src/app.css), etykieta krótka, wielkimi literami, ta sama w PL i EN.
+export const BADGE_COLORS = ['yellow', 'green', 'orange', 'pink'];
+const BADGE_RE = /^[A-Z0-9]{1,6}$/;
+const TAG_ENTRY_KEYS = ['en', 'badge', 'color'];
+
+// recipes/tags.yml: tag_PL: tag_EN (tekst) albo tag_PL: { en: tag_EN, badge: ETYKIETA, color: kolor } (znacznik).
+// Zwraca { map (tłumaczenia), badges (tag → { label, color }), warnings } — zły plik albo wpis nie psuje buildu:
+// złe wpisy są pomijane z ostrzeżeniem (tag zostaje zwykłym tagiem).
 export function parseTagMap(text) {
   const map = {};
+  const badges = {};
   const warnings = [];
   const w = (fieldPath, reason) => warnings.push('tags.yml → ' + fieldPath + ': ' + reason);
   const doc = parseDocument(text.replace(/^﻿/, ''), { uniqueKeys: true, prettyErrors: false });
@@ -398,20 +408,42 @@ export function parseTagMap(text) {
     const e = doc.errors[0];
     const pl = YAML_ERRORS_PL[e.code];
     const original = e.message.split('\n')[0];
-    w('(YAML)', 'niepoprawny YAML: ' + (pl ? pl + ' [' + original + ']' : original) + ' — tagi w trybie EN bez tłumaczenia');
-    return { map, warnings };
+    w('(YAML)', 'niepoprawny YAML: ' + (pl ? pl + ' [' + original + ']' : original) + ' — tagi w trybie EN bez tłumaczenia i bez plakietek');
+    return { map, badges, warnings };
   }
   const data = doc.toJS();
-  if (data === null || data === undefined) return { map, warnings };
-  if (!isObj(data)) { w('(plik)', 'musi być mapą: tag_PL: tag_EN'); return { map, warnings }; }
+  if (data === null || data === undefined) return { map, badges, warnings };
+  if (!isObj(data)) { w('(plik)', 'musi być mapą: tag_PL: tag_EN'); return { map, badges, warnings }; }
+  const checkEn = (tag, en, fieldPath) => {
+    if (!isText(en)) { w(fieldPath, 'tłumaczenie musi być niepustym tekstem, jest ' + describeValue(en)); return; }
+    if (en !== en.trim().toLowerCase()) { w(fieldPath, 'tłumaczenie zapisuj małymi literami: "' + en + '"'); return; }
+    map[tag] = en;
+  };
   Object.keys(data).forEach((tag) => {
     const v = data[tag];
-    if (tag !== tag.trim().toLowerCase()) w(tag, 'tag zapisuj małymi literami');
-    else if (!isText(v)) w(tag, 'tłumaczenie musi być niepustym tekstem, jest ' + describeValue(v));
-    else if (v !== v.trim().toLowerCase()) w(tag, 'tłumaczenie zapisuj małymi literami: "' + v + '"');
-    else map[tag] = v;
+    if (tag !== tag.trim().toLowerCase()) { w(tag, 'tag zapisuj małymi literami'); return; }
+    if (!isObj(v)) { checkEn(tag, v, tag); return; }
+    // Znacznik: { en, badge, color }
+    Object.keys(v).forEach((k) => { if (!TAG_ENTRY_KEYS.includes(k)) w(tag + '.' + k, 'nieznane pole — dozwolone: ' + TAG_ENTRY_KEYS.join(', ')); });
+    if ('en' in v) checkEn(tag, v.en, tag + '.en');
+    if (!('badge' in v) && !('color' in v)) return;
+    if (DEVICE_TAGS.includes(tag)) { w(tag, 'tag urządzenia nie może mieć plakietki (ma już NINJA / TM6)'); return; }
+    let ok = true;
+    if (!('badge' in v)) { w(tag + '.badge', 'brak etykiety plakietki (jest color) — dopisz np. badge: ' + tag.toUpperCase().slice(0, 6)); ok = false; }
+    else if (typeof v.badge !== 'string' || !BADGE_RE.test(v.badge)) {
+      w(tag + '.badge', 'etykieta plakietki: 1–6 znaków, wielkie litery A–Z i cyfry (np. KIDS), jest ' + describeValue(v.badge)); ok = false;
+    }
+    if (!('color' in v)) { w(tag + '.color', 'brak koloru plakietki — dozwolone: ' + BADGE_COLORS.join(', ')); ok = false; }
+    else if (!BADGE_COLORS.includes(v.color)) { w(tag + '.color', 'nieznany kolor ' + describeValue(v.color) + ' — dozwolone: ' + BADGE_COLORS.join(', ')); ok = false; }
+    if (ok) badges[tag] = { label: v.badge, color: v.color };
   });
-  return { map, warnings };
+  return { map, badges, warnings };
+}
+
+// Plakietki przepisu w kolejności tagów: [{ tag, label, color }] (tylko tagi będące znacznikami w tags.yml).
+export function recipeBadges(tags, badgeMap) {
+  return tags.filter((t) => Object.prototype.hasOwnProperty.call(badgeMap || {}, t))
+    .map((t) => ({ tag: t, label: badgeMap[t].label, color: badgeMap[t].color }));
 }
 
 // Tagi w trybie EN: tłumaczenie z tags.yml, brakujące i tagi urządzeń bez zmian.
@@ -504,14 +536,15 @@ export function describePath(path) {
 export const TAGS_FILE = 'tags.yml';
 
 // Wczytuje wszystkie przepisy z katalogu (brak katalogu = pusta kolekcja).
-// Zwraca { recipes, errors, problems, warnings, notices, tagMap }:
+// Zwraca { recipes, errors, problems, warnings, notices, tagMap, badgeMap }:
 //   recipes  — poprawne przepisy: { slug, data, body, image, translated } (image: ścieżka względem recipes/ albo null;
 //              translated: tłumaczenie EN kompletne — tylko wtedy trafia na stronę),
 //   errors   — wszystkie komunikaty „plik → ścieżka: przyczyna" (npm run validate, testy),
 //   problems — te same błędy jako { file, path, where, reason, skipped } (dla strony: errors.json),
 //   warnings — ostrzeżenia (tłumaczenie EN, tagi bez tłumaczenia, tags.yml) w tym samym formacie co errors,
 //   notices  — ostrzeżenia jako { file, path, where, reason } (dla strony: warnings.json),
-//   tagMap   — tłumaczenia tagów z tags.yml.
+//   tagMap   — tłumaczenia tagów z tags.yml,
+//   badgeMap — znaczniki z tags.yml: tag → { label, color }.
 // skipped = true: przepisu nie ma na stronie; false: jest, ale np. bez zdjęcia.
 export function loadRecipes(recipesDir) {
   const recipes = [];
@@ -531,13 +564,15 @@ export function loadRecipes(recipesDir) {
     notices.push({ file: e.file, path: e.path, where: describePath(e.path), reason: e.reason });
   });
 
-  if (!existsSync(recipesDir)) return { recipes, errors, problems, warnings, notices, tagMap: {} };
+  if (!existsSync(recipesDir)) return { recipes, errors, problems, warnings, notices, tagMap: {}, badgeMap: {} };
 
   let tagMap = {};
+  let badgeMap = {};
   const tagsPath = join(recipesDir, TAGS_FILE);
   if (existsSync(tagsPath)) {
     const t = parseTagMap(readFileSync(tagsPath, 'utf8'));
     tagMap = t.map;
+    badgeMap = t.badges;
     notice(t.warnings);
   }
 
@@ -581,5 +616,5 @@ export function loadRecipes(recipesDir) {
     recipes.push({ slug, data: result.data, body: result.body, image, translated: translationWarnings.length === 0 });
   });
 
-  return { recipes, errors, problems, warnings, notices, tagMap };
+  return { recipes, errors, problems, warnings, notices, tagMap, badgeMap };
 }

@@ -114,7 +114,12 @@ Każdy składnik to element listy:
 obiad: dinner
 kurczak: chicken
 wołowina: beef
+kids: { en: kids, badge: KIDS, color: yellow }
+norm: { en: norm, badge: NORM, color: green }
 ```
+
+- **Znaczniki (kolorowe plakietki):** tag **`kids`** = przepis dla dzieci, tag **`norm`** = dla osób bez redukcji; **przepis bez nich jest domyślnie redukcyjny.** Dopisz je do `tags` przepisu, gdy pasują (mogą być oba). Aplikacja pokazuje je jako kolorowe plakietki (KIDS, NORM) i daje filtr na liście.
+- Lista znaczników i ich kolorów jest w `recipes/tags.yml` (pola `badge` i `color`, jak wyżej). **Nowy znacznik dodaje się tylko tam:** `badge` — 1–6 znaków, wielkie litery A–Z i cyfry (ta sama etykieta w PL i EN), `color` — wyłącznie `yellow`, `green`, `orange` albo `pink`. W samym przepisie znacznik to zwykły tag.
 
 ## 7. Ninja Foodi MAX Dual Zone DZ400UK — `ninja`
 

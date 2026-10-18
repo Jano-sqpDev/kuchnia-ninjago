@@ -16,6 +16,11 @@
   --tm6: #B49CFA; --tm6-glow: rgba(150,120,250,.5);
   --hot: #FF7A66; --done: #6FA8E8;
   --error: #D92D20; --warn: #FF8A3D;
+  /* znaczniki przepisów (recipes/tags.yml: badge + color) — zamknięta lista, płaskie plakietki bez poświaty */
+  --b-yellow: #F2C94C; --b-yellow-ink: #1A1400;
+  --b-green: #6FCF97; --b-green-ink: #06210F;
+  --b-orange: #F2994A; --b-orange-ink: #1F0E00;
+  --b-pink: #F2A6C8; --b-pink-ink: #2A0A18;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -187,6 +192,17 @@ button { font-family: inherit; }
 .chip { display: inline-block; height: 48px; padding: 0 18px; margin: 0 6px 8px 4px; border-radius: 24px; border: 1px solid var(--edge);
   background: var(--well); color: var(--ink2); font-size: 18px; font-weight: 700; vertical-align: middle; }
 .chip.on { background: var(--accent); border-color: var(--accent); color: #06101C; }
+/* chipy znaczników: nieaktywny — kropka i cienka ramka w kolorze znacznika, aktywny — wypełniony kolorem, ciemny tekst */
+.chip .dot { display: inline-block; width: 10px; height: 10px; border-radius: 5px; margin-right: 8px; vertical-align: 1px; }
+.chip.c-yellow { border-color: var(--b-yellow); } .chip.c-yellow .dot { background: var(--b-yellow); }
+.chip.c-green { border-color: var(--b-green); } .chip.c-green .dot { background: var(--b-green); }
+.chip.c-orange { border-color: var(--b-orange); } .chip.c-orange .dot { background: var(--b-orange); }
+.chip.c-pink { border-color: var(--b-pink); } .chip.c-pink .dot { background: var(--b-pink); }
+.chip.on.c-yellow { background: var(--b-yellow); color: var(--b-yellow-ink); }
+.chip.on.c-green { background: var(--b-green); color: var(--b-green-ink); }
+.chip.on.c-orange { background: var(--b-orange); color: var(--b-orange-ink); }
+.chip.on.c-pink { background: var(--b-pink); color: var(--b-pink-ink); }
+.chip.on .dot { background: currentColor; }
 .count { padding: 0 2px 6px; color: var(--ink2); font-size: 18px; font-weight: 600; }
 .corrected { padding: 0 2px 10px; color: var(--ink2); font-size: 18px; }
 .corrected b { color: var(--accent); }
@@ -208,6 +224,11 @@ button { font-family: inherit; }
 .dev { display: inline-block; margin-top: 8px; margin-right: 6px; padding: 2px 8px; border-radius: 6px; font-size: 13px; font-weight: 800; line-height: 1.35; }
 .dev.ninja { background: #CFE6FF; color: #06101C; }
 .dev.tm6 { background: var(--tm6); color: #120A26; }
+/* plakietki znaczników — ten sam kształt co NINJA / TM6 */
+.dev.b-yellow { background: var(--b-yellow); color: var(--b-yellow-ink); }
+.dev.b-green { background: var(--b-green); color: var(--b-green-ink); }
+.dev.b-orange { background: var(--b-orange); color: var(--b-orange-ink); }
+.dev.b-pink { background: var(--b-pink); color: var(--b-pink-ink); }
 /* tryb EN, przepis bez tłumaczenia — wyświetlany po polsku */
 .dev.pl { background: transparent; color: var(--ink2); border: 1px solid var(--muted); padding: 1px 7px; }
 .about .nh .dev, .bar .dev { margin-top: 0; }

@@ -6,7 +6,7 @@ To repozytorium to kuchenny wyświetlacz przepisów na starym iPadzie. Kod aplik
 
 - Dodawanie i poprawianie przepisów: pliki `recipes/<slug>.md`.
 - Dodawanie zdjęć przepisów: pliki `recipes/img/<slug>.jpg` (albo `.png`, `.heic`).
-- Tłumaczenia tagów na angielski: `recipes/tags.yml` (mapa `tag_PL: tag_EN`).
+- Tłumaczenia tagów na angielski i znaczniki (kolorowe plakietki): `recipes/tags.yml` (mapa `tag_PL: tag_EN`; znacznik: `tag: { en: …, badge: …, color: … }`).
 - Wzorcowe przykłady formatu (tylko do podglądu, nie zmieniaj ich): `tests/fixtures/recipes/`.
 - Format przepisu, wszystkie pola i reguły: **`docs/FORMAT-PRZEPISU.md`** — przeczytaj całość przed pracą i trzymaj się jej dokładnie.
 
@@ -17,6 +17,7 @@ Aplikacja ma interfejs po polsku i po angielsku (przełącznik „PL | EN”). D
 - **Każdy NOWY przepis musi mieć kompletny blok `translations.en`** (tytuł, opis, wszystkie składniki i kroki w tej samej kolejności, grupy, opisy szuflad Ninja — `docs/FORMAT-PRZEPISU.md`, punkt 10). Przy poprawianiu przepisu zaktualizuj też tłumaczenie (dodany krok = dodany krok w `translations.en.steps`).
 - **Jednostki tylko z listy:** `g`, `kg`, `ml`, `l`, `pcs`, `tbsp`, `tsp`, `pinch` (angielskie skróty, w obu językach). Każda inna jednostka to błąd walidacji.
 - **Nowy tag** (taki, którego nie ma w `recipes/tags.yml`) — dopisz go do `recipes/tags.yml` z tłumaczeniem, w tym samym commicie co przepis.
+- **Znaczniki:** tag `kids` = przepis dla dzieci, `norm` = dla osób bez redukcji (przepis bez nich jest domyślnie redukcyjny) — dodawaj je do `tags`, gdy pasują. Nowy znacznik tylko na wyraźną prośbę użytkownika: wpis w `recipes/tags.yml` z `badge` (1–6 znaków, A–Z / cyfry) i `color` (wyłącznie `yellow`, `green`, `orange`, `pink`) — `docs/FORMAT-PRZEPISU.md`, punkt 6.
 - Brak lub niekompletne tłumaczenie nie blokuje publikacji (to tylko ostrzeżenie — przepis wyświetla się wtedy po polsku), ale **`npm run validate` nie może wypisać żadnego ostrzeżenia dotyczącego Twojego przepisu.**
 
 ## Czego nie wolno

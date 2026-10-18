@@ -55,7 +55,7 @@ test('puste zapytanie pasuje do wszystkiego', () => {
 });
 
 test('wpis search.json ma wymagane pola', () => {
-  assert.deepEqual(Object.keys(SALMON).sort(), ['cook_minutes', 'id', 'ingredients', 'ninja_functions', 'prep_minutes', 'servings', 'tags', 'tags_en', 'text', 'title']);
+  assert.deepEqual(Object.keys(SALMON).sort(), ['badges', 'cook_minutes', 'id', 'ingredients', 'ninja_functions', 'prep_minutes', 'servings', 'tags', 'tags_en', 'text', 'title']);
   assert.deepEqual(SALMON.ninja_functions, ['Air Fry']);
   assert.equal(SALMON.text, buildSearchText(SALMON));
 });
@@ -178,4 +178,14 @@ test('wydajność: 1000 przepisów — słownik raz, wyszukiwanie z literówką 
   const searchMs = Number(process.hrtime.bigint() - t) / 1e6 / queries.length;
   assert.ok(searchMs < 50, 'średnio ' + searchMs.toFixed(1) + ' ms na wyszukiwanie');
   assert.ok(dict.length > 100);
+});
+
+test('znaczniki: plakietki w search.json; „kids" i „norm" trafiają przez tagi', () => {
+  const badges = { kids: { label: 'KIDS', color: 'yellow' }, norm: { label: 'NORM', color: 'green' } };
+  const e = searchEntry({ slug: 'muffinki', data: { title: 'Muffinki bananowe', tags: ['ninja', 'kids', 'norm', 'deser'], ingredients: [{ name: 'banan' }] } },
+    null, { kids: 'kids', norm: 'norm', deser: 'dessert' }, badges);
+  assert.deepEqual(e.badges, [{ tag: 'kids', label: 'KIDS', color: 'yellow' }, { tag: 'norm', label: 'NORM', color: 'green' }]);
+  const dict = buildDictionary([e]);
+  for (const q of ['kids', 'KIDS', 'norm', 'muffinki kids']) assert.deepEqual(searchIndex([e], q, dict).results.map((x) => x.id), ['muffinki'], q);
+  assert.deepEqual(entry({ title: 'A', tags: [], ingredients: [] }).badges, []);
 });

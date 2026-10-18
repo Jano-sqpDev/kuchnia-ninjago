@@ -7,3 +7,6 @@ obiad: dinner
 warzywa: vegetables
 na-parze: steamed
 dodatek: side
+# znaczniki (plakietki i chipy filtrów): badge — etykieta, color — yellow / green / orange / pink
+kids: { en: kids, badge: KIDS, color: yellow }
+norm: { en: norm, badge: NORM, color: green }
