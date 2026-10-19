@@ -756,3 +756,13 @@ test('grupy znaczników: definicja w tags.yml — nieznana grupa, zła wartość
   assert.deepEqual(t.groups, { diet: { required: false, tags: ['low'] } });
   assert.ok(!('groups' in t.map), 'groups to nie tag');
 });
+
+test('recipes/tags.yml: grupa diet wymagana (required: true) — przepis bez low/norm to błąd', () => {
+  const t = parseTagMap(readFileSync(join(root, 'recipes', 'tags.yml'), 'utf8'));
+  assert.deepEqual(t.warnings, []);
+  assert.equal(t.groups.diet.required, true);
+  assert.deepEqual(t.groups.diet.tags, ['low', 'norm']);
+  const { errors, recipes } = loadRecipes(tempRecipesDir({ 'tags.yml': readFileSync(join(root, 'recipes', 'tags.yml'), 'utf8'), 'bez-diety.md': DESSERT }));
+  assert.deepEqual(recipes, []);
+  assert.ok(errors.some((e) => e.startsWith('bez-diety.md → tags: brak znacznika LOW/NORM')), JSON.stringify(errors));
+});

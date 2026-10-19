@@ -48,10 +48,11 @@ button { font-family: inherit; }
 .bar h1 { -webkit-flex: 1 1 auto; flex: 1 1 auto; min-width: 0; margin: 0; font-size: 28px; font-weight: 700; line-height: 1.15;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bar .ttl { -webkit-flex: 1 1 auto; flex: 1 1 auto; min-width: 0; }
-/* tytuł obcinany „…”, znaczek PL obok zawsze widoczny */
-.bar .ttl h1 { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
-.bar .ttl h1 .tt { -webkit-flex: 0 1 auto; flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bar .ttl h1 .dev { -webkit-flex: 0 0 auto; flex: 0 0 auto; margin: 0 0 0 10px; }
+/* tytuł obcinany „…”, plakietki (LOW / NORM / KIDS, PL) obok w tej samej linii — poza <h1>, zawsze widoczne */
+.bar .trow { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; min-width: 0; }
+.bar .trow h1 { -webkit-flex: 0 1 auto; flex: 0 1 auto; min-width: 0; }
+.bar .marks { -webkit-flex: 0 0 auto; flex: 0 0 auto; white-space: nowrap; }
+.bar .marks .dev { margin: 0 0 0 10px; vertical-align: middle; }
 .bar .sub { font-size: 16px; color: var(--ink2); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .btn { -webkit-flex: 0 0 auto; flex: 0 0 auto; height: 52px; min-width: 52px; padding: 0 16px; margin-left: 10px; border-radius: 26px;
   border: 1px solid var(--edge); background: var(--well); color: var(--ink); font-size: 19px; font-weight: 600; white-space: nowrap;
@@ -69,6 +70,9 @@ button { font-family: inherit; }
 .pin { -webkit-flex: 0 0 auto; flex: 0 0 auto; padding: 12px 20px; border-bottom: 1px solid var(--edge); background: var(--plate); }
 #tm6-panel { margin-top: 10px; }
 .pin > #tm6-panel:first-child { margin-top: 0; }
+/* panel TM6 tylko na kroku z TM6 (od v0.10): bez TM6 nie ma go wcale, a przepis bez Ninja nie ma wtedy żadnego panelu */
+.pin.notm #tm6-panel { display: none; }
+.pin.tm6only.notm { display: none; }
 
 /* wyświetlacz Ninja: jedyne świecące miejsce (razem z TM6) */
 .npanel { border-radius: 18px; background: #05070A; border: 1px solid rgba(91,155,230,.45);
@@ -310,6 +314,10 @@ button { font-family: inherit; }
 
   /* Ninja z jedną strefą + TM6: panele obok siebie (Ninja ok. 45%), mniejsze pierścienie — rząd nie wyższy niż Ninja z dwiema strefami. */
   .pin.both.one { display: -webkit-flex; display: flex; -webkit-align-items: stretch; align-items: stretch; }
+  /* krok bez TM6: panel Ninja zajmuje cały rząd jak w przepisach tylko z Ninja */
+  .pin.both.one.notm .pn { -webkit-flex: 1 1 auto; flex: 1 1 auto; margin-right: 0; }
+  .pin.both.one.notm .npanel.single .zone { -webkit-flex: 0 0 50%; flex: 0 0 50%; }
+  .pin.both.one.notm #tm6-panel { display: none; }  /* silniejsze niż .pin.both.one #tm6-panel { display: flex } niżej */
   .pin.both.one .pn { -webkit-flex: 0 0 45%; flex: 0 0 45%; min-width: 0; margin-right: 12px; }
   .pin.both.one .npanel.single .zone { -webkit-flex: 1 1 0; flex: 1 1 0; }
   .pin.both.one #tm6-panel { -webkit-flex: 1 1 auto; flex: 1 1 auto; min-width: 0; margin-top: 0;

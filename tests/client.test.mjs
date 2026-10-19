@@ -696,12 +696,14 @@ test('poziom: kolumny przewijają się osobno, cała treść nie; w pionie bez z
   const draw = js.slice(js.indexOf('function drawRecipe'), js.indexOf('function scrollsItself'));
   assert.ok(draw.indexOf("h += '<div class=\"c2\">'") < draw.indexOf('class="about"'), 'opis i notatki w kolumnie kroków');
   // przewijanie do bieżącego kroku: kolumna kroków, jeśli przewija się sama, inaczej całość
-  const toStep = js.slice(js.indexOf('function scrollToStep'), js.indexOf('function recipeScroll'));
-  assert.ok(toStep.includes("querySelector('.c2')") && toStep.includes('scrollsItself(col) ? col : sc'));
+  const box = js.slice(js.indexOf('function stepBox'), js.indexOf('function scrollToStep'));
+  assert.ok(box.includes("querySelector('.c2')") && box.includes("scrollsItself(col) ? col : app.querySelector('.scroll')"));
+  const toStep = js.slice(js.indexOf('function scrollToStep'), js.indexOf('function revealStep'));
+  assert.ok(toStep.includes('stepBox()'));
 });
 
 test('poziom: dwa urządzenia — Ninja (1 strefa) i TM6 obok siebie, przy 2 strefach niski panel TM6', () => {
-  assert.ok(js.includes("(r.ninja && tm6 ? ' both ' + (r.ninja.mode === 'single' ? 'one' : 'two') : '')"));
+  assert.ok(js.includes("if (r.ninja && tm6) c += ' both ' + (r.ninja.mode === 'single' ? 'one' : 'two');"));
   const land = css.slice(css.indexOf('@media (min-width: 901px)'), css.indexOf('@media (max-width: 900px)'));
   assert.match(land, /\.pin\.both\.one \{[^}]*display: flex/);
   assert.match(land, /\.pin\.both\.one \.pn \{[^}]*flex: 0 0 45%/);
@@ -798,4 +800,48 @@ test('LOW (czerwony) wyraźnie inny niż plakietka błędu na liście', () => {
   const [a, b] = [rgb(err), rgb('#E5484D')];
   const dist = Math.sqrt(a.reduce((sum, v, i) => sum + (v - b[i]) * (v - b[i]), 0));
   assert.ok(dist > 100, 'kolor błędu za blisko LOW: ' + err + ' (odległość ' + dist.toFixed(0) + ')');
+});
+
+// ── v0.10: pion jako główny tryb — panel TM6 tylko na krokach z TM6 ──
+const MIXED = { ninja: { mode: 'single', zone1: { function: 'Bake', temp_c: 160, minutes: 20 } },
+  steps: [{ text: 'a' }, { text: 'b', tm6: { duration_seconds: 30, speed: 5 } }, { text: 'c' }] };
+const TM6_ONLY = { steps: [{ text: 'a' }, { text: 'b', tm6: { duration_seconds: 30, speed: 5 } }] };
+const NINJA2_TM6 = { ninja: { mode: 'match', zone1: { function: 'Air Fry', temp_c: 190, minutes: 11 }, zone2: { function: 'Air Fry', temp_c: 190, minutes: 11 } },
+  steps: [{ text: 'a', tm6: { duration_seconds: 5, speed: 5 } }, { text: 'b' }] };
+
+test('TM6 tylko na krokach z TM6: tm6Visible i klasy paska paneli', () => {
+  assert.deepEqual([0, 1, 2, 9].map((i) => K.tm6Visible(MIXED, i)), [false, true, false, false]);
+  assert.equal(K.pinClass(MIXED, 1), 'pin both one');
+  assert.equal(K.pinClass(MIXED, 0), 'pin both one notm');            // Ninja zostaje, TM6 znika
+  assert.equal(K.pinClass(NINJA2_TM6, 0), 'pin both two');
+  assert.equal(K.pinClass(NINJA2_TM6, 1), 'pin both two notm');
+  assert.equal(K.pinClass(TM6_ONLY, 1), 'pin tm6only');
+  assert.equal(K.pinClass(TM6_ONLY, 0), 'pin tm6only notm');           // przepis tylko z TM6: bez panelu
+  assert.equal(K.pinClass({ ninja: MIXED.ninja, steps: [{ text: 'a' }] }, 0), 'pin');  // tylko Ninja — bez zmian
+  // CSS: przy notm panel TM6 znika, przy tm6only cały pasek; w poziomie Ninja (1 strefa) zajmuje wtedy cały rząd
+  assert.ok(css.includes('.pin.notm #tm6-panel { display: none; }'));
+  assert.ok(css.includes('.pin.tm6only.notm { display: none; }'));
+  assert.ok(css.includes('.pin.both.one.notm .pn {'));
+  assert.ok(css.includes('.pin.both.one.notm #tm6-panel { display: none; }'), 'w poziomie pusty kontener TM6 nie może zabierać miejsca Ninja');
+  // Panel Ninja nigdy nie jest ukrywany ani zwijany
+  assert.ok(!/\.pin[^{]*\.npanel[^{]*\{[^}]*display: none/.test(css) && !/\.notm[^{]*\.pn \{[^}]*display: none/.test(css));
+});
+
+test('zmiana kroku: panel TM6 pojawia się / znika, bieżący krok zostaje w miejscu i widoczny', () => {
+  const set = js.slice(js.indexOf('function setStep'), js.indexOf('function setServings'));
+  assert.ok(set.includes('pin.className = pinClass(V.r, n)'));
+  assert.ok(set.includes("tm6Visible(V.r, n) ? tm6Panel(n) : ''"));
+  // korekta przewinięcia o przesunięcie kroku na ekranie, potem odsłonięcie kroku
+  assert.ok(set.indexOf('getBoundingClientRect().top - y0') < set.indexOf('revealStep(box, el)'));
+  const reveal = js.slice(js.indexOf('function revealStep'), js.indexOf('function recipeScroll'));
+  assert.ok(reveal.includes('r.top < b.top + m') && reveal.includes('r.bottom > b.bottom - m'));
+  // przy otwarciu: panel od razu w stanie bieżącego kroku
+  assert.ok(js.includes(`'<div class="' + pinClass(r, step) + '" id="pin">'`));
+});
+
+test('plakietki obok tytułu, ale poza <h1>', () => {
+  const bar = js.slice(js.indexOf('function recipeBar'), js.indexOf('function photo'));
+  assert.ok(bar.includes(`<h1>' + (title ? esc(title) : '') + '</h1>'`), 'w h1 tylko tytuł');
+  assert.ok(bar.indexOf('</h1>') < bar.indexOf('<span class="marks">'), 'plakietki za h1');
+  assert.ok(css.includes('.bar .marks { -webkit-flex: 0 0 auto; flex: 0 0 auto; white-space: nowrap; }'));
 });

@@ -248,9 +248,22 @@
     return decimal(speed, lang);
   }
 
+  // Panel TM6 tylko na kroku z ustawieniami TM6 (od v0.10) — na pozostałych krokach panelu nie ma wcale.
+  function tm6Visible(r, step) { return !!(r && r.steps && r.steps[step] && r.steps[step].tm6); }
+
   function hasTm6(r) {
     for (var i = 0; i < r.steps.length; i++) if (r.steps[i].tm6) return true;
     return false;
+  }
+
+  // Klasy przypiętego paska paneli: both one / both two (Ninja + TM6, układ w poziomie), tm6only (bez Ninja),
+  // notm — bieżący krok bez TM6 (panel TM6 ukryty; przy tm6only cały pasek znika).
+  function pinClass(r, step) {
+    var tm6 = hasTm6(r), c = 'pin';
+    if (r.ninja && tm6) c += ' both ' + (r.ninja.mode === 'single' ? 'one' : 'two');
+    if (!r.ninja && tm6) c += ' tm6only';
+    if (tm6 && !tm6Visible(r, step)) c += ' notm';
+    return c;
   }
 
   function clampServings(n) { return Math.max(SERVINGS_MIN, Math.min(SERVINGS_MAX, n)); }
@@ -713,6 +726,7 @@
   }
 
   var api = {
+    tm6Visible: tm6Visible, pinClass: pinClass,
     badgeIndex: badgeIndex, isBadgeChip: isBadgeChip, fixGroupChips: fixGroupChips, badgeOrder: badgeOrder,
     normalize: normalize, matchesQuery: matchesQuery, searchWords: searchWords, wordStems: wordStems, matchLevel: matchLevel,
     isEdit1: isEdit1, buildDictionary: buildDictionary, typoCandidates: typoCandidates, searchIndex: searchIndex, matchesChips: matchesChips, filterEntries: filterEntries,
@@ -849,8 +863,10 @@
   // o = { sub, photo, pl } — na ekranach ładowania i błędu pusty.
   function recipeBar(title, o) {
     o = o || {};
-    return '<div class="bar"><button class="btn back" data-act="back">' + T('back') + '</button><div class="ttl"><h1><span class="tt">' + (title ? esc(title) : '') + '</span>' +
-      (o.badges ? badgeTags(o.badges) : '') + (o.pl ? ' <span class="dev pl" title="' + T('plOnly') + '">PL</span>' : '') + '</h1>' + (o.sub ? '<div class="sub">' + o.sub + '</div>' : '') + '</div>' +
+    // Plakietki (LOW / NORM / KIDS, znaczek PL) obok tytułu, ale poza <h1> (od v0.10) — tytuł się obcina, plakietki zostają.
+    var marks = (o.badges ? badgeTags(o.badges) : '') + (o.pl ? '<span class="dev pl" title="' + T('plOnly') + '">PL</span>' : '');
+    return '<div class="bar"><button class="btn back" data-act="back">' + T('back') + '</button><div class="ttl"><div class="trow"><h1>' + (title ? esc(title) : '') + '</h1>' +
+      (marks ? '<span class="marks">' + marks + '</span>' : '') + '</div>' + (o.sub ? '<div class="sub">' + o.sub + '</div>' : '') + '</div>' +
       (o.photo ? '<button class="btn" data-act="photo">' + icon(ICON_PHOTO) + T('photo') + '</button>' : '') + langButton() + '</div>';
   }
 
@@ -1084,9 +1100,9 @@
     // Ninja z dwiema strefami nad niskim panelem TM6 (pin both two). W pionie zawsze jeden pod drugim.
     var tm6 = hasTm6(r);
     if (r.ninja || tm6) {
-      h += '<div class="pin' + (r.ninja && tm6 ? ' both ' + (r.ninja.mode === 'single' ? 'one' : 'two') : '') + '">';
+      h += '<div class="' + pinClass(r, step) + '" id="pin">';
       if (r.ninja) h += '<div class="pn">' + ninjaPanel(r.ninja) + '<div id="servings-note">' + servingsNote() + '</div></div>';
-      if (tm6) h += '<div id="tm6-panel">' + tm6Panel(step) + '</div>';
+      if (tm6) h += '<div id="tm6-panel">' + (tm6Visible(r, step) ? tm6Panel(step) : '') + '</div>';
       h += '</div>';
     }
 
@@ -1115,11 +1131,21 @@
   function scrollsItself(el) {
     try { return !!el && global.getComputedStyle(el).overflowY === 'auto'; } catch (e) { return false; }
   }
+  // Element, który przewija kroki: w poziomie kolumna kroków, w pionie cała treść.
+  function stepBox() {
+    var col = app.querySelector('.c2');
+    return scrollsItself(col) ? col : app.querySelector('.scroll');
+  }
   // Bieżący krok na górze: w poziomie przewija się TYLKO kolumna kroków (składniki zostają od góry), w pionie całość.
   function scrollToStep(n) {
-    var el = app.querySelectorAll('.step')[n], col = app.querySelector('.c2'), sc = app.querySelector('.scroll');
-    var box = scrollsItself(col) ? col : sc;
+    var el = app.querySelectorAll('.step')[n], box = stepBox();
     if (box && el) box.scrollTop = Math.max(0, el.offsetTop - 16);
+  }
+  // Krok cały w obszarze przewijania (z marginesem); wyższy niż obszar — jego początek na górze.
+  function revealStep(box, el) {
+    var b = box.getBoundingClientRect(), r = el.getBoundingClientRect(), m = 12;
+    if (r.top < b.top + m) box.scrollTop -= (b.top + m) - r.top;
+    else if (r.bottom > b.bottom - m) box.scrollTop += Math.min(r.bottom - (b.bottom - m), r.top - (b.top + m));
   }
   // Przewinięcie ekranu przepisu (całość + obie kolumny) — zostaje przy przerysowaniu po zmianie języka.
   function recipeScroll() {
@@ -1240,8 +1266,22 @@
       els[i].className = 'step' + (i === n ? ' cur' : (i < n ? ' past' : ''));
       els[i].firstChild.innerHTML = i < n ? '✓' : String(i + 1);
     }
-    var tp = doc.getElementById('tm6-panel');
-    if (tp) tp.innerHTML = tm6Panel(n);
+    // Panel TM6 pojawia się / znika (od v0.10). Zmienia się wysokość przypiętego paska, więc obszar treści przesuwa się
+    // na ekranie — korygujemy przewinięcie tak, żeby dotknięty krok został w tym samym miejscu, a potem upewniamy się,
+    // że jest cały widoczny (nie ucieka pod panel ani poza ekran).
+    var tp = doc.getElementById('tm6-panel'), pin = doc.getElementById('pin'), el = els[n];
+    if (tp && pin) {
+      var y0 = el ? el.getBoundingClientRect().top : 0;
+      pin.className = pinClass(V.r, n);
+      tp.innerHTML = tm6Visible(V.r, n) ? tm6Panel(n) : '';
+      if (el) {
+        var box = stepBox();
+        if (box) {
+          box.scrollTop += el.getBoundingClientRect().top - y0;
+          revealStep(box, el);
+        }
+      }
+    }
     rememberRecipe();
     global.history.replaceState(global.history.state, '', recipeUrl(V.slug, n));
   }

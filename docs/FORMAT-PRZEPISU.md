@@ -115,7 +115,7 @@ obiad: dinner
 kurczak: chicken
 wołowina: beef
 groups:
-  diet: { required: false }
+  diet: { required: true }
 low: { en: low, badge: LOW, color: red, group: diet }
 norm: { en: norm, badge: NORM, color: green, group: diet }
 kids: { en: kids, badge: KIDS, color: yellow }
@@ -126,7 +126,7 @@ kids: { en: kids, badge: KIDS, color: yellow }
   - **NORM** (tag `norm`) — zwykły przepis, niekoniecznie redukcyjny.
   - **KIDS** (tag `kids`) — przepis także dla dzieci, bez dodatków wprowadzanych dla suplementacji Janusza. Dodatkowy — łączy się z LOW albo NORM.
   - Karolina nie ma znacznika — korzysta ze wszystkich przepisów.
-  - **Każdy przepis ma dokładnie jeden znacznik diety: `low` ALBO `norm`.** Dozwolone: LOW, NORM, LOW+KIDS, NORM+KIDS. `low` i `norm` naraz to błąd (przepis znika ze strony); brak obu to ostrzeżenie (przepis jest, ale na liście braków).
+  - **Każdy przepis ma dokładnie jeden znacznik diety: `low` ALBO `norm`.** Dozwolone: LOW, NORM, LOW+KIDS, NORM+KIDS. `low` i `norm` naraz to błąd (przepis znika ze strony); brak obu też jest błędem (przepis znika ze strony).
 - **W tytule nie pisz** „Kids”, „Low”, „Norm”, „TM6”, „Ninja” — od tego są plakietki (np. „Babeczki waniliowe z owocami”, nie „Kids · Babeczki…”).
 - Lista znaczników i ich kolorów jest w `recipes/tags.yml` (pola `badge`, `color` i opcjonalnie `group`, jak wyżej). **Nowy znacznik dodaje się tylko tam:** `badge` — 1–6 znaków, wielkie litery A–Z i cyfry (ta sama etykieta w PL i EN), `color` — wyłącznie `yellow`, `green`, `orange`, `pink` albo `red`. Znaczniki z tą samą `group` wykluczają się w przepisie; grupy opisuje sekcja `groups` (`required: true` — brak znacznika z grupy to błąd, `false` — ostrzeżenie). W samym przepisie znacznik to zwykły tag.
 

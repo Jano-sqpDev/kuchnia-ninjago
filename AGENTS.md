@@ -17,7 +17,7 @@ Aplikacja ma interfejs po polsku i po angielsku (przełącznik „PL | EN”). D
 - **Każdy NOWY przepis musi mieć kompletny blok `translations.en`** (tytuł, opis, wszystkie składniki i kroki w tej samej kolejności, grupy, opisy szuflad Ninja — `docs/FORMAT-PRZEPISU.md`, punkt 10). Przy poprawianiu przepisu zaktualizuj też tłumaczenie (dodany krok = dodany krok w `translations.en.steps`).
 - **Jednostki tylko z listy:** `g`, `kg`, `ml`, `l`, `pcs`, `tbsp`, `tsp`, `pinch` (angielskie skróty, w obu językach). Każda inna jednostka to błąd walidacji.
 - **Nowy tag** (taki, którego nie ma w `recipes/tags.yml`) — dopisz go do `recipes/tags.yml` z tłumaczeniem, w tym samym commicie co przepis.
-- **Znaczniki (plakietki LOW / NORM / KIDS) — każdy przepis musi mieć dokładnie jeden z `low` albo `norm`, a `kids` dodatkowo, gdy pasuje:**
+- **Znaczniki (plakietki LOW / NORM / KIDS) — każdy przepis musi mieć dokładnie jeden z `low` albo `norm`, a `kids` dodatkowo, gdy pasuje** (od v0.10 brak `low` / `norm` to błąd — przepis znika ze strony):
   - **LOW** (tag `low`) — przepis dla Janusza na redukcję: zbilansowany albo naturalnie pasujący do jego bilansu kalorii i białka, **bez dodawania odżywki**. Oceniasz **standardową porcję z pola `servings`**, nie cały wypiek ani garnek. Samo wystąpienie cukru, czekolady czy odżywki nie decyduje.
   - **NORM** (tag `norm`) — zwykły przepis, niekoniecznie redukcyjny.
   - **KIDS** (tag `kids`) — przepis także dla dzieci, bez dodatków wprowadzanych dla suplementacji Janusza. Dodatkowy — łączy się z LOW albo NORM.
@@ -34,6 +34,8 @@ Aplikacja ma interfejs po polsku i po angielsku (przełącznik „PL | EN”). D
 - Nie zmieniaj nazwy (slugu) istniejących przepisów — to ich trwały adres.
 
 ## Jak przepis wygląda w aplikacji (od v0.7)
+
+iPad jest używany głównie w pionie. Panel TM6 pojawia się tylko przy krokach, które mają ustawienia `tm6` (od v0.10) — dlatego ustawienia Thermomixa wpisuj dokładnie przy tym kroku, w którym urządzenie pracuje, a kroki bez TM6 zostaw bez `tm6`. Panel Ninja jest widoczny zawsze.
 
 Pasek: tytuł i czasy (`prep_minutes`, `cook_minutes`). Pod nim przypięte wyświetlacze Ninja i TM6, potem karta składników z licznikiem porcji i kroki; `description` i notatki pod spodem są na samym dole. Tagi nie są widoczne na ekranie przepisu — służą wyszukiwarce i filtrom. Dlatego ważne informacje dla gotującego pisz w krokach, nie w opisie.
 

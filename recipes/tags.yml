@@ -4,9 +4,9 @@
 #   badge — 1–6 znaków, wielkie litery A–Z i cyfry (ta sama w PL i EN); color — tylko: yellow, green, orange, pink, red.
 #   group (opcjonalnie) — znaczniki z jednej grupy wykluczają się w przepisie; grupy definiuje sekcja groups niżej.
 #   low = redukcja (Janusz), norm = zwykły przepis; każdy przepis ma dokładnie jeden z nich. kids = także dla dzieci (dodatkowo).
-#   required: false — brak low/norm to ostrzeżenie; zmiana na true zrobi z tego błąd.
+#   required: true — przepis bez low/norm to błąd (przepis znika ze strony); false zrobi z tego tylko ostrzeżenie.
 groups:
-  diet: { required: false }
+  diet: { required: true }
 obiad: dinner
 burgery: burgers
 wołowina: beef
