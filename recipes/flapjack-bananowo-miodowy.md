@@ -5,7 +5,7 @@ title: "Batoniki owsiano-bananowe z miodem (flapjack)"
 description: "Miękkie w środku, zwarte batoniki z dojrzałych bananów i płatków owsianych, bez orzechów, wygodne do lunchboxa. Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu."
 servings: 8
 prep_minutes: 10
-cook_minutes: 30
+cook_minutes: 35
 tags: [ninja, deser, banan, norm, kids]
 source: "ChatGPT"
 
@@ -35,8 +35,8 @@ ninja:
   zone1:
     label: "Flapjack w foremce MasterClass"
     function: "Bake"
-    temp_c: 155
-    minutes: 30
+    temp_c: 150
+    minutes: 35
 
 steps:
   - text: "Wyłóż foremkę MasterClass 18 × 9 × 5,5 cm papierem do pieczenia, zostawiając brzegi papieru do wygodnego wyjęcia wypieku."
