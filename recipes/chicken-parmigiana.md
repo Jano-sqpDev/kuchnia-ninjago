@@ -27,10 +27,17 @@ ingredients:
     amount: 25
     unit: g
     note: "drobno starty"
-  - name: "Sos pomidorowy"
-    amount: 100
+  - name: "Koncentrat pomidorowy"
+    amount: 35
     unit: g
-    note: "gęsty, najlepiej z bazylią; do wyłożenia na mięso"
+    note: "na szybki sos; można zastąpić 100 g gęstego sosu pomidorowego"
+  - name: "Woda"
+    amount: 65
+    unit: ml
+    note: "do rozcieńczenia koncentratu"
+  - name: "Oregano suszone"
+    amount: 0.5
+    unit: tsp
   - name: "Ser mozzarella"
     amount: 125
     unit: g
@@ -59,9 +66,8 @@ steps:
   - text: "Osusz piersi kurczaka i każdą przekrój poziomo na dwa cienkie filety. Przykryj papierem do pieczenia i delikatnie rozbij do równej grubości około 1–1,5 cm. Dopraw solą i pieprzem."
   - text: "Przygotuj trzy talerze: na pierwszym mąka, na drugim roztrzepane jajko, na trzecim panko wymieszane ze startym parmezanem."
   - text: "Każdy filet obtocz kolejno w mące, jajku oraz panierce panko z parmezanem. Lekko dociśnij panierkę, żeby dobrze przylegała."
-  - text: "Na fabrycznych tackach ułóż po dwa filety w każdej szufladzie, w jednej warstwie i bez nakładania na siebie. Ustaw oba panele według ustawień Ninja, wybierz MATCH i rozpocznij pieczenie. Nie obracaj filetów."
-    timer_seconds: 900
-  - text: "Gdy skończy się minutnik pierwszego etapu, sprawdź zrumienienie panierki. Na każdy filet nałóż trochę sosu pomidorowego i porcję mozzarelli. Wsuń szuflady z powrotem i dopiekaj do końca programu. W razie potrzeby przedłuż pieczenie o kilka minut."
+  - text: "Na fabrycznych tackach ułóż po dwa filety w każdej szufladzie, w jednej warstwie, bez nakładania. Ustaw strefy według panelu Ninja, włącz MATCH i START. Nie obracaj. WAŻNE: w tym przepisie aplikacja nie uruchamia automatycznego alarmu. Po pierwszych 15 minutach, gdy na liczniku Ninji zostanie 10 minut, trzeba samodzielnie przejść do następnego kroku."
+  - text: "W międzyczasie wymieszaj koncentrat pomidorowy z wodą, oregano, solą i pieprzem. Podgrzej w rondelku 2–3 minuty, aż sos będzie gęsty. Możesz zamiast tego użyć gotowego sosu pomidorowego. Po pierwszych 15 minutach pieczenia sprawdź panierkę, nałóż cienko sos i mozzarellę. Dopiekaj do rozpuszczenia sera. Sprawdź kurczaka wcześniej, żeby nie przesuszyć cienkich filetów."
   - text: "Sprawdź termometrem najgrubszy fragment kurczaka. Mięso powinno osiągnąć bezpieczną temperaturę wewnętrzną; jeśli jeszcze jej nie osiągnęło, kontynuuj pieczenie i sprawdź ponownie."
     internal_temp_c: 75
   - text: "Podawaj od razu ze świeżą bazylią. Dobrze pasują zielone warzywa, sałatka lub niewielka porcja makaronu; dodatki nie są wliczone do składników i kalorii przepisu."
@@ -78,8 +84,11 @@ translations:
       - name: "Panko breadcrumbs"
       - name: "Parmesan cheese"
         note: "finely grated"
-      - name: "Tomato sauce"
-        note: "thick, preferably with basil; for topping the chicken"
+      - name: "Tomato purée (concentrated tomato paste)"
+        note: "for a quick sauce; alternatively use 100 g thick ready-made tomato sauce"
+      - name: "Water"
+        note: "to dilute the tomato purée"
+      - name: "Dried oregano"
       - name: "Mozzarella cheese"
         note: "drained and divided into 4 portions"
       - name: "Fresh basil"
@@ -92,8 +101,8 @@ translations:
       - text: "Pat the chicken breasts dry and slice each horizontally into two thin fillets. Cover with baking parchment and gently pound to an even thickness of about 1–1.5 cm. Season with salt and pepper."
       - text: "Prepare three plates: flour on the first, beaten egg on the second, and panko mixed with grated parmesan on the third."
       - text: "Coat each fillet first in flour, then egg, then the panko-parmesan mixture. Press the coating on lightly so it sticks."
-      - text: "Place two fillets on the original crisper plate in each drawer, in a single layer without overlapping. Set both zones according to the Ninja panel, select MATCH and start cooking. No flipping is needed."
-      - text: "When the first-stage timer ends, check that the coating is turning golden. Spoon some tomato sauce onto each fillet and add a portion of mozzarella. Return the drawers and continue cooking until the program ends. Extend the cooking time by a few minutes if necessary."
+      - text: "Place two fillets on the original crisper plate in each drawer, in a single layer without overlapping. Set both zones according to the Ninja panel, select MATCH and press START. No flipping is needed. IMPORTANT: the app does not trigger an automatic reminder for this recipe. After the first 15 minutes, when 10 minutes remain on the Ninja display, manually proceed to the next step."
+      - text: "Meanwhile, stir the tomato purée with water, oregano, salt and pepper. Simmer in a small saucepan for 2–3 minutes until thick. Alternatively use ready-made tomato sauce. After the first 15 minutes of cooking, check the coating, spoon on a thin layer of sauce and top with mozzarella. Continue until the cheese melts. Check the chicken early to avoid drying out thin fillets."
       - text: "Check the thickest part of the chicken with a food thermometer. The meat must reach a safe internal temperature; if it has not, continue cooking and check again."
       - text: "Serve immediately with fresh basil. Green vegetables, salad or a small serving of pasta work well; sides are not included in the recipe ingredients or calorie estimate."
     labels:
