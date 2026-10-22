@@ -29,7 +29,7 @@ ingredients:
     unit: g
   - name: "Mleko"
     amount: 60
-    unit: ml
+    unit: g
   - name: "Jajko"
     amount: 1
     unit: pcs
@@ -47,8 +47,9 @@ ingredients:
     amount: 1
     unit: tsp
   - name: "Ekstrakt waniliowy"
-    amount: 0.5
-    unit: tsp
+    amount: 3
+    unit: g
+    note: "około pół łyżeczki, odmierzane wagą TM6"
   - name: "Sól"
     amount: 1
     unit: pinch
@@ -107,6 +108,7 @@ translations:
       - name: "Raspberries"
       - name: "Baking powder"
       - name: "Vanilla extract"
+        note: "about half a teaspoon, weighed in the TM6"
       - name: "Salt"
     steps:
       - text: "Prepare six tall paper muffin cases. Place each one inside a shallow metal mould to support its base. If the paper is thin and the sides spread, double up the paper cases; the shallow metal mould cannot support the full height. Make sure they stand securely. Chop the chocolate and prepare the berries."
