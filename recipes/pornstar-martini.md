@@ -2,12 +2,12 @@
 # plik: recipes/pornstar-martini.md
 schema_version: 1
 title: "Pornstar Martini"
-description: "Klasyczny koktajl z marakują, waniliową wódką i likierem Passoã, z prosecco podawanym osobno. Domowa adaptacja popularnych receptur barmańskich."
+description: "Pornstar Martini z niegazowanym Rubicon Passion Fruit zamiast purée, bez syropu waniliowego. Wódka waniliowa, Passoã, limonka i prosecco podawane osobno; domowa adaptacja do słodzonego napoju."
 servings: 1
 prep_minutes: 5
 cook_minutes: 0
 tags: [koktajle, norm]
-source: "Adaptacja Difford's Guide (Porn Star Martini) oraz oficjalnego przepisu Passoã"
+source: "Adaptacja receptury Passoã i Difford's Guide do Rubicon Passion Fruit Still (13% soku)"
 
 ingredients:
   - name: "Wódka waniliowa"
@@ -16,15 +16,12 @@ ingredients:
   - name: "Likier marakujowy Passoã"
     amount: 20
     unit: ml
-  - name: "Purée z marakui"
-    amount: 30
+  - name: "Rubicon Passion Fruit Still"
+    amount: 60
     unit: ml
-    note: "najlepiej niesłodzone; gotowe lub z przecedzonego miąższu świeżych owoców"
-  - name: "Syrop waniliowy"
-    amount: 10
-    unit: ml
+    note: "niegazowany napój z marakui w kartonie; nie wersja Sparkling"
   - name: "Sok z limonki"
-    amount: 15
+    amount: 10
     unit: ml
     note: "świeżo wyciśnięty"
   - name: "Prosecco"
@@ -40,7 +37,7 @@ ingredients:
 
 steps:
   - text: "Schłódź kieliszek typu coupe lub martini oraz prosecco. Przygotuj shaker, sitko i mały kieliszek do prosecco."
-  - text: "Do shakera wlej wódkę waniliową, Passoã, purée z marakui, syrop waniliowy i świeży sok z limonki."
+  - text: "Do shakera wlej wódkę waniliową, Passoã, niegazowany Rubicon Passion Fruit i świeży sok z limonki. Nie dodawaj purée ani syropu: Rubicon jest już słodzony."
   - text: "Dodaj lód i energicznie wstrząsaj przez 15–20 sekund, aż shaker mocno się schłodzi. Nie dodawaj prosecco do shakera."
   - text: "Przecedź koktajl, najlepiej przez dwa sitka, do zimnego kieliszka."
   - text: "Na powierzchni koktajlu ułóż połówkę świeżej marakui miąższem do góry."
@@ -49,13 +46,12 @@ steps:
 translations:
   en:
     title: "Pornstar Martini"
-    description: "A classic passion fruit cocktail with vanilla vodka and Passoã liqueur, served with a separate shot of prosecco. A home adaptation of popular bartender recipes."
+    description: "A Pornstar Martini using still Rubicon Passion Fruit drink instead of purée and without vanilla syrup. Vanilla vodka, Passoã, lime and prosecco on the side; a home adaptation for a sweetened drink."
     ingredients:
       - name: "Vanilla vodka"
       - name: "Passoã passion fruit liqueur"
-      - name: "Passion fruit purée"
-        note: "preferably unsweetened; shop-bought or made from strained fresh passion fruit pulp"
-      - name: "Vanilla syrup"
+      - name: "Rubicon Passion Fruit Still"
+        note: "non-sparkling passion fruit drink in a carton; not the Sparkling version"
       - name: "Lime juice"
         note: "freshly squeezed"
       - name: "Prosecco"
@@ -66,7 +62,7 @@ translations:
         note: "cubes, for the shaker"
     steps:
       - text: "Chill a coupe or martini glass and the prosecco. Prepare a cocktail shaker, strainer and a small glass for the prosecco."
-      - text: "Pour the vanilla vodka, Passoã, passion fruit purée, vanilla syrup and fresh lime juice into the shaker."
+      - text: "Pour the vanilla vodka, Passoã, still Rubicon Passion Fruit and fresh lime juice into the shaker. Do not add purée or syrup: Rubicon is already sweetened."
       - text: "Add ice and shake vigorously for 15–20 seconds until the shaker is very cold. Do not add the prosecco to the shaker."
       - text: "Double-strain the cocktail, if possible, into the chilled glass."
       - text: "Float half a fresh passion fruit on top, cut side up."
@@ -76,4 +72,4 @@ translations:
 - https://www.diffordsguide.com/cocktails/recipe/2883/porn-star-martini
 - https://www.passoa.com/en-gb/cocktail/pornstar-martini
 
-Do przygotowania wystarczy shaker i sitko; Ninja ani TM6 nie są potrzebne. Koktajl alkoholowy — tylko dla dorosłych.
+Do przygotowania wystarczy shaker i sitko; Ninja ani TM6 nie są potrzebne. Koktajl alkoholowy — tylko dla dorosłych. Użyj dokładnie Rubicon Still, nie napoju gazowanego. Ilość soku i limonki to proporcje do pierwszej próby; w razie potrzeby dostosuj kwaśność do własnego smaku.
