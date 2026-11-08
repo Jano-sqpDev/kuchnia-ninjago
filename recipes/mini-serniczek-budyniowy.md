@@ -37,7 +37,7 @@ ninja:
   zone1:
     label: "Mini serniczek w foremce"
     function: "Bake"
-    temp_c: 145
+    temp_c: 140
     minutes: 30
 
 steps:
