@@ -9,11 +9,11 @@
 # Zły wpis (data, slug, powtórzona data, nieznane pole) nie psuje kalendarza: na iPadzie przy tym dniu jest „⚠ brak przepisu”,
 # a na liście przepisów czerwona plakietka z opisem błędu.
 
-2026-11-12: falafele-z-ciecierzycy
-2026-11-13: { recipe: chicken-parmigiana, note: "podwójna porcja" }
-2026-11-14: kotleciki-z-cukinii-i-fety
-2026-11-16: donair-wolowy-z-ziemniakami-i-tzatziki
-2026-11-17: makaron-z-brokulem-i-kalafiorem
-2026-11-18: burgery-wolowe-ninja
-2026-11-19: mini-kotleciki-z-bialej-fasoli-i-batata
-2026-11-20: kulki-brokulowo-serowe
+2026-11-12: { recipe: kurczak-teriyaki-z-ryzem-i-marchewka, note: "160 g marchewki, 6 g miodu, bez imbiru" }
+2026-11-13: { recipe: chicken-parmigiana, note: "Bez panierki: pieczona pierś; penne 50 g, pomidor i cebula" }
+2026-11-15: { recipe: burgery-wolowe-ninja, note: "Dla rodziny: 4 burgery po 125 g, 500 g wołowiny" }
+2026-11-16: kurczak-dijon-z-ryzem-i-warzywami
+2026-11-17: kurczak-teriyaki-z-tenderstem-i-fasolka
+2026-11-18: kremowy-makaron-z-kurczakiem-brokulem-i-kalafiorem
+2026-11-19: kurczak-cytrynowo-czosnkowy-z-ziemniakami-i-marchewka
+2026-11-20: makaron-pomidorowy-z-kurczakiem-i-mozzarella
