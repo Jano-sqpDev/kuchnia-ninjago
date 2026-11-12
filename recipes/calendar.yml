@@ -1,0 +1,19 @@
+# Kalendarz lunchów — co Janusz przygotowuje na lunch w danym dniu (format: docs/FORMAT-PRZEPISU.md, punkt 13).
+#
+#   RRRR-MM-DD: slug-przepisu                                  ← data = dzień przygotowania lunchu
+#   RRRR-MM-DD: { recipe: slug-przepisu, note: "notatka" }     ← z krótką notatką (opcjonalna)
+#
+# - slug = nazwa pliku przepisu z recipes/ bez .md (przepis musi istnieć),
+# - jeden lunch na dzień (data tylko raz), daty w kolejności,
+# - przeszłych wpisów nie usuwaj — to historia.
+# Zły wpis (data, slug, powtórzona data, nieznane pole) nie psuje kalendarza: na iPadzie przy tym dniu jest „⚠ brak przepisu”,
+# a na liście przepisów czerwona plakietka z opisem błędu.
+
+2026-11-12: falafele-z-ciecierzycy
+2026-11-13: { recipe: chicken-parmigiana, note: "podwójna porcja" }
+2026-11-14: kotleciki-z-cukinii-i-fety
+2026-11-16: donair-wolowy-z-ziemniakami-i-tzatziki
+2026-11-17: makaron-z-brokulem-i-kalafiorem
+2026-11-18: burgery-wolowe-ninja
+2026-11-19: mini-kotleciki-z-bialej-fasoli-i-batata
+2026-11-20: kulki-brokulowo-serowe

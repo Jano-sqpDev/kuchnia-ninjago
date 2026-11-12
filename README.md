@@ -6,7 +6,7 @@ Kuchenny wyświetlacz przepisów na starym iPadzie (Safari 12). Hosting: Cloudfl
 
 ```
 npm install         # raz, po sklonowaniu repo
-npm run validate    # sama walidacja przepisów z recipes/ (błędy + ostrzeżenia o tłumaczeniu EN)
+npm run validate    # sama walidacja przepisów i kalendarza z recipes/ (błędy + ostrzeżenia o tłumaczeniu EN)
 npm run build       # walidacja + budowa strony do _site/
 npm test            # testy walidatora, wyszukiwania (także zgodność kopii w app.js z tools/search.mjs) i buildu
 npm run deploy      # testy + build, a git push tylko gdy wszystko przeszło
@@ -19,6 +19,7 @@ Dwa języki (PL / EN, przełącznik w aplikacji): tłumaczenie przepisu w bloku 
 Układ (od v0.10): pion jest głównym trybem; panel Ninja zawsze widoczny, panel TM6 tylko na krokach z ustawieniami TM6 (na pozostałych krokach miejsce dostają kroki i składniki).
 Znaczniki (od v0.8, grupy od v0.9): tag z polami `badge` i `color` (opcjonalnie `group`) w `recipes/tags.yml` dostaje kolorową plakietkę na liście i przy tytule oraz chip filtra; kolory tylko `yellow`, `green`, `orange`, `pink`, `red`. Obecnie: LOW (redukcja) / NORM (zwykły) w grupie `diet` — dokładnie jeden na przepis (od v0.10 wymagany: brak to błąd) — i KIDS (także dla dzieci) bez grupy. Nowy znacznik ani grupa nie wymagają zmian w kodzie.
 Wyszukiwarka i filtry na liście (Etap 4 / 4.1): szuka po polu `text` z `search.json` w obu językach; słowo pasuje dokładnie, potem rdzeniem (polska odmiana, słowa ≥ 5 znaków), a literówka (odległość 1) jest poprawiana tylko awaryjnie, z komunikatem „Pokazuję wyniki dla: …”. Logika w `tools/search.mjs` (jedno źródło prawdy), dosłowna kopia w `src/app.js` pilnowana testem. Pomiar: `node tools/bench-search.mjs`.
+Kalendarz lunchów (od v0.11): `recipes/calendar.yml` — `RRRR-MM-DD: slug-przepisu` albo `{ recipe, note }` (format: `docs/FORMAT-PRZEPISU.md`, punkt 13). Na liście karta „Dziś na lunch” i „Jutro”, ekran „Kalendarz” (tydzień / miesiąc), w przepisie „Lunch: jutro”. Zły wpis to błąd tylko tego dnia (czerwona plakietka, „⚠ brak przepisu”). Daty liczone w lokalnym czasie iPada.
 Przykłady wzorcowe i testy buildu: `tests/fixtures/recipes/` — testy nie zależą od zawartości `recipes/`.
 Zdjęcia: `recipes/img/<slug>.jpg` (JPEG/PNG/HEIC, znajdowane po nazwie) — build sam robi miniaturę 300 px i dużą wersję 1200 px.
 

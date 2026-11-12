@@ -6,7 +6,7 @@
 // przepis zawsze jest publikowany, a w trybie EN bez pełnego tłumaczenia wyświetla się po polsku.
 import { readdirSync, readFileSync, existsSync, statSync, openSync, readSync, closeSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
-import { parseDocument } from 'yaml';
+import { parseDocument, isMap, isScalar } from 'yaml';
 
 export const NINJA_FUNCTIONS = ['Air Fry', 'Max Crisp', 'Roast', 'Bake', 'Reheat', 'Dehydrate'];
 export const NINJA_MODES = ['sync', 'match', 'independent', 'single'];
@@ -598,6 +598,148 @@ export function describePath(path) {
 // Plik z tłumaczeniami tagów w katalogu przepisów (utrzymuje ChatGPT).
 export const TAGS_FILE = 'tags.yml';
 
+// ───────── kalendarz lunchów (od v0.11): recipes/calendar.yml ─────────
+// Mapa: data RRRR-MM-DD (dzień przygotowania lunchu) → slug przepisu albo { recipe, note? }. Jeden lunch na dzień.
+// Walidacja łagodna jak przy przepisach: zły wpis (data, slug, powtórzona data, nieznane pole) to błąd TEGO wpisu —
+// reszta kalendarza działa. Daty to tylko napisy (bez stref czasowych) — „dziś” liczy dopiero iPad, w lokalnym czasie.
+export const CALENDAR_FILE = 'calendar.yml';
+const CALENDAR_KEYS = ['recipe', 'note'];
+const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+// „2026-11-14” → prawdziwa data w formacie RRRR-MM-DD (2026-02-30 i 2026-13-01 odpadają).
+export function isCalendarDate(s) {
+  const m = typeof s === 'string' ? DATE_RE.exec(s) : null;
+  if (!m) return false;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1];
+  return mo >= 1 && mo <= 12 && d >= 1 && d <= days;
+}
+
+// Odległość edycyjna (do podpowiedzi „może chodzi o …” przy literówce w slugu).
+function editDistance(a, b) {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+function closestSlug(slug, slugs) {
+  let best = null, dist = 4;
+  slugs.forEach((s) => { const d = editDistance(slug, s); if (d < dist) { dist = d; best = s; } });
+  return best;
+}
+
+// Treść calendar.yml → { entries, errors }.
+//   entries — data → { recipe, note? } (poprawny wpis) albo { error: 'recipe' | 'entry', recipe? } (wpis z błędem:
+//             'recipe' — nie ma takiego przepisu / przepis pominięty, 'entry' — zły zapis wpisu),
+//   errors  — komunikaty „calendar.yml → data[.pole]: przyczyna” (zła data nie ma wpisu w entries — nie da się jej umieścić).
+// recipes — slugi przepisów na stronie; files — slugi wszystkich plików .md (także pominiętych z powodu błędu).
+export function validateCalendar(text, { recipes = [], files = [] } = {}) {
+  const entries = {};
+  const errors = [];
+  const err = (path, reason) => errors.push(CALENDAR_FILE + ' → ' + path + ': ' + reason);
+  // uniqueKeys: false — powtórzona data to błąd jednego wpisu, nie całego pliku.
+  const doc = parseDocument(text.replace(/^﻿/, ''), { uniqueKeys: false, prettyErrors: false });
+  if (doc.errors.length) {
+    const e = doc.errors[0];
+    const line = e.pos && typeof e.pos[0] === 'number' ? ' (linia ' + text.replace(/^﻿/, '').slice(0, e.pos[0]).split('\n').length + ')' : '';
+    const original = e.message.split('\n')[0];
+    const pl = YAML_ERRORS_PL[e.code];
+    err('(YAML)', 'niepoprawny YAML' + line + ': ' + (pl ? pl + ' [' + original + ']' : original) + ' — kalendarz jest pusty, dopóki błąd nie zostanie poprawiony');
+    return { entries, errors };
+  }
+  const root = doc.contents;
+  if (root === null || root === undefined) return { entries, errors };   // pusty plik albo same komentarze
+  if (!isMap(root)) {
+    err('(plik)', 'kalendarz to lista wpisów „data: przepis”, np. 2026-11-14: falafele-z-ciecierzycy');
+    return { entries, errors };
+  }
+  const pairs = root.items.map((p) => ({
+    key: String(p.key && isScalar(p.key) ? p.key.value : p.key),
+    value: p.value && typeof p.value.toJSON === 'function' ? p.value.toJSON() : (p.value === undefined ? null : p.value),
+  }));
+  const count = {};
+  pairs.forEach((p) => { count[p.key] = (count[p.key] || 0) + 1; });
+  const done = {};
+  pairs.forEach(({ key, value }) => {
+    if (!isCalendarDate(key)) {
+      const looks = DATE_RE.test(key);
+      // „14.11.2026” → podpowiedź „2026-11-14”
+      const dmy = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(key);
+      const fixed = dmy ? dmy[3] + '-' + ('0' + dmy[2]).slice(-2) + '-' + ('0' + dmy[1]).slice(-2) : null;
+      err(key, (looks ? 'nie ma takiego dnia' : 'zła data') + ' — zapisz datę jako RRRR-MM-DD, np. ' + (fixed && isCalendarDate(fixed) ? fixed : '2026-11-14'));
+      return;
+    }
+    if (count[key] > 1) {
+      if (done[key]) return;
+      done[key] = true;
+      err(key, 'ta data jest w kalendarzu ' + count[key] + ' razy — zostaw jeden wpis (jeden lunch na dzień)');
+      entries[key] = { error: 'entry' };
+      return;
+    }
+    let recipe, note;
+    if (typeof value === 'string') recipe = value;
+    else if (isObj(value)) {
+      const unknown = Object.keys(value).filter((k) => !CALENDAR_KEYS.includes(k));
+      if (unknown.length) {
+        unknown.forEach((k) => err(key + '.' + k, 'nieznane pole — dozwolone: recipe, note'));
+        entries[key] = { error: 'entry' };
+        if (typeof value.recipe === 'string') entries[key].recipe = value.recipe;
+        return;
+      }
+      if (!('recipe' in value)) {
+        err(key, 'brak pola recipe — zapisz { recipe: slug-przepisu, note: "…" }');
+        entries[key] = { error: 'entry' };
+        return;
+      }
+      recipe = value.recipe;
+      if ('note' in value) {
+        if (!isText(value.note)) {
+          err(key + '.note', 'notatka musi być niepustym tekstem, jest ' + describeValue(value.note) + ' — bez notatki usuń pole note');
+          entries[key] = { error: 'entry' };
+          if (typeof recipe === 'string') entries[key].recipe = recipe;
+          return;
+        }
+        note = value.note.trim();
+      }
+    } else {
+      err(key, 'wpis musi być slugiem przepisu (nazwa pliku bez .md) albo { recipe: slug, note: "…" }, jest ' + describeValue(value));
+      entries[key] = { error: 'entry' };
+      return;
+    }
+    const path = isObj(value) ? key + '.recipe' : key;
+    if (typeof recipe !== 'string' || !SLUG_RE.test(recipe)) {
+      err(path, 'slug przepisu: małe litery a-z, cyfry i myślniki (nazwa pliku bez .md), jest ' + describeValue(recipe));
+      entries[key] = { error: 'recipe' };
+      return;
+    }
+    if (!recipes.includes(recipe)) {
+      if (files.includes(recipe)) err(path, 'przepis ' + recipe + ' ma błąd i nie ma go na stronie — popraw recipes/' + recipe + '.md');
+      else {
+        const hint = closestSlug(recipe, files);
+        err(path, 'nie ma przepisu ' + recipe + (hint ? ' (może chodzi o ' + hint + '?)' : '') + ' — slug to nazwa pliku z recipes/ bez .md');
+      }
+      entries[key] = { error: 'recipe', recipe };
+      return;
+    }
+    entries[key] = note ? { recipe, note } : { recipe };
+  });
+  const sorted = {};
+  Object.keys(entries).sort().forEach((k) => { sorted[k] = entries[k]; });
+  return { entries: sorted, errors };
+}
+
+// Ścieżka w kalendarzu po ludzku: „2026-11-14.note” → „kalendarz 2026-11-14 → notatka”.
+export function describeCalendarPath(path) {
+  if (SPECIAL_PATHS[path]) return 'kalendarz: ' + SPECIAL_PATHS[path];
+  const m = /^(\d{4}-\d{2}-\d{2})\.(.+)$/.exec(path);
+  if (!m) return 'kalendarz ' + path;
+  return 'kalendarz ' + m[1] + ' → ' + ({ recipe: 'przepis', note: 'notatka' }[m[2]] || '„' + m[2] + '”');
+}
+
 // Wczytuje wszystkie przepisy z katalogu (brak katalogu = pusta kolekcja).
 // Zwraca { recipes, errors, problems, warnings, notices, tagMap, badgeMap }:
 //   recipes  — poprawne przepisy: { slug, data, body, image, translated } (image: ścieżka względem recipes/ albo null;
@@ -607,8 +749,9 @@ export const TAGS_FILE = 'tags.yml';
 //   warnings — ostrzeżenia (tłumaczenie EN, tagi bez tłumaczenia, tags.yml) w tym samym formacie co errors,
 //   notices  — ostrzeżenia jako { file, path, where, reason } (dla strony: warnings.json),
 //   tagMap   — tłumaczenia tagów z tags.yml,
-//   badgeMap — znaczniki z tags.yml: tag → { label, color }.
-// skipped = true: przepisu nie ma na stronie; false: jest, ale np. bez zdjęcia.
+//   badgeMap — znaczniki z tags.yml: tag → { label, color },
+//   calendar — kalendarz lunchów z calendar.yml (entries z validateCalendar; błędy wpisów są w errors / problems).
+// skipped = true: przepisu (wpisu kalendarza) nie ma na stronie; false: jest, ale np. bez zdjęcia.
 export function loadRecipes(recipesDir) {
   const recipes = [];
   const errors = [];
@@ -627,7 +770,7 @@ export function loadRecipes(recipesDir) {
     notices.push({ file: e.file, path: e.path, where: describePath(e.path), reason: e.reason });
   });
 
-  if (!existsSync(recipesDir)) return { recipes, errors, problems, warnings, notices, tagMap: {}, badgeMap: {} };
+  if (!existsSync(recipesDir)) return { recipes, errors, problems, warnings, notices, tagMap: {}, badgeMap: {}, calendar: {} };
 
   let tagMap = {};
   let badgeMap = {};
@@ -642,7 +785,7 @@ export function loadRecipes(recipesDir) {
   }
 
   const files = readdirSync(recipesDir, { withFileTypes: true })
-    .filter((d) => d.isFile() && d.name !== '.gitkeep' && d.name !== TAGS_FILE)
+    .filter((d) => d.isFile() && d.name !== '.gitkeep' && d.name !== TAGS_FILE && d.name !== CALENDAR_FILE)
     .map((d) => d.name)
     .sort();
 
@@ -685,5 +828,18 @@ export function loadRecipes(recipesDir) {
     recipes.push({ slug, data: result.data, body: result.body, image, translated: translationWarnings.length === 0 });
   });
 
-  return { recipes, errors, problems, warnings, notices, tagMap, badgeMap };
+  // Kalendarz lunchów (od v0.11) — po przepisach, bo wpis musi wskazywać przepis, który jest na stronie.
+  let calendar = {};
+  const calendarPath = join(recipesDir, CALENDAR_FILE);
+  if (existsSync(calendarPath)) {
+    const c = validateCalendar(readFileSync(calendarPath, 'utf8'), { recipes: recipes.map((r) => r.slug), files: Array.from(slugs.keys()) });
+    calendar = c.entries;
+    c.errors.forEach((line) => {
+      errors.push(line);
+      const e = splitError(line);
+      problems.push({ file: e.file, path: e.path, where: describeCalendarPath(e.path), reason: e.reason, skipped: true });
+    });
+  }
+
+  return { recipes, errors, problems, warnings, notices, tagMap, badgeMap, calendar };
 }

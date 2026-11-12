@@ -1,6 +1,7 @@
 // Build: kopiuje src/ i public/ do _site/, waliduje przepisy z recipes/,
 // generuje _site/search.json, _site/data/<slug>.json, zdjęcia (_site/img/), strony /p/<slug>/,
-// _site/errors.json (przepisy z błędem), _site/warnings.json (braki w tłumaczeniu EN) i _site/version.json z identyfikatorem buildu.
+// _site/errors.json (przepisy i wpisy kalendarza z błędem), _site/warnings.json (braki w tłumaczeniu EN), _site/calendar.json
+// (kalendarz lunchów z recipes/calendar.yml, od v0.11), stronę /calendar/ i _site/version.json z identyfikatorem buildu.
 // Kod kliencki (src/app.js) przechodzi przez esbuild z celem Safari 12.
 // Kodem 1 (Cloudflare Pages nie opublikuje wersji) kończą się tylko błędy aplikacji: brak znaczników
 // w src/*.html albo src/app.js niezgodny z Safari 12. Błędne przepisy są pomijane (errors.json).
@@ -9,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
 import { transformSync } from 'esbuild';
 import { loadRecipes, describePath } from './validate.mjs';
-import { recipeJson, searchEntry } from './output.mjs';
+import { recipeJson, searchEntry, calendarJson } from './output.mjs';
 import { VERSION_MARK, BUILD_MARK, versionFromPackageJson, buildId, injectVersion } from './version.mjs';
 import { makeImages } from './images.mjs';
 
@@ -38,7 +39,7 @@ if (missingMarks.length) {
 // Błędny przepis NIE przerywa buildu: jest pomijany, reszta się publikuje, a lista błędów trafia
 // do _site/errors.json (aplikacja pokazuje czerwoną plakietkę). Twardo pilnują: npm run validate i npm test.
 // Braki w tłumaczeniu EN to tylko ostrzeżenia (_site/warnings.json, pomarańczowa plakietka) — przepis wychodzi zawsze.
-const { recipes, problems, notices, tagMap, badgeMap } = loadRecipes(recipesDir);
+const { recipes, problems, notices, tagMap, badgeMap, calendar } = loadRecipes(recipesDir);
 
 // Siatka bezpieczeństwa dla Safari 12: esbuild obniża składnię, a przy czymś,
 // czego nie da się obniżyć, przerywa build.
@@ -84,15 +85,19 @@ for (const r of recipes) {
 const searchJson = JSON.stringify(index);
 const errorsJson = JSON.stringify(problems);
 const warningsJson = JSON.stringify(notices);
+// Kalendarz lunchów (od v0.11) — wpisy z błędem też trafiają (iPad pokazuje przy nich „⚠ brak przepisu”).
+const calendarText = JSON.stringify(calendarJson(calendar, index));
 
 // Identyfikator buildu: skrót wszystkiego, co pobiera iPad. Inny wynik → inny identyfikator,
 // a aplikacja po wykryciu nowego identyfikatora w /version.json przeładowuje się (src/app.js).
+// calendar.json też — zmiana samego kalendarza odświeża iPada.
 const templates = Object.fromEntries(pages.map((p) => [p, readFileSync(join(root, 'src', p), 'utf8')]));
-const build = buildId([appVersion, appJs, readFileSync(join(root, 'src', 'app.css'), 'utf8'), searchJson, errorsJson, warningsJson]
+const build = buildId([appVersion, appJs, readFileSync(join(root, 'src', 'app.css'), 'utf8'), searchJson, errorsJson, warningsJson, calendarText]
   .concat(Object.values(templates), Object.keys(recipeData).sort().map((s) => s + recipeData[s])));
 
 Object.keys(recipeData).forEach((slug) => writeFileSync(join(out, 'data', slug + '.json'), recipeData[slug]));
 writeFileSync(join(out, 'search.json'), searchJson);
+writeFileSync(join(out, 'calendar.json'), calendarText);
 writeFileSync(join(out, 'errors.json'), errorsJson);
 writeFileSync(join(out, 'warnings.json'), warningsJson);
 writeFileSync(join(out, 'version.json'), JSON.stringify({ build, version: appVersion }));
@@ -105,15 +110,18 @@ pages.forEach((p) => {
 // Każdy przepis ma własny adres /p/<slug>/ — ta sama powłoka aplikacji, widok wybiera JS.
 // 404.html to też powłoka: nieznany przepis pokaże komunikat w interfejsie zamiast pustej strony.
 writeFileSync(join(out, '404.html'), html['index.html']);
+// Kalendarz lunchów (od v0.11): /calendar/ — ta sama powłoka.
+mkdirSync(join(out, 'calendar'), { recursive: true });
+writeFileSync(join(out, 'calendar', 'index.html'), html['index.html']);
 recipes.forEach((r) => {
   mkdirSync(join(out, 'p', r.slug), { recursive: true });
   writeFileSync(join(out, 'p', r.slug, 'index.html'), html['index.html']);
 });
 
-console.log('Build OK → _site/ (' + appVersion + ' · ' + build.slice(0, 4) + ', przepisy: ' + recipes.length + ')');
+console.log('Build OK → _site/ (' + appVersion + ' · ' + build.slice(0, 4) + ', przepisy: ' + recipes.length + ', kalendarz: ' + Object.keys(calendar).length + ' dni)');
 if (problems.length) {
   const files = new Set(problems.map((p) => p.file));
-  console.warn('\nUwaga: przepisy z błędem: ' + files.size + ' (lista w _site/errors.json i na stronie):');
+  console.warn('\nUwaga: pliki z błędem (przepisy, kalendarz): ' + files.size + ' (lista w _site/errors.json i na stronie):');
   problems.forEach((p) => console.warn('  ✘ ' + p.file + ' → ' + p.path + ': ' + p.reason + (p.skipped ? '  [pominięty]' : '  [bez zdjęcia]')));
   console.warn('');
 }

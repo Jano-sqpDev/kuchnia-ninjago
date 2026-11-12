@@ -59,6 +59,12 @@
       flipUp: 'OBRÓĆ', flipSoft: 'można obrócić', flipLower: 'obróć', flipCap: 'Obróć',
       shakeUp: 'POTRZĄŚNIJ', shakeSoft: 'można potrząsnąć', shakeLower: 'potrząśnij', shakeCap: 'Potrząśnij',
       turnRequired: '{action} po {n} min', turnOptional: '{action} po {n} min',
+      // kalendarz lunchów (od v0.11)
+      calendar: 'Kalendarz', week: 'Tydzień', month: 'Miesiąc', today: 'Dziś', earlier: 'Wcześniej', later: 'Później',
+      lunchToday: 'Dziś na lunch', lunchTomorrow: 'Jutro', lunchIn: 'Lunch: {when}', whenToday: 'dziś', whenTomorrow: 'jutro',
+      noRecipe: '⚠ brak przepisu', badEntry: '⚠ błąd we wpisie', calendarFailed: 'Nie udało się wczytać kalendarza.',
+      calendarErrors: ['{n} błąd w kalendarzu', '{n} błędy w kalendarzu', '{n} błędów w kalendarzu'],
+      problemCalendar: 'Te dni mają w kalendarzu „⚠ brak przepisu” albo „⚠ błąd we wpisie” (wpisu ze złą datą nie ma w kalendarzu wcale). Reszta kalendarza działa.',
     },
     en: {
       recipes: 'Recipes', back: '‹ Recipes', langLabel: 'Język / Language', photo: 'Photo',
@@ -100,6 +106,11 @@
       flipUp: 'FLIP', flipSoft: 'optional flip', flipLower: 'flip', flipCap: 'Flip',
       shakeUp: 'SHAKE', shakeSoft: 'optional shake', shakeLower: 'shake', shakeCap: 'Shake',
       turnRequired: '{action} at {n} min', turnOptional: '{action} at {n} min',
+      calendar: 'Calendar', week: 'Week', month: 'Month', today: 'Today', earlier: 'Earlier', later: 'Later',
+      lunchToday: 'Lunch today', lunchTomorrow: 'Tomorrow', lunchIn: 'Lunch: {when}', whenToday: 'today', whenTomorrow: 'tomorrow',
+      noRecipe: '⚠ recipe missing', badEntry: '⚠ entry error', calendarFailed: 'Could not load the calendar.',
+      calendarErrors: ['{n} calendar error', '{n} calendar errors'],
+      problemCalendar: 'These days show “⚠ recipe missing” or “⚠ entry error” in the calendar (an entry with a wrong date is not shown at all). The rest of the calendar works.',
     },
   };
   var LANGS = ['pl', 'en'];
@@ -486,11 +497,15 @@
   }
 
   // Stan z localStorage — każde pole sprawdzone, bo zapis mógł pochodzić ze starszej wersji.
-  // openRecipe: slug otwartego przepisu albo null (lista); list: wyszukiwanie, chipy i przewinięcie listy (od v0.5).
+  // openRecipe: slug otwartego przepisu albo null (lista); list: wyszukiwanie, chipy i przewinięcie listy (od v0.5);
+  // calendar: { view } — wybór Tydzień / Miesiąc (od v0.11; zapisy bez niego → tydzień);
+  // calendarReturn: { view, anchor } — przepis otwarty z kalendarza: „‹” wraca do tego widoku (null = do listy).
   function normalizeState(s) {
-    var out = { openRecipe: null, recipes: {}, list: normalizeListState(null) };
+    var out = { openRecipe: null, recipes: {}, list: normalizeListState(null), calendar: { view: 'week' }, calendarReturn: null };
     if (!s || typeof s !== 'object') return out;
     out.list = normalizeListState(s.list);
+    if (s.calendar && typeof s.calendar === 'object' && CAL_VIEWS.indexOf(s.calendar.view) !== -1) out.calendar.view = s.calendar.view;
+    out.calendarReturn = normalizeCalendarPlace(s.calendarReturn);
     if (typeof s.openRecipe === 'string' && SLUG_RE.test(s.openRecipe)) out.openRecipe = s.openRecipe;
     if (s.recipes && typeof s.recipes === 'object') {
       Object.keys(s.recipes).forEach(function (slug) {
@@ -725,7 +740,161 @@
     return normalizeState(s);
   }
 
+  // ───────── kalendarz lunchów (od v0.11; czyste funkcje) ─────────
+  // Dzień = klucz „RRRR-MM-DD” w LOKALNEJ strefie iPada (Europe/London) — z getFullYear / getMonth / getDate.
+  // NIGDY toISOString() ani metody UTC: po północy czasu letniego UTC jest jeszcze „wczoraj”. Daty z klucza tworzone
+  // na 12:00 lokalnie, a dni dodawane przez konstruktor Date (rok, miesiąc, dzień + n) — zmiana czasu (±1 h) nie przesuwa dnia.
+  var DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+  var CAL_VIEWS = ['week', 'month'];
+  // Nazwy dni i miesięcy (tydzień od poniedziałku). monthsOf — dopełniacz PL („10–16 listopada”); EN bez odmiany.
+  var DATE_NAMES = {
+    pl: {
+      days: ['pon', 'wt', 'śr', 'czw', 'pt', 'sob', 'nd'],
+      months: ['styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwiec', 'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień'],
+      monthsOf: ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'],
+      monthsShort: ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'],
+    },
+    en: {
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+      monthsOf: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+      monthsShort: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    },
+  };
+  function dateNames(lang) { return DATE_NAMES[normalizeLang(lang)]; }
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+  // Date → „2026-11-14” (lokalny dzień).
+  function dateKey(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  // „2026-11-14” → Date (12:00 lokalnie) albo null (zły zapis, 2026-02-30).
+  function keyDate(key) {
+    var m = DATE_RE.exec(String(key));
+    if (!m) return null;
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0);
+    return dateKey(d) === key ? d : null;
+  }
+  function isDateKey(key) { return !!keyDate(key); }
+  function addDays(key, n) {
+    var d = keyDate(key);
+    return dateKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n, 12, 0, 0));
+  }
+  // 0 = poniedziałek … 6 = niedziela
+  function weekday(key) { return (keyDate(key).getDay() + 6) % 7; }
+  function weekStart(key) { return addDays(key, -weekday(key)); }
+  function weekDays(key) {
+    var s = weekStart(key), out = [];
+    for (var i = 0; i < 7; i++) out.push(addDays(s, i));
+    return out;
+  }
+  function monthStart(key) { return key.slice(0, 8) + '01'; }
+  // Pierwszy dzień miesiąca przesuniętego o n.
+  function addMonths(key, n) {
+    var d = keyDate(key);
+    return dateKey(new Date(d.getFullYear(), d.getMonth() + n, 1, 12, 0, 0));
+  }
+  // Siatka miesiąca: pełne tygodnie pon–nd, od tygodnia z 1. dniem miesiąca; co najmniej 5 rzędów (zwykle 5–6).
+  function monthGrid(key) {
+    var first = monthStart(key), next = addMonths(first, 1), k = weekStart(first), out = [];
+    while (k < next || out.length % 7 || out.length < 35) { out.push(k); k = addDays(k, 1); }
+    return out;
+  }
+  // Następny / poprzedni tydzień albo miesiąc (dir = 1 / -1).
+  function shiftAnchor(view, anchor, dir) { return view === 'month' ? addMonths(anchor, dir) : addDays(anchor, 7 * dir); }
+
+  // Zakres nad kalendarzem: „10–16 listopada 2026”, „27 października – 2 listopada 2026”,
+  // „28 grudnia 2026 – 3 stycznia 2027”, „listopad 2026”; EN: „10–16 November 2026”, „November 2026”.
+  function rangeLabel(view, anchor, lang) {
+    var n = dateNames(lang), a = keyDate(anchor);
+    if (view === 'month') return n.months[a.getMonth()] + ' ' + a.getFullYear();
+    var s = keyDate(weekStart(anchor)), e = keyDate(addDays(weekStart(anchor), 6));
+    if (s.getFullYear() !== e.getFullYear()) {
+      return s.getDate() + ' ' + n.monthsOf[s.getMonth()] + ' ' + s.getFullYear() + ' – ' + e.getDate() + ' ' + n.monthsOf[e.getMonth()] + ' ' + e.getFullYear();
+    }
+    if (s.getMonth() !== e.getMonth()) {
+      return s.getDate() + ' ' + n.monthsOf[s.getMonth()] + ' – ' + e.getDate() + ' ' + n.monthsOf[e.getMonth()] + ' ' + e.getFullYear();
+    }
+    return s.getDate() + '–' + e.getDate() + ' ' + n.monthsOf[s.getMonth()] + ' ' + e.getFullYear();
+  }
+  // Skrót dnia tygodnia: „pon” / „Mon”.
+  function dayShort(key, lang) { return dateNames(lang).days[weekday(key)]; }
+  // Kiedy lunch: „dziś” / „jutro” / „pon 17.11” (EN: „today” / „tomorrow” / „Mon 17 Nov”).
+  function lunchWhen(key, today, lang) {
+    if (key === today) return tr(lang, 'whenToday');
+    if (key === addDays(today, 1)) return tr(lang, 'whenTomorrow');
+    var d = keyDate(key), n = dateNames(lang);
+    return n.days[weekday(key)] + ' ' + (normalizeLang(lang) === 'en' ? d.getDate() + ' ' + n.monthsShort[d.getMonth()] : d.getDate() + '.' + pad2(d.getMonth() + 1));
+  }
+  // Najbliższy termin przepisu w kalendarzu: dziś albo później (przeszłe pomijamy). Klucz albo null.
+  function nextLunch(cal, slug, today) {
+    var keys = Object.keys(cal || {}).sort();
+    for (var i = 0; i < keys.length; i++) {
+      var e = cal[keys[i]];
+      if (keys[i] >= today && e && !e.error && e.recipe === slug) return keys[i];
+    }
+    return null;
+  }
+
+  // calendar.json → sprawdzone wpisy (śmieci odrzucone): data → { recipe, title, title_en?, thumb?, badges, devices, note? }
+  // albo { error: 'recipe' | 'entry', recipe? }.
+  function normalizeCalendar(d) {
+    var out = {};
+    if (!d || typeof d !== 'object' || Array.isArray(d)) return out;
+    Object.keys(d).forEach(function (k) {
+      var e = d[k];
+      if (!isDateKey(k) || !e || typeof e !== 'object') return;
+      if (e.error === 'recipe' || e.error === 'entry') {
+        out[k] = { error: e.error };
+        if (typeof e.recipe === 'string') out[k].recipe = e.recipe;
+        return;
+      }
+      if (typeof e.recipe !== 'string' || !SLUG_RE.test(e.recipe) || typeof e.title !== 'string') return;
+      out[k] = {
+        recipe: e.recipe, title: e.title,
+        title_en: typeof e.title_en === 'string' ? e.title_en : null,
+        thumb: typeof e.thumb === 'string' ? e.thumb : null,
+        badges: Array.isArray(e.badges) ? e.badges : [],
+        devices: Array.isArray(e.devices) ? e.devices.filter(function (x) { return DEVICE_CHIPS.indexOf(x) !== -1; }) : [],
+        note: typeof e.note === 'string' && e.note ? e.note : null,
+      };
+    });
+    return out;
+  }
+  // Wpis kalendarza w danym języku: { title, fallback } (fallback = tryb EN bez tłumaczenia → po polsku, znaczek PL).
+  function calendarTitle(e, lang) {
+    var en = normalizeLang(lang) === 'en';
+    return { title: en && e.title_en ? e.title_en : e.title, fallback: en && !e.title_en };
+  }
+  // Miejsce w kalendarzu { view, anchor } z localStorage / historii — sprawdzone, inaczej null.
+  function normalizeCalendarPlace(p) {
+    if (!p || typeof p !== 'object' || CAL_VIEWS.indexOf(p.view) === -1 || !isDateKey(p.anchor)) return null;
+    return { view: p.view, anchor: p.anchor };
+  }
+  // Wejście do kalendarza (przycisk „Kalendarz”): ZAWSZE bieżący tydzień / miesiąc, pamiętany tylko wybór widoku.
+  function freshCalendar(st, today) { return { view: st && st.calendar ? st.calendar.view : 'week', anchor: today }; }
+  // „‹” w przepisie: 'history' (weszliśmy z listy / kalendarza w tej sesji — zwykłe „wstecz”), 'calendar' (przepis
+  // otwarty z kalendarza, ale historii już nie ma, np. po przeładowaniu do nowej wersji) albo 'list'.
+  function backTarget(historyState, calendarReturn) {
+    if (historyState && historyState.fromList) return 'history';
+    return normalizeCalendarPlace(calendarReturn) ? 'calendar' : 'list';
+  }
+  // Plakietka problemów: przepisy z błędem i (osobno) błędne wpisy kalendarza — „2 przepisy z błędem · 1 błąd w kalendarzu”.
+  // groups = errors.json pogrupowane po plikach (groupProblems).
+  function problemsText(groups, lang) {
+    var recipes = 0, cal = 0;
+    groups.forEach(function (g) { if (g.file === CALENDAR_FILE) cal += g.items.length; else recipes++; });
+    var parts = [];
+    if (recipes) parts.push(problemsLabel(recipes, lang));
+    if (cal) parts.push(trn(lang, 'calendarErrors', cal));
+    return parts.join(' · ');
+  }
+  var CALENDAR_FILE = 'calendar.yml';
+
   var api = {
+    dateKey: dateKey, keyDate: keyDate, isDateKey: isDateKey, addDays: addDays, weekday: weekday, weekStart: weekStart, weekDays: weekDays,
+    monthStart: monthStart, addMonths: addMonths, monthGrid: monthGrid, shiftAnchor: shiftAnchor, rangeLabel: rangeLabel, dayShort: dayShort,
+    lunchWhen: lunchWhen, nextLunch: nextLunch, normalizeCalendar: normalizeCalendar, calendarTitle: calendarTitle,
+    normalizeCalendarPlace: normalizeCalendarPlace, freshCalendar: freshCalendar, backTarget: backTarget, problemsText: problemsText,
+    DATE_NAMES: DATE_NAMES,
     tm6Visible: tm6Visible, pinClass: pinClass,
     badgeIndex: badgeIndex, isBadgeChip: isBadgeChip, fixGroupChips: fixGroupChips, badgeOrder: badgeOrder,
     normalize: normalize, matchesQuery: matchesQuery, searchWords: searchWords, wordStems: wordStems, matchLevel: matchLevel,
@@ -813,6 +982,7 @@
   }
   var ICON_PHOTO = '<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 8"/>';
   var ICON_SEARCH = '<circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/>';
+  var ICON_CALENDAR = '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>';
   function setLang(l) {
     lang = normalizeLang(l);
     try { global.localStorage.setItem(LANG_KEY, lang); } catch (e) { /* nie szkodzi */ }
@@ -820,6 +990,7 @@
     // Przerysuj bieżący ekran w nowym języku, bez zmiany przewinięcia.
     if (V.screen === 'list' && index) drawList(currentScroll());
     else if (V.screen === 'recipe') drawRecipe(V.r, V.step, recipeScroll());
+    else if (V.screen === 'calendar') drawCalendar(currentScroll());
     else if (V.screen === 'list') showList();
     else if (V.slug) openRecipe(V.slug, null);
   }
@@ -840,7 +1011,8 @@
 
   // ── widok ──
   // V = to, co jest teraz na ekranie. Pamięć (state) zapisujemy od razu przy każdej zmianie.
-  // V.screen: 'start' | 'list' | 'loading' | 'error' | 'recipe'; V.L — przepis w bieżącym języku (localizeRecipe).
+  // V.screen: 'start' | 'list' | 'loading' | 'error' | 'recipe' | 'calendar'; V.L — przepis w bieżącym języku (localizeRecipe);
+  // w kalendarzu V.view ('week' | 'month') i V.anchor (dzień, którego tydzień / miesiąc widać).
   var V = { screen: 'start', slug: null, r: null, L: null, step: 0, servings: 0 };
   var index = null;            // search.json (lista)
   var dictionary = [];         // słowa z pól text (poprawianie literówek), liczone raz po wczytaniu search.json
@@ -849,6 +1021,9 @@
   var notices = [];            // warnings.json pogrupowane po plikach (braki w tłumaczeniu EN)
   var searchTimer = null;      // opóźnienie filtrowania przy wpisywaniu (ok. 150 ms)
   var scrollTimer = null;      // zapis przewinięcia listy (po chwili bez ruchu)
+  var calendar = null;         // calendar.json (kalendarz lunchów, od v0.11) po normalizeCalendar; null = jeszcze nie wczytany
+  var calendarWait = null;     // czekający na calendar.json (pobierany raz, na liście, w kalendarzu albo w przepisie)
+  var shownDay = dateKey(new Date());  // dzień, dla którego narysowano „dziś” (po północy odświeżamy)
 
   function render(h, scroll) {
     app.innerHTML = h;
@@ -857,7 +1032,8 @@
   }
 
   function listBar() {
-    return '<div class="bar"><h1>' + T('recipes') + '</h1>' + langButton() + '</div>';
+    return '<div class="bar"><h1>' + T('recipes') + '</h1><button class="btn" data-act="calendar">' + icon(ICON_CALENDAR) + T('calendar') + '</button>' +
+      langButton() + '</div>';
   }
   // Przepis: „‹ Przepisy", tytuł (+ znaczek PL bez tłumaczenia), pod nim czasy; „Zdjęcie" tylko gdy przepis ma zdjęcie.
   // o = { sub, photo, pl } — na ekranach ładowania i błędu pusty.
@@ -866,7 +1042,7 @@
     // Plakietki (LOW / NORM / KIDS, znaczek PL) obok tytułu, ale poza <h1> (od v0.10) — tytuł się obcina, plakietki zostają.
     var marks = (o.badges ? badgeTags(o.badges) : '') + (o.pl ? '<span class="dev pl" title="' + T('plOnly') + '">PL</span>' : '');
     return '<div class="bar"><button class="btn back" data-act="back">' + T('back') + '</button><div class="ttl"><div class="trow"><h1>' + (title ? esc(title) : '') + '</h1>' +
-      (marks ? '<span class="marks">' + marks + '</span>' : '') + '</div>' + (o.sub ? '<div class="sub">' + o.sub + '</div>' : '') + '</div>' +
+      (marks ? '<span class="marks">' + marks + '</span>' : '') + '</div>' + (o.sub ? '<div class="sub" id="rsub">' + o.sub + '</div>' : '') + '</div>' +
       (o.photo ? '<button class="btn" data-act="photo">' + icon(ICON_PHOTO) + T('photo') + '</button>' : '') + langButton() + '</div>';
   }
 
@@ -903,6 +1079,7 @@
   function showList(scroll) {
     V = { screen: 'list', slug: null, r: null, L: null, step: 0, servings: 0 };
     state.openRecipe = null;
+    state.calendarReturn = null;
     saveState();
     if (!index) {
       render(listBar() + '<div class="scroll"><div class="loading">' + T('loading') + '</div></div>');
@@ -916,6 +1093,8 @@
         notices = groupProblems(d);
         refreshBadges();
       }, function () { /* brak warnings.json — bez plakietki */ });
+      // Kalendarz też jest dodatkiem: karta „Dziś na lunch” dochodzi osobno (tylko #lunch).
+      ensureCalendar(refreshLunch);
       fetchJson('/search.json?b=' + BUILD, function (d) {
         index = d;
         dictionary = buildDictionary(d);
@@ -940,7 +1119,7 @@
   function badges() {
     var h = '';
     if (problems.length) {
-      h += '<button class="problems-badge" data-act="problems">⚠ ' + esc(problemsLabel(problems.length, lang)) + '<span class="more">' + T('show') + '</span></button>';
+      h += '<button class="problems-badge" data-act="problems">⚠ ' + esc(problemsText(problems, lang)) + '<span class="more">' + T('show') + '</span></button>';
     }
     if (notices.length) {
       h += '<button class="problems-badge warn" data-act="warnings">🌐 ' + esc(warningsLabel(notices.length, lang)) + '<span class="more">' + T('show') + '</span></button>';
@@ -962,6 +1141,8 @@
       return;
     }
     var q = state.list.query;
+    // „Dziś na lunch” (i „Jutro”) nad wyszukiwarką — przed kartą „Wróć do gotowania” (ta jest w #results).
+    h += '<div id="lunch">' + lunchHtml() + '</div>';
     h += '<div class="search' + (q ? ' has' : '') + '" id="search">' + icon(ICON_SEARCH) + '<input id="search-input" class="box" type="text" value="' + esc(q) +
       '" placeholder="' + T('searchPlaceholder') + '" maxlength="' + QUERY_MAX + '" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">' +
       '<button class="sclear" data-act="search-clear" aria-label="' + T('searchClear') + '">✕</button></div>';
@@ -1039,6 +1220,48 @@
     updateResults(chips !== null);
   }
 
+  // ── kalendarz lunchów: pobranie raz (calendar.json z identyfikatorem buildu) ──
+  // done(ok) — po wczytaniu albo błędzie; kalendarz to dodatek, więc lista i przepis działają bez niego.
+  function ensureCalendar(done) {
+    if (calendar) { done(true); return; }
+    if (calendarWait) { calendarWait.push(done); return; }
+    calendarWait = [done];
+    var flush = function (ok) { var w = calendarWait; calendarWait = null; w.forEach(function (f) { f(ok); }); };
+    fetchJson('/calendar.json?b=' + BUILD, function (d) { calendar = normalizeCalendar(d); flush(true); }, function () { flush(false); });
+  }
+  function today() { return dateKey(new Date()); }
+
+  // Tytuł wpisu kalendarza w bieżącym języku (+ znaczek PL bez tłumaczenia).
+  function calTitleHtml(e) { return esc(calendarTitle(e, lang).title); }
+  // Plakietki wpisu: LOW / NORM / KIDS, potem NINJA / TM6, na końcu PL (tryb EN bez tłumaczenia).
+  function calMarks(e) {
+    return badgeTags(e.badges) + deviceBadges(e.devices) + (calendarTitle(e, lang).fallback ? '<span class="dev pl">PL</span>' : '');
+  }
+  function calErrorHtml(e) { return '<span class="bad">' + T(e.error === 'recipe' ? 'noRecipe' : 'badEntry') + '</span>'; }
+
+  // Karta „Dziś na lunch” (niebieska ramka jak „Wróć do gotowania”) i pod nią mniejsza linia „Jutro: …”.
+  // Na dziś nic nie ma → karty nie ma (linia „Jutro” może zostać sama). Wpis z błędem — bez otwierania.
+  function lunchHtml() {
+    if (!calendar) return '';
+    var d = today(), a = calendar[d], b = calendar[addDays(d, 1)], h = '';
+    if (a && a.error) {
+      h += '<div class="lunch"><div class="t"><div class="k">' + T('lunchToday') + '</div><div class="n">' + calErrorHtml(a) + '</div></div></div>';
+    } else if (a) {
+      h += '<div class="lunch" data-open="' + esc(a.recipe) + '">' + (a.thumb ? photo(a.thumb, 'thumb') : '') + '<div class="t"><div class="k">' + T('lunchToday') +
+        '</div><div class="n">' + calTitleHtml(a) + '</div><div class="devs">' + calMarks(a) + '</div>' +
+        (a.note ? '<div class="note">' + esc(a.note) + '</div>' : '') + '</div><span class="btn">' + T('open') + '</span></div>';
+    }
+    if (b) {
+      h += '<div class="tomorrow"' + (b.error ? '' : ' data-open="' + esc(b.recipe) + '"') + '><span class="k">' + T('lunchTomorrow') + ':</span>' +
+        (b.error ? calErrorHtml(b) : '<span class="n">' + calTitleHtml(b) + '</span>' + (b.note ? '<span class="note">' + esc(b.note) + '</span>' : '')) + '</div>';
+    }
+    return h;
+  }
+  function refreshLunch() {
+    var el = doc.getElementById('lunch');
+    if (V.screen === 'list' && el) el.innerHTML = lunchHtml();
+  }
+
   // „Wróć do gotowania" — ostatnio otwarty przepis, jeśli było w nim coś zrobione.
   function resumeCard() {
     var latest = null;
@@ -1051,6 +1274,131 @@
     if (!inIndex || (p.step === 0 && !p.servings)) return '';
     return '<div class="resume" data-open="' + esc(latest) + '"><div class="t"><div class="k">' + T('resumeTitle') + '</div><div class="n">' +
       esc(recipeTitle(latest)) + '</div><div class="s">' + esc(T('stepOf', { n: p.step + 1, total: p.steps })) + '</div></div><span class="btn">' + T('open') + '</span></div>';
+  }
+
+  // ═════ kalendarz lunchów (od v0.11) ═════
+  // Adres /calendar/. Widok i oglądany zakres w history.state.cal — zmiana zakresu podmienia wpis historii, więc
+  // „‹” w przepisie otwartym z kalendarza wraca dokładnie tu. Wejście przyciskiem „Kalendarz” — zawsze bieżący
+  // tydzień / miesiąc (freshCalendar); pamiętany jest tylko wybór Tydzień / Miesiąc (state.calendar.view).
+  var CAL_PATH = '/calendar/';
+  function isCalendarUrl() { return /^\/calendar\/?$/.test(global.location.pathname); }
+  function calendarPlaceFromHistory() {
+    var hs = global.history.state;
+    return normalizeCalendarPlace(hs && hs.cal) || freshCalendar(state, today());
+  }
+
+  function calendarBar() {
+    var seg = function (v, key) { return '<button' + (V.view === v ? ' class="on"' : '') + ' data-act="cal-' + v + '">' + T(key) + '</button>'; };
+    return '<div class="bar"><button class="btn back" data-act="back">' + T('back') + '</button><h1>' + T('calendar') + '</h1>' +
+      '<div class="seg">' + seg('week', 'week') + seg('month', 'month') + '</div>' + langButton() + '</div>';
+  }
+  // ‹ zakres › i „Dziś”.
+  function calendarNav() {
+    return '<div class="calnav"><button class="btn nav" data-act="cal-prev" aria-label="' + T('earlier') + '">‹</button><div class="range">' +
+      esc(rangeLabel(V.view, V.anchor, lang)) + '</div><button class="btn nav" data-act="cal-next" aria-label="' + T('later') + '">›</button>' +
+      '<button class="btn" data-act="cal-today">' + T('today') + '</button></div>';
+  }
+
+  function goToCalendar() {
+    closeProblems();
+    var sc = app.querySelector('.scroll');
+    if (V.screen === 'list' && sc) { state.list.scroll = sc.scrollTop; saveState(); }
+    var place = freshCalendar(state, today());
+    global.history.pushState({ fromList: true, cal: place }, '', CAL_PATH);
+    showCalendar(place);
+  }
+
+  // place = { view, anchor }
+  function showCalendar(place) {
+    closePhoto();
+    closeProblems();
+    V = { screen: 'calendar', slug: null, r: null, L: null, step: 0, servings: 0, view: place.view, anchor: place.anchor };
+    state.openRecipe = null;
+    state.calendar.view = place.view;
+    saveState();
+    rememberCalendarPlace();
+    if (calendar) { drawCalendar(); return; }
+    render(calendarBar() + calendarNav() + '<div class="scroll"><div class="loading">' + T('loading') + '</div></div>');
+    ensureCalendar(function (ok) {
+      if (V.screen !== 'calendar') return;
+      if (ok) drawCalendar();
+      else render(calendarBar() + calendarNav() + '<div class="scroll"><div class="err" data-act="retry-calendar"><b>' + T('calendarFailed') + '</b><br><br>' + T('retryHint') + '</div></div>');
+    });
+  }
+  // Bieżący widok i zakres do historii (z zachowaniem fromList — „‹” w kalendarzu wraca wtedy zwykłym „wstecz”).
+  function rememberCalendarPlace() {
+    var hs = global.history.state;
+    global.history.replaceState({ fromList: !!(hs && hs.fromList), cal: { view: V.view, anchor: V.anchor } }, '', CAL_PATH);
+  }
+
+  function drawCalendar(scroll) {
+    if (!calendar) return;
+    render(calendarBar() + calendarNav() + '<div class="scroll cal">' + (V.view === 'month' ? monthHtml() : weekHtml()) + '</div>', scroll || 0);
+    // Tydzień w poziomie nie mieści się cały — dzisiejszy dzień ma być widoczny.
+    var el = app.querySelector('.day.today'), box = app.querySelector('.scroll');
+    if (scroll === undefined && el && box) revealStep(box, el);
+  }
+
+  // Tydzień: 7 wierszy pon–nd. Dziś — niebieska ramka, minione dni przygaszone, dzień bez wpisu „—” (nieklikalny).
+  function weekHtml() {
+    var d = today(), n = dateNames(lang), h = '<div class="week">';
+    weekDays(V.anchor).forEach(function (k) {
+      var e = calendar[k], ok = !!(e && !e.error), date = keyDate(k);
+      h += '<div class="day' + (k === d ? ' today' : (k < d ? ' past' : '')) + (ok ? '' : ' none') + '"' + (ok ? ' data-open="' + esc(e.recipe) + '"' : '') + '>' +
+        '<div class="dd"><div class="wd">' + esc(dayShort(k, lang)) + '</div><div class="dn">' + date.getDate() + '</div><div class="mo">' + esc(n.monthsShort[date.getMonth()]) + '</div></div>';
+      if (!e) h += '<div class="info"><div class="emptyd">—</div></div>';
+      else if (e.error) h += '<div class="info">' + calErrorHtml(e) + '</div>';
+      else {
+        h += (e.thumb ? photo(e.thumb, 'cph') : '') + '<div class="info"><div class="tt">' + calTitleHtml(e) + '</div><div class="devs">' + calMarks(e) + '</div>' +
+          (e.note ? '<div class="note">' + esc(e.note) + '</div>' : '') + '</div>';
+      }
+      h += '</div>';
+    });
+    return h + '</div>';
+  }
+
+  // Miesiąc: siatka 7 kolumn pon–nd. Dziś — niebieska ramka, dni spoza miesiąca przygaszone, kratka z przepisem klikalna.
+  function monthHtml() {
+    var d = today(), month = V.anchor.slice(0, 7), h = '<div class="mhead">';
+    dateNames(lang).days.forEach(function (x) { h += '<div>' + esc(x) + '</div>'; });
+    h += '</div><div class="mgrid">';
+    monthGrid(V.anchor).forEach(function (k) {
+      var e = calendar[k], ok = !!(e && !e.error);
+      h += '<div class="mcell' + (k === d ? ' today' : '') + (k.slice(0, 7) !== month ? ' out' : '') + (ok ? '' : ' none') + '"' + (ok ? ' data-open="' + esc(e.recipe) + '"' : '') + '>' +
+        '<div class="mn">' + keyDate(k).getDate() + '</div>';
+      if (e && e.error) h += calErrorHtml(e);
+      else if (ok) h += (e.thumb ? photo(e.thumb, 'mph') : '') + '<div class="mt">' + calTitleHtml(e) + '</div>';
+      h += '</div>';
+    });
+    return h + '</div>';
+  }
+
+  // Tydzień / Miesiąc (wybór pamiętany). Z miesiąca z dzisiejszym dniem — na bieżący tydzień.
+  function setCalendarView(view) {
+    if (V.screen !== 'calendar' || V.view === view) return;
+    if (view === 'week' && monthStart(V.anchor) === monthStart(today())) V.anchor = today();
+    V.view = view;
+    state.calendar.view = view;
+    saveState();
+    rememberCalendarPlace();
+    drawCalendar();
+  }
+  // dir: -1 / 1 — poprzedni / następny tydzień albo miesiąc; 0 — „Dziś”.
+  function moveCalendar(dir) {
+    if (V.screen !== 'calendar') return;
+    V.anchor = dir ? shiftAnchor(V.view, V.anchor, dir) : today();
+    rememberCalendarPlace();
+    drawCalendar();
+  }
+
+  // Po północy: „dziś” w karcie lunchu, w kalendarzu i w podtytule przepisu przesuwa się na nowy dzień.
+  function onNewDay(oldDay) {
+    if (V.screen === 'list') refreshLunch();
+    else if (V.screen === 'recipe') updateRecipeSub();
+    else if (V.screen === 'calendar') {
+      if (V.anchor === oldDay) { V.anchor = shownDay; rememberCalendarPlace(); }
+      drawCalendar(currentScroll());
+    }
   }
 
   // ═════ przepis ═════
@@ -1092,8 +1440,7 @@
     rememberRecipe();
     global.history.replaceState(global.history.state, '', recipeUrl(r.id, step));
 
-    var sub = T('prep') + ' ' + T('minutes', { n: r.prep_minutes }) + ' · ' + (r.cook_minutes ? T('cook') + ' ' + T('minutes', { n: r.cook_minutes }) : T('noBake'));
-    var h = recipeBar(L.title, { sub: esc(sub), photo: !!r.image, pl: L.fallback, badges: r.badges });
+    var h = recipeBar(L.title, { sub: recipeSubHtml(r), photo: !!r.image, pl: L.fallback, badges: r.badges });
 
     // Przypięte wyświetlacze urządzeń (jedyne miejsce z poświatą); timer obracania wewnątrz panelu Ninja.
     // Oba urządzenia (od v0.7.1, w poziomie): Ninja z jedną strefą i TM6 obok siebie (pin both one),
@@ -1125,6 +1472,19 @@
     updateTimerUI();
     // Po powrocie do przepisu (np. po przeładowaniu Safari) pokaż bieżący krok.
     if (keepScroll === undefined && step > 0) scrollToStep(step);
+    if (!calendar) ensureCalendar(updateRecipeSub);
+  }
+
+  // Podtytuł przepisu: najbliższy termin z kalendarza (dziś lub później — przeszłych nie pokazujemy) i czasy.
+  // „Lunch: jutro · przygotowanie 10 min · pieczenie 11 min” — termin na początku, bo w pionie koniec linii się obcina.
+  function recipeSubHtml(r) {
+    var times = T('prep') + ' ' + T('minutes', { n: r.prep_minutes }) + ' · ' + (r.cook_minutes ? T('cook') + ' ' + T('minutes', { n: r.cook_minutes }) : T('noBake'));
+    var d = today(), k = calendar ? nextLunch(calendar, r.id, d) : null;
+    return (k ? '<span class="lsub">' + esc(T('lunchIn', { when: lunchWhen(k, d, lang) })) + '</span> · ' : '') + esc(times);
+  }
+  function updateRecipeSub() {
+    var el = doc.getElementById('rsub');
+    if (V.screen === 'recipe' && el) el.innerHTML = recipeSubHtml(V.r);
   }
 
   // Czy element ma własne przewijanie (w poziomie kolumny przepisu — overflow-y: auto z CSS).
@@ -1317,7 +1677,7 @@
   function showProblems(kind) {
     var warn = kind === 'warnings', groups = warn ? notices : problems;
     if (!groups.length || doc.getElementById('problems')) return;
-    var title = warn ? warningsLabel(groups.length, lang) : problemsLabel(groups.length, lang);
+    var title = warn ? warningsLabel(groups.length, lang) : problemsText(groups, lang);
     var h = '<div class="pbar"><h1>' + esc(title) + '</h1><button class="close" data-act="close-problems">' + T('close') + '</button></div>' +
       '<div class="plist"><p class="pintro">' + T(warn ? 'warningsIntro' : 'problemsIntro') + '</p>';
     groups.forEach(function (g) {
@@ -1329,7 +1689,8 @@
         if (g.items.some(function (it) { return it.path === 'tags'; })) parts.push(T('warningBadge'));
         if (g.file !== 'tags.yml' && g.items.some(function (it) { return /^tags\[/.test(it.path); })) parts.push(T('warningTagsOnly'));
         stateText = parts.join(' ');
-      } else stateText = g.skipped ? T('problemSkipped') : T('problemNoPhoto');
+      } else if (g.file === CALENDAR_FILE) stateText = T('problemCalendar');
+      else stateText = g.skipped ? T('problemSkipped') : T('problemNoPhoto');
       h += '<div class="pfile"><div class="pname">recipes/' + esc(g.file) + '</div>' +
         (stateText ? '<div class="pstate' + (g.skipped ? ' skipped' : '') + '">' + stateText + '</div>' : '');
       g.items.forEach(function (it) {
@@ -1528,6 +1889,8 @@
 
   // Co sekundę (i przy powrocie do aplikacji): odśwież timer, pokaż minione alarmy wszystkich timerów.
   function tick() {
+    var day = dateKey(new Date());
+    if (day !== shownDay) { var old = shownDay; shownDay = day; onNewDay(old); }
     updateTimerUI();
     var now = Date.now(), a = doc.getElementById('alarm');
     if (a) {
@@ -1562,18 +1925,38 @@
     return m ? parseInt(m[1], 10) - 1 : null;
   }
 
+  // Przepis z listy albo z kalendarza (od v0.11). Z kalendarza zapamiętujemy widok i zakres (calendarReturn) — „‹” wraca
+  // tam także wtedy, gdy historii już nie ma (przeładowanie do nowej wersji, powrót z ekranu początkowego).
   function goToRecipe(slug) {
     closePhoto();
     closeProblems();
     var sc = app.querySelector('.scroll');
-    if (V.screen === 'list' && sc) { state.list.scroll = sc.scrollTop; saveState(); }
+    if (V.screen === 'list' && sc) state.list.scroll = sc.scrollTop;
+    state.calendarReturn = V.screen === 'calendar' ? { view: V.view, anchor: V.anchor } : null;
+    saveState();
     global.history.pushState({ fromList: true }, '', recipeUrl(slug, 0));
     openRecipe(slug, null);
   }
   function goBack() {
     closePhoto();
-    // Weszliśmy z listy → zwykłe „wstecz" w historii; inaczej (start z /p/…) podmieniamy adres.
-    if (global.history.state && global.history.state.fromList) { global.history.back(); return; }
+    var hs = global.history.state;
+    // Kalendarz: z listy → „wstecz” w historii; inaczej (start z /calendar/) — lista.
+    if (V.screen === 'calendar') {
+      if (hs && hs.fromList) { global.history.back(); return; }
+      global.history.replaceState(null, '', '/');
+      showList();
+      return;
+    }
+    // Przepis: weszliśmy z listy / kalendarza → zwykłe „wstecz” (popstate odtworzy widok z adresu i history.state);
+    // przepis z kalendarza bez historii → kalendarz w zapamiętanym miejscu; inaczej (start z /p/…) — lista.
+    var target = backTarget(hs, state.calendarReturn);
+    if (target === 'history') { global.history.back(); return; }
+    if (target === 'calendar') {
+      var place = normalizeCalendarPlace(state.calendarReturn);
+      global.history.replaceState({ cal: place }, '', CAL_PATH);
+      showCalendar(place);
+      return;
+    }
     global.history.replaceState(null, '', '/');
     showList();
   }
@@ -1582,6 +1965,7 @@
     closeProblems();
     var slug = slugFromUrl();
     if (slug) openRecipe(slug, stepFromUrl());
+    else if (isCalendarUrl()) showCalendar(calendarPlaceFromHistory());
     else showList();
   }
 
@@ -1611,6 +1995,12 @@
           else if (a === 'search-clear') setSearch('', null);
           else if (a === 'search-reset') setSearch('', []);
           else if (a === 'retry-recipe') openRecipe(V.slug, null);
+          else if (a === 'calendar') goToCalendar();
+          else if (a === 'cal-week' || a === 'cal-month') setCalendarView(a.slice(4));
+          else if (a === 'cal-prev') moveCalendar(-1);
+          else if (a === 'cal-next') moveCalendar(1);
+          else if (a === 'cal-today') moveCalendar(0);
+          else if (a === 'retry-calendar') showCalendar({ view: V.view, anchor: V.anchor });
           return;
         }
         if (t.getAttribute('data-open')) { goToRecipe(t.getAttribute('data-open')); return; }
@@ -1651,12 +2041,15 @@
       if (p.step !== V.step && p.step < V.r.steps.length) setStep(p.step);
       return;
     }
+    // Kalendarz zostaje w tym samym miejscu (przerysowany — np. po północy inny dzień jest „dziś”).
+    if (V.screen === 'calendar') { drawCalendar(currentScroll()); return; }
     if (V.screen === 'list' && index) {
-      // Odśwież wyniki i kartę „Wróć do gotowania" bez przerysowania pola (klawiatura zostaje).
+      // Odśwież wyniki, kartę „Wróć do gotowania" i „Dziś na lunch" bez przerysowania pola (klawiatura zostaje).
       var input = doc.getElementById('search-input');
       if (!input) { drawList(currentScroll()); return; }
       if (input.value !== state.list.query) input.value = state.list.query;
       updateResults(true);
+      refreshLunch();
     } else if (V.screen !== 'list') {
       global.history.replaceState(null, '', '/');
       showList();
@@ -1688,9 +2081,10 @@
   doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') { onReturn(); tick(); checkBuild(); } });
 
   // ── start ──
-  // Adres /p/<slug>/ wygrywa; na „/" wracamy do ostatniego ekranu z pamięci (np. po otwarciu z ekranu początkowego).
+  // Adres /p/<slug>/ wygrywa, potem /calendar/; na „/" wracamy do ostatniego ekranu z pamięci (np. po otwarciu z ekranu początkowego).
   var startSlug = slugFromUrl();
   if (startSlug) openRecipe(startSlug, stepFromUrl());
+  else if (isCalendarUrl()) showCalendar(calendarPlaceFromHistory());
   else if (state.openRecipe) { global.history.replaceState(null, '', recipeUrl(state.openRecipe, 0)); openRecipe(state.openRecipe, null); }
   else showList();
   tick();

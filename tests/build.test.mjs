@@ -146,7 +146,7 @@ test('błędne przepisy nie przerywają buildu: są pominięte, reszta publikowa
   const out = join(dir, 'out');
   const w = build({ KITCHEN_RECIPES_DIR: dir, KITCHEN_OUT_DIR: out });
   assert.equal(w.status, 0, w.stderr);
-  assert.match(w.stderr, /przepisy z błędem: 3/);
+  assert.match(w.stderr, /pliki z błędem \(przepisy, kalendarz\): 3/);
 
   assert.deepEqual(readJson(out, 'search.json').map((e) => e.id), ['deser-twarogowy']);
   assert.deepEqual(readdirSync(join(out, 'data')), ['deser-twarogowy.json']);

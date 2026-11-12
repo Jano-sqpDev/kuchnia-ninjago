@@ -1,6 +1,31 @@
 // Kształt wygenerowanych plików JSON (to, co pobiera iPad).
 import { buildSearchText } from './search.mjs';
-import { translateTags, recipeBadges } from './validate.mjs';
+import { translateTags, recipeBadges, DEVICE_TAGS } from './validate.mjs';
+
+// Kalendarz lunchów (od v0.11) dla iPada: data → { recipe, title, title_en?, thumb?, badges, devices, note? }
+// albo { error: 'recipe' | 'entry', recipe? } (wpis z błędem — na ekranie „⚠ brak przepisu”).
+// calendar — entries z validateCalendar, index — wpisy search.json (tytuły, miniatury, plakietki tak samo jak na liście).
+export function calendarJson(calendar, index) {
+  const bySlug = {};
+  index.forEach((e) => { bySlug[e.id] = e; });
+  const out = {};
+  Object.keys(calendar || {}).sort().forEach((date) => {
+    const c = calendar[date], e = c.error ? null : bySlug[c.recipe];
+    if (!e) {
+      out[date] = { error: c.error || 'recipe' };
+      if (c.recipe) out[date].recipe = c.recipe;
+      return;
+    }
+    const o = { recipe: c.recipe, title: e.title };
+    if (e.title_en) o.title_en = e.title_en;
+    if (e.thumb) o.thumb = e.thumb;
+    o.badges = e.badges;
+    o.devices = DEVICE_TAGS.filter((t) => e.tags.includes(t));
+    if (c.note) o.note = c.note;
+    out[date] = o;
+  });
+  return out;
+}
 
 // Pełne dane jednego przepisu dla strony przepisu.
 // images = { thumb, large } z tools/images.mjs albo brak, gdy przepis nie ma zdjęcia.

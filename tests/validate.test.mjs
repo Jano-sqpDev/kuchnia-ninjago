@@ -485,8 +485,8 @@ test('pole image może wskazywać HEIC', () => {
   assert.deepEqual(errors, []);
 });
 
-test('w recipes/ tylko pliki .md (i tags.yml)', () => {
-  const { errors } = loadRecipes(tempRecipesDir({ 'deser.md': DESSERT, 'notatki.txt': 'x', 'tags.yml': 'deser: dessert\n' }));
+test('w recipes/ tylko pliki .md (i tags.yml, calendar.yml)', () => {
+  const { errors } = loadRecipes(tempRecipesDir({ 'deser.md': DESSERT, 'notatki.txt': 'x', 'tags.yml': 'deser: dessert\n', 'calendar.yml': '2026-11-13: deser\n' }));
   assert.deepEqual(errors.map((e) => e.split(' → ')[0]), ['notatki.txt']);
 });
 

@@ -7,6 +7,7 @@ To repozytorium to kuchenny wyświetlacz przepisów na starym iPadzie. Kod aplik
 - Dodawanie i poprawianie przepisów: pliki `recipes/<slug>.md`.
 - Dodawanie zdjęć przepisów: pliki `recipes/img/<slug>.jpg` (albo `.png`, `.heic`).
 - Tłumaczenia tagów na angielski i znaczniki (kolorowe plakietki): `recipes/tags.yml` (mapa `tag_PL: tag_EN`; znacznik: `tag: { en: …, badge: …, color: … }`).
+- Kalendarz lunchów: `recipes/calendar.yml` (sekcja „Kalendarz lunchów” niżej).
 - Wzorcowe przykłady formatu (tylko do podglądu, nie zmieniaj ich): `tests/fixtures/recipes/`.
 - Format przepisu, wszystkie pola i reguły: **`docs/FORMAT-PRZEPISU.md`** — przeczytaj całość przed pracą i trzymaj się jej dokładnie.
 
@@ -27,9 +28,26 @@ Aplikacja ma interfejs po polsku i po angielsku (przełącznik „PL | EN”). D
   - Nowy znacznik tylko na wyraźną prośbę użytkownika: wpis w `recipes/tags.yml` z `badge` (1–6 znaków, A–Z / cyfry), `color` (wyłącznie `yellow`, `green`, `orange`, `pink`, `red`) i ewentualnie `group` — `docs/FORMAT-PRZEPISU.md`, punkt 6.
 - Brak lub niekompletne tłumaczenie nie blokuje publikacji (to tylko ostrzeżenie — przepis wyświetla się wtedy po polsku), ale **`npm run validate` nie może wypisać żadnego ostrzeżenia dotyczącego Twojego przepisu.**
 
+## Kalendarz lunchów — `recipes/calendar.yml`
+
+Co Janusz przygotowuje na lunch w danym dniu. iPad pokazuje go na liście („Dziś na lunch”, „Jutro”), na ekranie „Kalendarz” (tydzień / miesiąc) i w podtytule przepisu („Lunch: jutro”). Pełny opis: `docs/FORMAT-PRZEPISU.md`, punkt 13.
+
+```yaml
+2026-11-13: falafele-z-ciecierzycy
+2026-11-14: { recipe: chicken-parmigiana, note: "podwójna porcja" }
+```
+
+- **Klucz = data `RRRR-MM-DD`** — dzień, w którym Janusz **przygotowuje** lunch. **Wartość = slug przepisu** (nazwa pliku z `recipes/` bez `.md`) albo `{ recipe: slug, note: "…" }` (`note` opcjonalna, krótka). Innych pól nie ma.
+- **Slug musi istnieć.** Jeśli przepisu nie ma jeszcze w aplikacji — **dodaj plik przepisu i wpis w kalendarzu w jednym commicie**.
+- **Jeden lunch na dzień** (każda data tylko raz), wpisy w kolejności dat, komentarz z opisem formatu na górze pliku zostaje.
+- **Przeszłych wpisów nie usuwaj** — to historia. Nie usuwaj też przepisów, które są w kalendarzu (wpis wskazywałby nieistniejący przepis).
+- **Zanim zapiszesz plan, zawsze pokaż go Januszowi jako tabelkę „dzień tygodnia + data — tytuł”** (np. „pt 13.11 — Chicken Parmigiana (podwójna porcja)”) **i poczekaj na potwierdzenie.** Zapisujesz dopiero po „tak”.
+- Commit: pierwsza linia **`Kalendarz: <zakres dat>`**, np. `Kalendarz: 16–22.11`; z nowym przepisem — `Przepis: <tytuł> + kalendarz`.
+- Zły wpis (zła data, nieistniejący slug, powtórzona data, nieznane pole) to błąd walidacji — `npm run validate` musi przejść bez błędów także dla kalendarza.
+
 ## Czego nie wolno
 
-- **Nie zmieniaj niczego poza `recipes/` (przepisy, `recipes/img/`, `recipes/tags.yml`)**: kodu aplikacji (`src/`, `tools/`), testów (`tests/`), konfiguracji (`package.json`, `package-lock.json`, `.gitignore` itd.), dokumentacji (`CLAUDE.md`, `AGENTS.md`, `docs/`).
+- **Nie zmieniaj niczego poza `recipes/` (przepisy, `recipes/img/`, `recipes/tags.yml`, `recipes/calendar.yml`)**: kodu aplikacji (`src/`, `tools/`), testów (`tests/`), konfiguracji (`package.json`, `package-lock.json`, `.gitignore` itd.), dokumentacji (`CLAUDE.md`, `AGENTS.md`, `docs/`).
 - Nie instaluj ani nie aktualizuj zależności.
 - Nie zmieniaj nazwy (slugu) istniejących przepisów — to ich trwały adres.
 

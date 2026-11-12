@@ -1,0 +1,8 @@
+# Przykład wzorcowy kalendarza lunchów (format: docs/FORMAT-PRZEPISU.md, punkt 13) — wpisy wskazują przykłady z tego katalogu.
+#   RRRR-MM-DD: slug-przepisu
+#   RRRR-MM-DD: { recipe: slug-przepisu, note: "notatka" }
+
+2026-11-09: udka-z-ziemniakami
+2026-11-10: { recipe: warzywa-varoma, note: "podwójna porcja" }
+2026-11-12: ziemniaczki-brokuly-sync
+2026-11-16: udka-z-ziemniakami

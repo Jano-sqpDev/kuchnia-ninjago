@@ -7,7 +7,7 @@ Zamień przepis, który dostaniesz, na **jeden plik Markdown** w formacie poniż
 **Dwa języki:** aplikacja ma interfejs PL i EN. Przepis piszesz po polsku, a w tym samym pliku dodajesz **kompletne tłumaczenie angielskie — blok `translations.en`** (punkt 10). Każdy nowy przepis musi go mieć. Jednostki tylko z listy angielskich skrótów (punkt 4).
 
 **Ustawienia urządzeń** (Ninja: tryb, funkcja, temperatura, czas; Thermomix TM6: czas, temperatura, obroty):
-- **Gotowy przepis** (podany przez użytkownika: własny, z internetu, od kogoś) — przenieś ustawienia z przepisu. Jeśli ich **brakuje albo są niejednoznaczne — nie zgaduj**: zamiast pliku odpowiedz krótką listą pytań (to jedyny wyjątek od „samego pliku”).
+- **Gotowy przepis** (podany przez użytkownika: własny, z internetu, od kogoś) — przenieś ustawienia z przepisu. Jeśli ich **brakuje albo są niejednoznaczne — nie zgaduj**: zamiast pliku odpowiedz krótką listą pytań (wyjątek od „samego pliku”; drugi wyjątek to plan kalendarza lunchów — najpierw tabelka do potwierdzenia, punkt 13).
 - **Nowy przepis** (użytkownik prosi o wymyślenie przepisu) — **sam zaproponuj realne ustawienia** dla Ninja DZ400UK / TM6 i dopisz na końcu `description`: „Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu.” Pytaj tylko, gdy czegoś nie da się sensownie dobrać.
 
 **Walidacja:** nie pisz, że plik przeszedł walidację (`npm run validate`, `npm test`), jeśli jej nie uruchomiłeś. Agent, który zapisuje przepis w repozytorium (commit na `main`) i nie może uruchomić tych poleceń, pisze to wprost w opisie commita.
@@ -350,3 +350,27 @@ translations:
 ---
 Sos można przygotować dzień wcześniej.
 ```
+
+## 13. Kalendarz lunchów — `recipes/calendar.yml`
+
+Osobny plik (nie przepis): co Janusz przygotowuje na lunch w danym dniu. Aplikacja pokazuje go na liście („Dziś na lunch”, „Jutro”), na ekranie „Kalendarz” (tydzień / miesiąc) i w podtytule przepisu („Lunch: jutro”).
+
+```yaml
+# Kalendarz lunchów (komentarz z opisem formatu zostaje na górze pliku)
+2026-11-13: falafele-z-ciecierzycy
+2026-11-14: { recipe: chicken-parmigiana, note: "podwójna porcja" }
+```
+
+- **Klucz = data `RRRR-MM-DD`** (dzień, w którym Janusz **przygotowuje** lunch), bez cudzysłowu. „14.11.2026” albo „2026-11-31” to błąd.
+- **Wartość = slug przepisu** (nazwa pliku z `recipes/` bez `.md`) albo obiekt `{ recipe: slug, note: "…" }` — `note` opcjonalna, krótka (np. „podwójna porcja”). Innych pól nie ma.
+- **Slug musi istnieć** w `recipes/` (i przepis musi przechodzić walidację). Jeśli przepisu jeszcze nie ma w aplikacji — **dodaj plik przepisu i wpis w kalendarzu w jednym commicie**.
+- **Jeden lunch na dzień** — każda data tylko raz. Wpisy w kolejności dat.
+- **Przeszłych wpisów nie usuwaj** — to historia. Zmieniasz tylko dzisiejsze i przyszłe dni.
+- **Zanim zapiszesz plan, pokaż go Januszowi jako tabelkę „dzień tygodnia + data — tytuł”** i poczekaj na potwierdzenie:
+
+| Dzień | Lunch |
+|---|---|
+| pt 13.11 | Chicken Parmigiana (podwójna porcja) |
+| sob 14.11 | Kotleciki z cukinii i fety |
+
+- Zły wpis (data, nieistniejący slug, powtórzona data, nieznane pole) nie psuje reszty kalendarza: przy tym dniu na iPadzie jest „⚠ brak przepisu” (albo „⚠ błąd we wpisie”), a na liście czerwona plakietka. `npm run validate` pokazuje taki błąd jako `calendar.yml → 2026-11-14: nie ma przepisu …`.

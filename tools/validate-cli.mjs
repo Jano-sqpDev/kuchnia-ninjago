@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { loadRecipes } from './validate.mjs';
 
 const recipesDir = process.env.KITCHEN_RECIPES_DIR || join(dirname(fileURLToPath(import.meta.url)), '..', 'recipes');
-const { recipes, errors, warnings } = loadRecipes(recipesDir);
+const { recipes, errors, warnings, calendar } = loadRecipes(recipesDir);
 
 // Ostrzeżenia (tłumaczenie EN, tagi bez tłumaczenia) nie zmieniają kodu wyjścia — przepis i tak się publikuje.
 if (warnings.length) {
@@ -14,9 +14,9 @@ if (warnings.length) {
 }
 
 if (errors.length) {
-  console.error('\nBłędy w przepisach (' + errors.length + '):\n');
+  console.error('\nBłędy w przepisach i kalendarzu (' + errors.length + '):\n');
   errors.forEach((e) => console.error('  ✘ ' + e));
   console.error('');
   process.exit(1);
 }
-console.log('Walidacja OK — przepisy: ' + recipes.length + (warnings.length ? ', ostrzeżenia: ' + warnings.length : ''));
+console.log('Walidacja OK — przepisy: ' + recipes.length + ', kalendarz: ' + Object.keys(calendar).length + ' dni' + (warnings.length ? ', ostrzeżenia: ' + warnings.length : ''));

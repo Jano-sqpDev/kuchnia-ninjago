@@ -21,6 +21,8 @@ const plain = (v) => JSON.parse(JSON.stringify(v));
 const K = context.kitchenTest;
 // Domyślny stan listy (wyszukiwanie, chipy, przewinięcie) — od v0.5 w każdym znormalizowanym stanie.
 const LIST0 = { query: '', chips: [], scroll: 0 };
+// Kalendarz lunchów (od v0.11): domyślnie widok tygodnia, bez powrotu do kalendarza.
+const CAL0 = { view: 'week' };
 
 // ── słownik pl / en ──
 
@@ -223,8 +225,8 @@ test('czas i obroty TM6', () => {
 });
 
 test('stan z localStorage: śmieci i niepoprawne zapisy nie psują aplikacji', () => {
-  assert.deepEqual(plain(K.normalizeState(null)), { openRecipe: null, recipes: {}, list: LIST0 });
-  assert.deepEqual(plain(K.normalizeState('x')), { openRecipe: null, recipes: {}, list: LIST0 });
+  assert.deepEqual(plain(K.normalizeState(null)), { openRecipe: null, recipes: {}, list: LIST0, calendar: CAL0, calendarReturn: null });
+  assert.deepEqual(plain(K.normalizeState('x')), { openRecipe: null, recipes: {}, list: LIST0, calendar: CAL0, calendarReturn: null });
   const s = K.normalizeState({ openRecipe: '../zle', recipes: { 'udka': { step: 3, servings: 99 }, 'Z!': { step: 1 } } });
   assert.equal(s.openRecipe, null);
   assert.deepEqual(Object.keys(s.recipes), ['udka']);
@@ -237,14 +239,14 @@ test('migracja zapisu sprzed v0.2.3: przepis, krok i porcje zostają', () => {
     'udka-z-ziemniakami': { krok: 3, porcje: 6, tytul: 'Udka z ziemniakami', krokow: 5, t: 1700 },
     'deser-twarogowy': { krok: 0, porcje: null, tytul: 'Deser', krokow: 4, t: 1600 },
   } };
-  assert.deepEqual(plain(K.migrateLegacyState(old)), { openRecipe: 'udka-z-ziemniakami', list: LIST0, recipes: {
+  assert.deepEqual(plain(K.migrateLegacyState(old)), { openRecipe: 'udka-z-ziemniakami', list: LIST0, calendar: CAL0, calendarReturn: null, recipes: {
     'udka-z-ziemniakami': { step: 3, servings: 6, title: 'Udka z ziemniakami', steps: 5, t: 1700 },
     'deser-twarogowy': { step: 0, servings: null, title: 'Deser', steps: 4, t: 1600 },
   } });
   // Lista (ekran 'lista') → brak otwartego przepisu; śmieci → pusty stan.
   assert.equal(K.migrateLegacyState({ ekran: 'lista', przepisy: {} }).openRecipe, null);
-  assert.deepEqual(plain(K.migrateLegacyState(null)), { openRecipe: null, recipes: {}, list: LIST0 });
-  assert.deepEqual(plain(K.migrateLegacyState({ ekran: 5, przepisy: 'x' })), { openRecipe: null, recipes: {}, list: LIST0 });
+  assert.deepEqual(plain(K.migrateLegacyState(null)), { openRecipe: null, recipes: {}, list: LIST0, calendar: CAL0, calendarReturn: null });
+  assert.deepEqual(plain(K.migrateLegacyState({ ekran: 5, przepisy: 'x' })), { openRecipe: null, recipes: {}, list: LIST0, calendar: CAL0, calendarReturn: null });
 });
 
 test('klucze localStorage: nowe angielskie, stare polskie tylko do migracji', () => {
