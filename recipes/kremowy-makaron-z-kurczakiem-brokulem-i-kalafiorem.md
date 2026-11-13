@@ -2,7 +2,7 @@
 # plik: recipes/kremowy-makaron-z-kurczakiem-brokulem-i-kalafiorem.md
 schema_version: 1
 title: "Kremowy makaron z kurczakiem, brokułem i kalafiorem"
-description: "Penne z kawałkami kurczaka i pieczonymi warzywami w sosie Philadelphia Garlic & Herbs z parmezanem. Druga połowa paczki brokułu i kalafiora. Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu."
+description: "Penne z kawałkami kurczaka i pieczonymi warzywami w sosie Philadelphia Garlic & Herbs z parmezanem. Druga połowa paczki brokułu i kalafiora. Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu. Szacunkowo 700 kcal i 76 g białka na porcję (cały lunch, łącznie z dodatkami)."
 servings: 1
 prep_minutes: 12
 cook_minutes: 20
@@ -79,7 +79,7 @@ steps:
 translations:
   en:
     title: "Creamy chicken pasta with broccoli and cauliflower"
-    description: "Penne with chicken and roasted vegetables in a Philadelphia Garlic & Herbs and Parmesan sauce. Uses the second half of the broccoli-and-cauliflower pack. Suggested settings: verify on the first cook."
+    description: "Penne with chicken and roasted vegetables in a Philadelphia Garlic & Herbs and Parmesan sauce. Uses the second half of the broccoli-and-cauliflower pack. Suggested settings: verify on the first cook. Approximately 700 kcal and 76 g protein per serving (the whole lunch, including sides)."
     ingredients:
       - name: "Chicken breast"
         note: "raw, 2–3 cm pieces"
