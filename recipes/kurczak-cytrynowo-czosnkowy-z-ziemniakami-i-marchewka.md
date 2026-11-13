@@ -2,7 +2,7 @@
 # plik: recipes/kurczak-cytrynowo-czosnkowy-z-ziemniakami-i-marchewka.md
 schema_version: 1
 title: "Kurczak cytrynowo-czosnkowy z ziemniakami i marchewką"
-description: "Cała pierś w marynacie cytrynowo-czosnkowej z ziemniakami, marchewką i zimnym sosem skyr. Marchewkę dodajemy w trakcie pieczenia. Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu."
+description: "Cała pierś w marynacie cytrynowo-czosnkowej z ziemniakami, marchewką i zimnym sosem skyr. Marchewkę dodajemy w trakcie pieczenia. Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu. Szacunkowo 550 kcal i 69 g białka na porcję (cały lunch, łącznie z dodatkami)."
 servings: 1
 prep_minutes: 12
 cook_minutes: 25
@@ -51,6 +51,15 @@ ingredients:
     amount: 50
     unit: g
     group: "Sos"
+  - name: "Sok z cytryny"
+    amount: 5
+    unit: ml
+    group: "Sos"
+  - name: "Czosnek"
+    amount: 1
+    unit: pcs
+    note: "ząbek, drobno starty"
+    group: "Sos"
   - name: "Woda"
     amount: 5
     unit: ml
@@ -79,11 +88,11 @@ steps:
   - text: "Gdy Ninja przypomni o potrząśnięciu, potrząśnij szufladą z warzywami. Sprawdź stopień upieczenia."
   - text: "Wbij termometr w najgrubsze miejsce piersi. Jeśli kurczak nie osiągnął bezpiecznej temperatury, dopiecz. Odstaw przed pokrojeniem."
     internal_temp_c: 75
-  - text: "Wymieszaj skyr z wodą i pieprzem. Pozostałości marynaty mającej kontakt z surowym mięsem wyrzuć. Podaj pierś z warzywami i zimnym sosem."
+  - text: "Wymieszaj skyr z sokiem z cytryny, drobno startym czosnkiem, wodą i pieprzem. Pozostałości marynaty mającej kontakt z surowym mięsem wyrzuć. Podaj pierś z warzywami i zimnym sosem."
 translations:
   en:
     title: "Lemon-garlic chicken with potatoes and carrots"
-    description: "A whole lemon-garlic chicken breast with potatoes, carrots and cool skyr sauce. Add the carrots partway through cooking. Suggested settings: verify on the first cook."
+    description: "A whole lemon-garlic chicken breast with potatoes, carrots and cool skyr sauce. Add the carrots partway through cooking. Suggested settings: verify on the first cook. Approximately 550 kcal and 69 g protein per serving (the whole lunch, including sides)."
     ingredients:
       - name: "Chicken breast"
         note: "raw, left whole"
@@ -98,6 +107,9 @@ translations:
       - name: "Carrots"
       - name: "Spray olive oil"
       - name: "Plain skyr"
+      - name: "Lemon juice"
+      - name: "Garlic"
+        note: "clove, finely grated"
       - name: "Water"
         note: "for thinning"
     groups:
@@ -111,7 +123,7 @@ translations:
       - text: "IMPORTANT, MANUAL STEP: when zone 2 shows 15 minutes remaining, add the carrots to the potatoes and toss. The app will not trigger an alert for this step."
       - text: "Shake the vegetable drawer when prompted. Check whether the vegetables are cooked."
       - text: "Insert a thermometer into the thickest part of the breast. Cook longer if necessary, then rest before slicing."
-      - text: "Mix the skyr with water and pepper. Discard any marinade that touched raw chicken. Serve with the vegetables and cool sauce."
+      - text: "Mix the skyr with lemon juice, finely grated garlic, water and pepper. Discard any marinade that touched raw chicken. Serve with the vegetables and cool sauce."
     labels:
       zone1: "Chicken breast"
       zone2: "Potatoes and carrots"
