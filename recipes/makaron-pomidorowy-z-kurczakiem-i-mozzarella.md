@@ -2,7 +2,7 @@
 # plik: recipes/makaron-pomidorowy-z-kurczakiem-i-mozzarella.md
 schema_version: 1
 title: "Makaron pomidorowy z kurczakiem i mozzarellą"
-description: "Penne z kawałkami kurczaka, passatą, czosnkiem i mozzarellą. Sos przygotowany na patelni, żeby nie przesuszać kurczaka. Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu."
+description: "Penne z kawałkami kurczaka, passatą, czosnkiem i mozzarellą. Sos przygotowany na patelni, żeby nie przesuszać kurczaka. Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu. Szacunkowo 655 kcal i 75 g białka na porcję (cały lunch, łącznie z dodatkami)."
 servings: 1
 prep_minutes: 12
 cook_minutes: 20
@@ -73,7 +73,7 @@ steps:
 translations:
   en:
     title: "Tomato chicken pasta with mozzarella"
-    description: "Penne with chicken pieces, passata, garlic and mozzarella. Finish in a pan to avoid drying out the chicken. Suggested settings: verify on the first cook."
+    description: "Penne with chicken pieces, passata, garlic and mozzarella. Finish in a pan to avoid drying out the chicken. Suggested settings: verify on the first cook. Approximately 655 kcal and 75 g protein per serving (the whole lunch, including sides)."
     ingredients:
       - name: "Chicken breast"
         note: "raw, 2–3 cm pieces"
