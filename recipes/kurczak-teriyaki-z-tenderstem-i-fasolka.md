@@ -2,7 +2,7 @@
 # plik: recipes/kurczak-teriyaki-z-tenderstem-i-fasolka.md
 schema_version: 1
 title: "Kurczak teriyaki z ryżem, Tenderstem i fasolką"
-description: "Kurczak w sosie sojowo-miodowym, ryż basmati oraz Tesco Finest Purple Tenderstem & Extra Fine Beans. Sos przygotowywany osobno. Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu."
+description: "Kurczak w sosie sojowo-miodowym, ryż basmati oraz Tesco Finest Purple Tenderstem & Extra Fine Beans. Sos przygotowywany osobno. Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu. Szacunkowo 565 kcal i 68 g białka na porcję (cały lunch, łącznie z dodatkami)."
 servings: 1
 prep_minutes: 10
 cook_minutes: 20
@@ -32,7 +32,7 @@ ingredients:
     unit: ml
     group: "Sos"
   - name: "Miód"
-    amount: 6
+    amount: 10
     unit: g
     group: "Sos"
   - name: "Imbir świeży"
@@ -83,7 +83,7 @@ steps:
 translations:
   en:
     title: "Teriyaki chicken with rice, Tenderstem and green beans"
-    description: "Chicken with soy and honey sauce, basmati rice, and Tesco Finest Purple Tenderstem & Extra Fine Beans. Prepare the sauce separately. Suggested settings: verify on the first cook."
+    description: "Chicken with soy and honey sauce, basmati rice, and Tesco Finest Purple Tenderstem & Extra Fine Beans. Prepare the sauce separately. Suggested settings: verify on the first cook. Approximately 565 kcal and 68 g protein per serving (the whole lunch, including sides)."
     ingredients:
       - name: "Chicken breast"
         note: "raw, 2–3 cm pieces"
