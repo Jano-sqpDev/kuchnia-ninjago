@@ -25,6 +25,7 @@ czekolada: chocolate
 low: { en: low, badge: LOW, color: red, group: diet }
 norm: { en: norm, badge: NORM, color: green, group: diet }
 kids: { en: kids, badge: KIDS, color: yellow }
+inne: { en: other, badge: INNE, color: orange }
 muffinki: muffins
 owoce: fruit
 wanilia: vanilla
