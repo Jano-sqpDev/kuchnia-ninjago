@@ -5,7 +5,7 @@ title: "Kurczak w kremowym sosie cytrynowo-tymiankowym"
 description: "Kurczak w obfitym sosie z cytryny, tymianku, śmietanki i masła. Wierne proporcje i metoda Sally McKenney na 4 porcje: obsmażenie na patelni i dokończenie w piekarniku, bez dietetycznych zamienników i bez użycia Ninji lub TM6."
 servings: 4
 prep_minutes: 15
-cook_minutes: 25
+cook_minutes: 32
 tags: [norm, kids, inne, kurczak, obiad]
 source: "Sally McKenney, Creamy Lemon Thyme Chicken — https://sallysbakingaddiction.com/skillet-chicken-with-creamy-lemon-thyme-sauce/ ; wierne składniki, proporcje i metoda, kroki napisane własnymi słowami"
 
@@ -58,10 +58,10 @@ ingredients:
 steps:
   - text: "Przygotuj dużą patelnię nadającą się do piekarnika. Jeśli piersi mają nierówną grubość, lekko je rozbij, aby miały podobną grubość."
   - text: "Oprósz mięso solą i pieprzem. Rozgrzej oliwę na średnio dużym ogniu. Obsmaż kurczaka przez 7–8 minut łącznie, obracając raz. Powierzchnia powinna być rumiana, choć środek nie będzie jeszcze gotowy. Odłóż na talerz i przykryj folią."
-  - text: "Rozgrzej piekarnik do 190°C. Zdejmij patelnię z ognia i dodaj bulion, sok i skórkę z cytryny, cebulę, czosnek oraz tymianek."
+  - text: "Rozgrzej piekarnik do 190°C (góra/dół). Zdejmij patelnię z ognia i dodaj bulion, sok i skórkę z cytryny, cebulę, czosnek oraz tymianek."
   - text: "Postaw ponownie na średnio dużym ogniu. Zeskrob z dna przyrumienione resztki i gotuj bez przykrycia około 10 minut, aż ilość płynu zmniejszy się do około 120 ml."
   - text: "Dodaj śmietankę i masło. Gotuj łagodnie jeszcze przez 3–4 minuty, od czasu do czasu mieszając, aż sos lekko zgęstnieje."
-  - text: "Włóż kurczaka z powrotem do sosu. Wstaw patelnię do piekarnika na około 10 minut. Sprawdź temperaturę w najgrubszym miejscu mięsa; po osiągnięciu bezpiecznej temperatury wyjmij, aby nie przesuszyć."
+  - text: "PIEKARNIK: 190°C (góra/dół), około 10 minut. Włóż kurczaka z powrotem do sosu i wstaw patelnię do rozgrzanego piekarnika. Po 10 minutach sprawdź termometrem najgrubszy punkt mięsa. Jeśli jeszcze nie osiągnęło 75°C, dopiekaj po 2–3 minuty i ponownie sprawdzaj. Wyjmij od razu po osiągnięciu temperatury, aby nie przesuszyć."
     internal_temp_c: 75
   - text: "Podawaj z dużą ilością sosu. Jeśli chcesz, udekoruj cytryną i tymiankiem. Ryż lub warzywa dobrze pasują jako dodatek."
 
@@ -95,9 +95,9 @@ translations:
     steps:
       - text: "Use a large ovenproof skillet. Lightly pound any uneven breasts to a similar thickness."
       - text: "Season the chicken with salt and pepper. Heat olive oil over medium-high heat. Brown for 7–8 minutes in total, turning once. The outside should colour but the centre is not yet cooked. Set on a plate and cover with foil."
-      - text: "Preheat the oven to 190°C. Remove the pan from the heat and add the broth, lemon juice and zest, onion, garlic and thyme."
+      - text: "Preheat the oven to 190°C (conventional, top and bottom heat). Remove the pan from the heat and add the broth, lemon juice and zest, onion, garlic and thyme."
       - text: "Return to medium-high heat. Scrape up the browned bits and boil uncovered for about 10 minutes until only around 120 ml of liquid remains."
       - text: "Add cream and butter. Simmer gently for another 3–4 minutes, stirring occasionally, until slightly thickened."
-      - text: "Return the chicken to the sauce. Put the skillet in the oven for about 10 minutes. Check the thickest part with a thermometer and remove as soon as safely cooked, to avoid drying out."
+      - text: "OVEN: 190°C (conventional, top and bottom heat), approximately 10 minutes. Return the chicken to the sauce and put the skillet into the preheated oven. After 10 minutes check the thickest part with a thermometer. If it has not reached 75°C, cook in additional 2–3 minute intervals, checking each time. Remove as soon as the target is reached to avoid drying out."
       - text: "Serve with plenty of sauce. Garnish with lemon and thyme if desired; rice and vegetables are good sides."
 ---
