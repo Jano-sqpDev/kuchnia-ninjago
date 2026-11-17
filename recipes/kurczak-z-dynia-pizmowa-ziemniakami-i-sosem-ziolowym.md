@@ -2,10 +2,10 @@
 # plik: recipes/kurczak-z-dynia-pizmowa-ziemniakami-i-sosem-ziolowym.md
 schema_version: 1
 title: "Kurczak z dynią piżmową, ziemniakami i sosem ziołowym"
-description: "Kompletny lunch na jedną porcję: ziołowa pierś kurczaka, pieczone butternut chunks i ziemniaki oraz zimny sos ze skyru. Około 510 kcal i 56 g białka na porcję (wartości szacunkowe). Ustawienia proponowane, do sprawdzenia przy pierwszym gotowaniu."
+description: "Kompletny lunch na jedną porcję: ziołowa pierś kurczaka, pieczone butternut chunks i ziemniaki oraz zimny sos ze skyru. Około 510 kcal i 56 g białka na porcję (wartości szacunkowe). Ustawienia kurczaka przejęte z poniedziałkowego Dijon (pierś 184 g wyszła idealnie; w przepisie było 190°C / 25 min). Kontroluj 75°C w środku; ustawienia warzyw proponowane, do sprawdzenia przy pierwszym gotowaniu."
 servings: 1
 prep_minutes: 12
-cook_minutes: 22
+cook_minutes: 25
 tags: [ninja, low, obiad, kurczak, warzywa, wysokobiałkowe]
 source: "ChatGPT — zatwierdzony lunch na 17.11.2026, pierś 188 g"
 ingredients:
@@ -64,7 +64,7 @@ ninja:
     label: "Pierś kurczaka"
     function: "Air Fry"
     temp_c: 190
-    minutes: 20
+    minutes: 25
   zone2:
     label: "Ziemniaki + butternut chunks"
     function: "Air Fry"
@@ -86,7 +86,7 @@ steps:
 translations:
   en:
     title: "Herb chicken with butternut squash, potatoes and yoghurt sauce"
-    description: "A complete single-serving lunch: herb-seasoned chicken breast, roasted butternut squash chunks and potatoes, plus a cool skyr herb sauce. Approximately 510 kcal and 56 g protein per portion (estimates). Suggested settings: verify on the first cook."
+    description: "A complete single-serving lunch: herb-seasoned chicken breast, roasted butternut squash chunks and potatoes, plus a cool skyr herb sauce. Approximately 510 kcal and 56 g protein per portion (estimates). Chicken settings match Monday’s Dijon recipe (184 g breast turned out perfectly; the recipe specified 190°C for 25 min). Check for 75°C internally; suggested vegetable settings need checking on the first cook."
     ingredients:
       - name: "Chicken breast"
         note: "raw, left whole"
